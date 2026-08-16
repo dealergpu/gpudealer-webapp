@@ -3,13 +3,24 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: GPUDealer API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: listings
+    description: Hardware listing operations
+  - name: requests
+    description: Hardware request operations
+  - name: saved
+    description: Saved listing operations
+  - name: stats
+    description: Statistics and dashboard operations
+  - name: users
+    description: User profile operations
+
 paths:
   /healthz:
     get:
@@ -24,6 +35,398 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /listings:
+    get:
+      operationId: getListings
+      tags: [listings]
+      summary: List/search hardware listings
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Keyword search
+        - name: category
+          in: query
+          schema: { type: string, enum: [gpu, server, memory, other] }
+        - name: model
+          in: query
+          schema: { type: string }
+        - name: manufacturer
+          in: query
+          schema: { type: string }
+        - name: vramMin
+          in: query
+          schema: { type: integer }
+        - name: priceMax
+          in: query
+          schema: { type: number }
+        - name: condition
+          in: query
+          schema: { type: string, enum: [new, used, refurbished, any] }
+        - name: location
+          in: query
+          schema: { type: string }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [relevance, price_asc, price_desc, newest, price_per_gb] }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 24 }
+      responses:
+        "200":
+          description: Listings response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingsResponse"
+
+    post:
+      operationId: createListing
+      tags: [listings]
+      summary: Create a new hardware listing (auth required)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListingInput"
+      responses:
+        "201":
+          description: Created listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listing"
+        "401":
+          description: Unauthorized
+
+  /listings/me:
+    get:
+      operationId: getMyListings
+      tags: [listings]
+      summary: Get the authenticated user's listings
+      responses:
+        "200":
+          description: My listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Listing"
+        "401":
+          description: Unauthorized
+
+  /listings/featured:
+    get:
+      operationId: getFeaturedListings
+      tags: [listings]
+      summary: Get recent/featured listings for homepage
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 12 }
+      responses:
+        "200":
+          description: Featured listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Listing"
+
+  /listings/{id}:
+    get:
+      operationId: getListing
+      tags: [listings]
+      summary: Get a listing by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Listing detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listing"
+        "404":
+          description: Not found
+
+    patch:
+      operationId: updateListing
+      tags: [listings]
+      summary: Update a listing (auth required, must be owner)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListingUpdate"
+      responses:
+        "200":
+          description: Updated listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listing"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+
+    delete:
+      operationId: deleteListing
+      tags: [listings]
+      summary: Delete a listing (auth required, must be owner)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+
+  /requests:
+    get:
+      operationId: getRequests
+      tags: [requests]
+      summary: Get public hardware requests
+      parameters:
+        - name: category
+          in: query
+          schema: { type: string, enum: [gpu, server, memory, other] }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Hardware requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HardwareRequest"
+
+    post:
+      operationId: createRequest
+      tags: [requests]
+      summary: Submit a hardware request (auth required)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HardwareRequestInput"
+      responses:
+        "201":
+          description: Created request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HardwareRequest"
+        "401":
+          description: Unauthorized
+
+  /requests/me:
+    get:
+      operationId: getMyRequests
+      tags: [requests]
+      summary: Get the authenticated user's hardware requests
+      responses:
+        "200":
+          description: My requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HardwareRequest"
+        "401":
+          description: Unauthorized
+
+  /requests/{id}:
+    patch:
+      operationId: updateRequest
+      tags: [requests]
+      summary: Update a hardware request (auth required, must be owner)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HardwareRequestUpdate"
+      responses:
+        "200":
+          description: Updated request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HardwareRequest"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+
+    delete:
+      operationId: deleteRequest
+      tags: [requests]
+      summary: Cancel/delete a hardware request (auth required, must be owner)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+
+  /saved:
+    get:
+      operationId: getSavedListings
+      tags: [saved]
+      summary: Get authenticated user's saved listings
+      responses:
+        "200":
+          description: Saved listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Listing"
+        "401":
+          description: Unauthorized
+
+    post:
+      operationId: saveListing
+      tags: [saved]
+      summary: Save a listing (auth required)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveListingInput"
+      responses:
+        "201":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedConfirmation"
+        "401":
+          description: Unauthorized
+
+  /saved/{listingId}:
+    delete:
+      operationId: unsaveListing
+      tags: [saved]
+      summary: Remove a saved listing
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Removed
+        "401":
+          description: Unauthorized
+
+  /stats/dashboard:
+    get:
+      operationId: getDashboardStats
+      tags: [stats]
+      summary: Get dashboard summary stats (auth required)
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+        "401":
+          description: Unauthorized
+
+  /stats/marketplace:
+    get:
+      operationId: getMarketplaceStats
+      tags: [stats]
+      summary: Get public marketplace statistics
+      responses:
+        "200":
+          description: Marketplace stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketplaceStats"
+
+  /users/profile:
+    get:
+      operationId: getMyProfile
+      tags: [users]
+      summary: Get authenticated user's profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+
+    patch:
+      operationId: updateProfile
+      tags: [users]
+      summary: Update authenticated user's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +437,207 @@ components:
       required:
         - status
 
+    Listing:
+      type: object
+      required: [id, title, category, condition, price, currency, status, createdAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        category: { type: string, enum: [gpu, server, memory, other] }
+        manufacturer: { type: ["string", "null"] }
+        model: { type: ["string", "null"] }
+        vram: { type: ["integer", "null"], description: "VRAM in GB" }
+        quantity: { type: integer, default: 1 }
+        condition: { type: string, enum: [new, used, refurbished] }
+        price: { type: number }
+        currency: { type: string, default: "USD" }
+        location: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
+        status: { type: string, enum: [draft, pending_review, published, rejected, sold, expired] }
+        source: { type: string, enum: [gpudealer, external], default: "gpudealer" }
+        externalUrl: { type: ["string", "null"] }
+        verified: { type: boolean, default: false }
+        imageUrls: { type: array, items: { type: string } }
+        sellerName: { type: ["string", "null"] }
+        sellerId: { type: ["string", "null"] }
+        # GPU-specific fields
+        gpuCount: { type: ["integer", "null"] }
+        ram: { type: ["string", "null"] }
+        cpu: { type: ["string", "null"] }
+        storage: { type: ["string", "null"] }
+        networking: { type: ["string", "null"] }
+        # Memory-specific fields
+        memType: { type: ["string", "null"] }
+        memCapacity: { type: ["string", "null"] }
+        memSpeed: { type: ["string", "null"] }
+        ecc: { type: ["boolean", "null"] }
+        formFactor: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: ["string", "null"], format: date-time }
+
+    ListingInput:
+      type: object
+      required: [title, category, condition, price, currency]
+      properties:
+        title: { type: string }
+        category: { type: string, enum: [gpu, server, memory, other] }
+        manufacturer: { type: string }
+        model: { type: string }
+        vram: { type: integer }
+        quantity: { type: integer, default: 1 }
+        condition: { type: string, enum: [new, used, refurbished] }
+        price: { type: number }
+        currency: { type: string, default: "USD" }
+        location: { type: string }
+        description: { type: string }
+        imageUrls: { type: array, items: { type: string } }
+        gpuCount: { type: integer }
+        ram: { type: string }
+        cpu: { type: string }
+        storage: { type: string }
+        networking: { type: string }
+        memType: { type: string }
+        memCapacity: { type: string }
+        memSpeed: { type: string }
+        ecc: { type: boolean }
+        formFactor: { type: string }
+
+    ListingUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        condition: { type: string, enum: [new, used, refurbished] }
+        price: { type: number }
+        quantity: { type: integer }
+        location: { type: string }
+        description: { type: string }
+        status: { type: string, enum: [draft, sold, expired] }
+
+    ListingsResponse:
+      type: object
+      required: [listings, total, page, limit]
+      properties:
+        listings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Listing"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+
+    HardwareRequest:
+      type: object
+      required: [id, category, modelRequirement, quantity, conditionPreference, status, createdAt]
+      properties:
+        id: { type: integer }
+        category: { type: string, enum: [gpu, server, memory, other] }
+        modelRequirement: { type: string }
+        quantity: { type: integer }
+        vramMin: { type: ["integer", "null"] }
+        budgetPerUnit: { type: ["number", "null"] }
+        totalBudget: { type: ["number", "null"] }
+        currency: { type: string, default: "USD" }
+        conditionPreference: { type: string, enum: [new, used, refurbished, any] }
+        destinationCountry: { type: ["string", "null"] }
+        destinationCity: { type: ["string", "null"] }
+        requiredBy: { type: ["string", "null"], enum: [asap, "1_4_weeks", "1_3_months", flexible] }
+        additionalRequirements: { type: ["string", "null"] }
+        status: { type: string, enum: [open, matched, closed, cancelled] }
+        userId: { type: ["string", "null"] }
+        userName: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    HardwareRequestInput:
+      type: object
+      required: [category, modelRequirement, quantity, conditionPreference]
+      properties:
+        category: { type: string, enum: [gpu, server, memory, other] }
+        modelRequirement: { type: string, minLength: 1 }
+        quantity: { type: integer, minimum: 1 }
+        vramMin: { type: integer }
+        budgetPerUnit: { type: number }
+        totalBudget: { type: number }
+        currency: { type: string, default: "USD" }
+        conditionPreference: { type: string, enum: [new, used, refurbished, any] }
+        destinationCountry: { type: string }
+        destinationCity: { type: string }
+        requiredBy: { type: string, enum: [asap, "1_4_weeks", "1_3_months", flexible] }
+        additionalRequirements: { type: string }
+
+    HardwareRequestUpdate:
+      type: object
+      properties:
+        modelRequirement: { type: string }
+        quantity: { type: integer }
+        budgetPerUnit: { type: number }
+        totalBudget: { type: number }
+        status: { type: string, enum: [open, closed, cancelled] }
+        additionalRequirements: { type: string }
+
+    SaveListingInput:
+      type: object
+      required: [listingId]
+      properties:
+        listingId: { type: integer }
+
+    SavedConfirmation:
+      type: object
+      required: [listingId, savedAt]
+      properties:
+        listingId: { type: integer }
+        savedAt: { type: string, format: date-time }
+
+    DashboardStats:
+      type: object
+      required: [activeListings, pendingListings, openRequests, savedCount, recentListings, recentRequests]
+      properties:
+        activeListings: { type: integer }
+        pendingListings: { type: integer }
+        openRequests: { type: integer }
+        savedCount: { type: integer }
+        recentListings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Listing"
+        recentRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/HardwareRequest"
+
+    MarketplaceStats:
+      type: object
+      required: [totalListings, totalRequests, popularModels]
+      properties:
+        totalListings: { type: integer }
+        totalRequests: { type: integer }
+        popularModels:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelCount"
+
+    ModelCount:
+      type: object
+      required: [model, count]
+      properties:
+        model: { type: string }
+        count: { type: integer }
+
+    UserProfile:
+      type: object
+      required: [id, email, createdAt]
+      properties:
+        id: { type: string }
+        email: { type: string }
+        displayName: { type: ["string", "null"] }
+        company: { type: ["string", "null"] }
+        location: { type: ["string", "null"] }
+        bio: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    UserProfileUpdate:
+      type: object
+      properties:
+        displayName: { type: string }
+        company: { type: string }
+        location: { type: string }
+        bio: { type: string }

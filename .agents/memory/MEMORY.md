@@ -1,0 +1,2 @@
+- [Zod v3 + Orval v8 codegen fix](zod-orval-fix.md) — Orval 8.x generates `zod.int()` (Zod v4 API); sed post-process step needed for Zod v3 projects.
+- [GPUDealer architecture](gpudealer-arch.md) — stack decisions, route map, DB schema summary, and Clerk proxy setup.
