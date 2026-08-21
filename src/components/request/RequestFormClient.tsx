@@ -75,7 +75,7 @@ export function RequestFormClient() {
           <Search className="h-6 w-6 text-accent" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold text-foreground font-sans tracking-tight">Post a Hardware Request</h1>
+          <h1 className="text-3xl font-bold text-foreground font-heading tracking-tight">Post a Hardware Request</h1>
           <p className="text-muted-foreground mt-2 max-w-xl">
             Can't find exact specs on the marketplace? Broadcast your needs directly to our network of professional resellers and data centers.
           </p>

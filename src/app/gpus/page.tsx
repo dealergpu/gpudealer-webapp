@@ -82,7 +82,7 @@ export default async function GPUSearch({
 
       <main className="flex-1">
         <div className="hidden md:flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-foreground font-sans">Marketplace</h1>
+          <h1 className="text-3xl font-bold text-foreground font-heading">Marketplace</h1>
 
           <div className="flex items-center gap-3">
             <Label className="whitespace-nowrap text-muted-foreground">Sort by:</Label>
@@ -123,7 +123,7 @@ export default async function GPUSearch({
           </>
         ) : (
           <div className="py-20 text-center border border-border rounded-lg bg-card/50 flex flex-col items-center">
-            <h3 className="text-xl font-bold mb-2">No hardware found</h3>
+            <h3 className="text-xl font-bold font-heading mb-2">No hardware found</h3>
             <p className="text-muted-foreground max-w-md mb-6">
               We couldn't find any listings matching your current filters. Try adjusting your search criteria or submit a hardware request.
             </p>

@@ -18,7 +18,7 @@ export function ListingCard({ listing }: ListingCardProps) {
   }).format(listing.price);
 
   return (
-    <Card className="flex flex-col h-full hover:shadow-md transition-shadow group border-border">
+    <Card className="flex flex-col h-full group border-border card-hover">
       <CardHeader className="pb-3 border-b border-border/50 p-4">
         <div className="flex justify-between items-start gap-2 mb-2">
           <Badge variant="outline" className="font-mono text-[10px] uppercase bg-secondary/50">
@@ -36,7 +36,7 @@ export function ListingCard({ listing }: ListingCardProps) {
             )}
           </div>
         </div>
-        <h3 className="text-base font-bold leading-tight line-clamp-2 text-foreground group-hover:text-accent transition-colors">
+        <h3 className="text-base font-bold font-heading leading-tight line-clamp-2 text-foreground group-hover:text-accent transition-colors">
           <Link href={`/listing/${listing.id}`}>
             {listing.title}
           </Link>

@@ -2,17 +2,15 @@ import Link from "next/link";
 
 export function Footer() {
   return (
-    <footer className="border-t bg-card mt-auto">
+    <footer className="border-t border-border bg-card mt-auto">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-1">
-            <h3 className="text-lg font-bold font-sans italic text-foreground mb-4">
-              Gpu<span className="text-accent">Dealer</span>
-            </h3>
+            <img src="/gpu-dealer-logo-white.svg" alt="GPUDealer" className="h-7 w-auto mb-4" />
             <p className="text-sm text-muted-foreground mb-4 max-w-xs">
               The premier marketplace for used AI compute hardware, data center components, and professional GPUs.
             </p>
-            <p className="text-sm font-medium text-foreground">
+            <p className="text-sm font-medium font-heading text-foreground">
               Find. Sell. Request.
             </p>
           </div>

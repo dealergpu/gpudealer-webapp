@@ -31,46 +31,38 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col w-full">
-      {/* Hero Section */}
-      <section className="relative bg-background border-b border-border overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-accent/10 via-background to-background pointer-events-none" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay pointer-events-none" />
-
-        <div className="container mx-auto px-4 py-24 md:py-32 relative z-10 flex flex-col items-center text-center">
-          <HeroIntro />
-        </div>
-      </section>
+      <HeroIntro />
 
       {/* Stats Section */}
-      <section className="bg-foreground text-background py-8 border-y border-foreground">
+      <section className="bg-card py-8 border-y border-border">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 divide-x divide-background/20 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 divide-x divide-border text-center">
             <div className="px-4">
-              <div className="text-3xl font-bold font-mono text-white">{stats?.totalListings ?? "..."}</div>
-              <div className="text-xs uppercase tracking-wider text-muted font-semibold mt-1">Active Listings</div>
+              <div className="text-3xl font-bold font-mono text-foreground">{stats?.totalListings ?? "..."}</div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mt-1">Active Listings</div>
             </div>
             <div className="px-4">
-              <div className="text-3xl font-bold font-mono text-white">{stats?.totalRequests ?? "..."}</div>
-              <div className="text-xs uppercase tracking-wider text-muted font-semibold mt-1">Open Requests</div>
+              <div className="text-3xl font-bold font-mono text-foreground">{stats?.totalRequests ?? "..."}</div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mt-1">Open Requests</div>
             </div>
             <div className="px-4">
-              <div className="text-3xl font-bold font-mono text-white">$10M+</div>
-              <div className="text-xs uppercase tracking-wider text-muted font-semibold mt-1">Market Volume</div>
+              <div className="text-3xl font-bold font-mono text-foreground">$10M+</div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mt-1">Market Volume</div>
             </div>
             <div className="px-4">
-              <div className="text-3xl font-bold font-mono text-white text-accent">24/7</div>
-              <div className="text-xs uppercase tracking-wider text-muted font-semibold mt-1">Trading Access</div>
+              <div className="text-3xl font-bold font-mono text-accent">24/7</div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mt-1">Trading Access</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Featured Listings */}
-      <section className="py-20 bg-muted/20">
+      <section className="py-20 bg-background">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-end mb-10">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight text-foreground font-sans">Featured Hardware</h2>
+              <h2 className="text-2xl font-bold tracking-tight text-foreground font-heading">Featured Hardware</h2>
               <p className="text-muted-foreground mt-2">Premium listings available right now.</p>
             </div>
             <Link href="/gpus">
@@ -104,10 +96,10 @@ export default async function Home() {
       </section>
 
       {/* How It Works */}
-      <section className="py-24 bg-card border-t border-border">
+      <section className="py-24 bg-card border-y border-border">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground mb-4">Industrial-Grade Sourcing</h2>
+            <h2 className="text-3xl font-bold tracking-tight text-foreground font-heading mb-4">Industrial-Grade Sourcing</h2>
             <p className="text-muted-foreground text-lg">
               We connect enterprise buyers with verified hardware sellers. No fluff, just specs and prices.
             </p>
@@ -115,26 +107,26 @@ export default async function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-5xl mx-auto">
             <div className="flex flex-col items-center text-center group">
-              <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mb-6 group-hover:bg-accent/10 group-hover:text-accent transition-colors border border-border">
+              <div className="h-16 w-16 bg-muted rounded-lg flex items-center justify-center mb-6 group-hover:bg-accent/10 group-hover:text-accent group-hover:border-accent/40 transition-colors border border-border">
                 <Search className="h-7 w-7" />
               </div>
-              <h3 className="text-xl font-bold mb-3">1. Search & Filter</h3>
+              <h3 className="text-xl font-bold mb-3 font-heading">1. Search & Filter</h3>
               <p className="text-muted-foreground">Find exact models, VRAM requirements, and condition using our specialized technical filters.</p>
             </div>
 
             <div className="flex flex-col items-center text-center group">
-              <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mb-6 group-hover:bg-accent/10 group-hover:text-accent transition-colors border border-border">
+              <div className="h-16 w-16 bg-muted rounded-lg flex items-center justify-center mb-6 group-hover:bg-accent/10 group-hover:text-accent group-hover:border-accent/40 transition-colors border border-border">
                 <ShieldCheck className="h-7 w-7" />
               </div>
-              <h3 className="text-xl font-bold mb-3">2. Compare & Verify</h3>
+              <h3 className="text-xl font-bold mb-3 font-heading">2. Compare & Verify</h3>
               <p className="text-muted-foreground">Review dense specifications, pricing, and seller details to make a confident technical purchase.</p>
             </div>
 
             <div className="flex flex-col items-center text-center group">
-              <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mb-6 group-hover:bg-accent/10 group-hover:text-accent transition-colors border border-border">
+              <div className="h-16 w-16 bg-muted rounded-lg flex items-center justify-center mb-6 group-hover:bg-accent/10 group-hover:text-accent group-hover:border-accent/40 transition-colors border border-border">
                 <Activity className="h-7 w-7" />
               </div>
-              <h3 className="text-xl font-bold mb-3">3. Connect & Transact</h3>
+              <h3 className="text-xl font-bold mb-3 font-heading">3. Connect & Transact</h3>
               <p className="text-muted-foreground">Contact sellers directly or fulfill open hardware requests if you have inventory to move.</p>
             </div>
           </div>
@@ -142,14 +134,16 @@ export default async function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 bg-foreground text-background text-center px-4">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6 text-white">Can't find what you need?</h2>
-          <p className="text-lg text-muted mb-10 max-w-xl mx-auto">
+      <section className="relative overflow-hidden py-24 px-4 text-center bg-background">
+        <div className="absolute inset-0 bg-grid [mask-image:radial-gradient(ellipse_50%_80%_at_50%_50%,black,transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-accent/15 via-background to-background" />
+        <div className="relative z-10 max-w-3xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6 text-foreground font-heading">Can't find what you need?</h2>
+          <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
             Post a hardware request. Our network of resellers and data centers will be notified of your exact requirements.
           </p>
           <Link href="/request">
-            <Button size="lg" variant="default" className="h-14 px-8 font-bold bg-accent hover:bg-accent/90 text-white border-0">
+            <Button size="lg" variant="default" className="h-14 px-8 font-bold glow-accent">
               Submit Hardware Request
             </Button>
           </Link>

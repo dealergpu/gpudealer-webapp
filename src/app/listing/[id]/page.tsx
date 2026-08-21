@@ -102,7 +102,7 @@ export default async function ListingDetail({
               )}
             </div>
 
-            <h1 className="text-3xl sm:text-4xl font-bold text-foreground font-sans mb-4 leading-tight">
+            <h1 className="text-3xl sm:text-4xl font-bold text-foreground font-heading mb-4 leading-tight">
               {listing.title}
             </h1>
 
@@ -127,7 +127,7 @@ export default async function ListingDetail({
           {/* Description */}
           {listing.description && (
             <div className="bg-card border border-border rounded-lg p-6">
-              <h2 className="text-xl font-bold mb-4 font-sans border-b border-border pb-2">Description</h2>
+              <h2 className="text-xl font-bold mb-4 font-heading border-b border-border pb-2">Description</h2>
               <div className="prose prose-sm sm:prose-base max-w-none text-foreground whitespace-pre-wrap">
                 {listing.description}
               </div>
@@ -137,7 +137,7 @@ export default async function ListingDetail({
           {/* Technical Specs */}
           <div className="bg-card border border-border rounded-lg overflow-hidden">
             <div className="bg-muted/30 px-6 py-4 border-b border-border">
-              <h2 className="text-xl font-bold font-sans">Technical Specifications</h2>
+              <h2 className="text-xl font-bold font-heading">Technical Specifications</h2>
             </div>
             <Table>
               <TableBody>

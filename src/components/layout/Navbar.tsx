@@ -20,12 +20,12 @@ export function Navbar() {
     (pathname.startsWith(path) && path !== "/") || (path === "/" && pathname === "/");
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
             <Link href="/" className="flex flex-shrink-0 items-center gap-2 mr-8">
-              <img src="/gpu-dealer-logo.png" alt="GPUDealer" className="h-8 w-auto" />
+              <img src="/gpu-dealer-logo-white.svg" alt="GPUDealer" className="h-7 w-auto" />
             </Link>
 
             <div className="hidden md:flex md:space-x-1">

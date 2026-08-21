@@ -70,7 +70,7 @@ export function SearchFilters({ initialFilters }: { initialFilters: SearchFilter
   return (
     <>
       <div className="md:hidden flex justify-between items-center w-full mb-4">
-        <h1 className="text-2xl font-bold text-foreground font-sans">Hardware</h1>
+        <h1 className="text-2xl font-bold text-foreground font-heading">Hardware</h1>
         <Button
           variant="outline"
           onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}

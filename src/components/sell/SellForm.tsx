@@ -76,7 +76,7 @@ export function SellForm() {
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground font-sans">List Hardware for Sale</h1>
+        <h1 className="text-3xl font-bold text-foreground font-heading">List Hardware for Sale</h1>
         <p className="text-muted-foreground mt-2">Provide accurate details to reach verified buyers faster.</p>
       </div>
 
