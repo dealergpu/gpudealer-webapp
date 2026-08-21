@@ -130,19 +130,19 @@ export function HeroIntro() {
           className="grid w-full max-w-3xl grid-cols-1 gap-4 md:grid-cols-3"
         >
           <Link href="/gpus" className="w-full">
-            <Button variant="outline" className="group h-16 w-full justify-start border-border bg-card/80 text-base font-semibold backdrop-blur hover:border-accent/40 hover:bg-accent/5 hover:text-accent">
+            <Button variant="outline" className="group h-16 w-full justify-start text-base font-semibold">
               <HardDrive className="mr-2 h-5 w-5 text-muted-foreground group-hover:text-accent" />
               Find Hardware
             </Button>
           </Link>
           <Link href="/sell" className="w-full">
-            <Button variant="outline" className="group h-16 w-full justify-start border-border bg-card/80 text-base font-semibold backdrop-blur hover:border-accent/40 hover:bg-accent/5 hover:text-accent">
+            <Button variant="outline" className="group h-16 w-full justify-start text-base font-semibold">
               <Cpu className="mr-2 h-5 w-5 text-muted-foreground group-hover:text-accent" />
               Sell Your Hardware
             </Button>
           </Link>
           <Link href="/request" className="w-full">
-            <Button variant="outline" className="group h-16 w-full justify-start border-border bg-card/80 text-base font-semibold backdrop-blur hover:border-accent/40 hover:bg-accent/5 hover:text-accent">
+            <Button variant="outline" className="group h-16 w-full justify-start text-base font-semibold">
               <Search className="mr-2 h-5 w-5 text-muted-foreground group-hover:text-accent" />
               Request Hardware
             </Button>
