@@ -28,12 +28,24 @@ export function Navbar() {
   const isActive = (path: string) =>
     (pathname.startsWith(path) && path !== "/") || (path === "/" && pathname === "/");
 
-  const navLink = (path: string) =>
-    `px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-      isActive(path)
-        ? "glass-subtle text-foreground"
-        : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+  const navLink = (path: string) => {
+    const active = isActive(path);
+    return `px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+      scrolled
+        ? active
+          ? "bg-black/[0.07] text-neutral-900"
+          : "text-neutral-600 hover:bg-black/[0.05] hover:text-neutral-900"
+        : active
+          ? "glass-subtle text-foreground"
+          : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
     }`;
+  };
+
+  const sideLink =
+    "hidden rounded-full px-3 py-2 text-sm font-medium transition-colors sm:block " +
+    (scrolled
+      ? "text-neutral-600 hover:bg-black/[0.05] hover:text-neutral-900"
+      : "text-muted-foreground hover:bg-white/5 hover:text-foreground");
 
   return (
     <div
@@ -63,7 +75,7 @@ export function Navbar() {
           <div className="flex items-center">
             <Link href="/" className="mr-8 flex flex-shrink-0 items-center gap-2">
               <img
-                src="/gpu-dealer-logo-white.svg"
+                src={scrolled ? "/gpu-dealer-logo.svg" : "/gpu-dealer-logo-white.svg"}
                 alt="GPUDealer"
                 className={`w-auto transition-all duration-500 ${scrolled ? "h-6" : "h-7"}`}
               />
@@ -85,10 +97,7 @@ export function Navbar() {
           <div className="flex items-center space-x-3">
             {!user ? (
               <>
-                <Link
-                  href="/sign-in"
-                  className="hidden rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground sm:block"
-                >
+                <Link href="/sign-in" className={sideLink}>
                   Sign In
                 </Link>
                 <Link href="/sell">
@@ -99,21 +108,28 @@ export function Navbar() {
               </>
             ) : (
               <>
-                <Link
-                  href="/dashboard"
-                  className="hidden items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground sm:flex"
-                >
+                <Link href="/dashboard" className={`${sideLink} hidden items-center gap-2 sm:flex`}>
                   <LayoutDashboard className="h-4 w-4" />
                   Dashboard
                 </Link>
 
-                <div className="hidden h-4 w-px bg-white/10 sm:block"></div>
+                <div className={`hidden h-4 w-px sm:block ${scrolled ? "bg-black/10" : "bg-white/10"}`}></div>
 
                 <div className="flex items-center gap-2 text-sm font-medium">
-                  <span className="hidden max-w-[120px] truncate text-foreground sm:block">
+                  <span
+                    className={`hidden max-w-[120px] truncate sm:block ${
+                      scrolled ? "text-neutral-900" : "text-foreground"
+                    }`}
+                  >
                     {user.email || 'User'}
                   </span>
-                  <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleSignOut}
+                    title="Sign Out"
+                    className={scrolled ? "text-neutral-600 hover:text-neutral-900" : undefined}
+                  >
                     <LogOut className="h-4 w-4" />
                   </Button>
                 </div>
