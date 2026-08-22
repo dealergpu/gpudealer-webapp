@@ -65,9 +65,9 @@ export function HeroIntro() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <Badge variant="outline" className="mb-6 border-accent/40 bg-accent/10 px-3 py-1 font-mono text-xs uppercase tracking-wider text-accent">
+          <Badge variant="outline" className="mb-6 border-accent/40 bg-accent/10 px-3 py-1 font-mono text-xs uppercase tracking-wider text-white">
             <Activity className="mr-2 inline h-3 w-3" />
-            Live Marketplace
+            Live Hardware Marketplace
           </Badge>
         </motion.div>
 
