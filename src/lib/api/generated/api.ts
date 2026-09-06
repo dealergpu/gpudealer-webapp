@@ -22,21 +22,30 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  ApiErrorResponse,
   DashboardStats,
-  GetFeaturedListingsParams,
+  GetInquiriesParams,
   GetListingsParams,
   GetRequestsParams,
-  HardwareRequest,
+  GetSavedListingsParams,
   HardwareRequestInput,
+  HardwareRequestResponse,
+  HardwareRequestStatusUpdate,
   HardwareRequestUpdate,
+  HardwareRequestsResponse,
   HealthStatus,
-  Listing,
+  InquiriesResponse,
+  InquiryInput,
+  InquiryResponse,
+  InquiryStatusUpdate,
   ListingInput,
+  ListingResponse,
+  ListingStatusUpdate,
   ListingUpdate,
   ListingsResponse,
   MarketplaceStats,
-  SaveListingInput,
-  SavedConfirmation,
+  SavedListingResponse,
+  SavedListingsResponse,
   UserProfile,
   UserProfileUpdate,
 } from "./api.schemas";
@@ -65,7 +74,7 @@ const withQueryKey = <T extends object, K>(
 };
 
 export const getHealthCheckUrl = () => {
-  return `/api/healthz`;
+  return `/api/v1/healthz`;
 };
 
 /**
@@ -82,7 +91,7 @@ export const healthCheck = async (
 };
 
 export const getHealthCheckQueryKey = () => {
-  return [`/api/healthz`] as const;
+  return [`/api/v1/healthz`] as const;
 };
 
 export const getHealthCheckQueryOptions = <
@@ -212,11 +221,12 @@ export const getGetListingsUrl = (params?: GetListingsParams) => {
   const stringifiedParams = normalizedParams.toString();
 
   return stringifiedParams.length > 0
-    ? `/api/listings?${stringifiedParams}`
-    : `/api/listings`;
+    ? `/api/v1/listings?${stringifiedParams}`
+    : `/api/v1/listings`;
 };
 
 /**
+ * Public; no auth required for public results. Rate-limited to 60 req/min per user/IP. Passing a non-public `status` (DRAFT, PENDING_REVIEW, REJECTED, EXPIRED) requires auth and always scopes the result to the caller's own listings — this doubles as the "My Listings" query, e.g. `?status=DRAFT` while signed in.
  * @summary List/search hardware listings
  */
 export const getListings = async (
@@ -230,12 +240,12 @@ export const getListings = async (
 };
 
 export const getGetListingsQueryKey = (params?: GetListingsParams) => {
-  return [`/api/listings`, ...(params ? [params] : [])] as const;
+  return [`/api/v1/listings`, ...(params ? [params] : [])] as const;
 };
 
 export const getGetListingsQueryOptions = <
   TData = Awaited<ReturnType<typeof getListings>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
   params?: GetListingsParams,
   options?: {
@@ -263,11 +273,11 @@ export const getGetListingsQueryOptions = <
 export type GetListingsQueryResult = NonNullable<
   Awaited<ReturnType<typeof getListings>>
 >;
-export type GetListingsQueryError = ErrorType<unknown>;
+export type GetListingsQueryError = ErrorType<ApiErrorResponse>;
 
 export function useGetListings<
   TData = Awaited<ReturnType<typeof getListings>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
   params: undefined | GetListingsParams,
   options: {
@@ -290,7 +300,7 @@ export function useGetListings<
 };
 export function useGetListings<
   TData = Awaited<ReturnType<typeof getListings>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
   params?: GetListingsParams,
   options?: {
@@ -313,7 +323,7 @@ export function useGetListings<
 };
 export function useGetListings<
   TData = Awaited<ReturnType<typeof getListings>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
   params?: GetListingsParams,
   options?: {
@@ -332,7 +342,7 @@ export function useGetListings<
 
 export function useGetListings<
   TData = Awaited<ReturnType<typeof getListings>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
   params?: GetListingsParams,
   options?: {
@@ -356,17 +366,18 @@ export function useGetListings<
 }
 
 export const getCreateListingUrl = () => {
-  return `/api/listings`;
+  return `/api/v1/listings`;
 };
 
 /**
+ * Requires Authorization; rate-limited to 20/hour per user. The seller is taken from the verified auth token — the client cannot set it. New listings always start as DRAFT; there is no way to create one already PUBLISHED. The server auto-generates `slug` and `normalizedModel`.
  * @summary Create a new hardware listing (auth required)
  */
 export const createListing = async (
   listingInput: ListingInput,
   options?: Parameters<typeof customFetch>[1],
-): Promise<Listing> => {
-  return customFetch<Listing>(getCreateListingUrl(), {
+): Promise<ListingResponse> => {
+  return customFetch<ListingResponse>(getCreateListingUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -375,7 +386,7 @@ export const createListing = async (
 };
 
 export const getCreateListingMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -416,12 +427,15 @@ export type CreateListingMutationResult = NonNullable<
   Awaited<ReturnType<typeof createListing>>
 >;
 export type CreateListingMutationBody = BodyType<ListingInput>;
-export type CreateListingMutationError = ErrorType<void>;
+export type CreateListingMutationError = ErrorType<ApiErrorResponse>;
 
 /**
  * @summary Create a new hardware listing (auth required)
  */
-export const useCreateListing = <TError = ErrorType<void>, TContext = unknown>(
+export const useCreateListing = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof createListing>>,
@@ -441,348 +455,33 @@ export const useCreateListing = <TError = ErrorType<void>, TContext = unknown>(
   return useMutation(getCreateListingMutationOptions(options), queryClient);
 };
 
-export const getGetMyListingsUrl = () => {
-  return `/api/listings/me`;
+export const getGetListingUrl = (id: string) => {
+  return `/api/v1/listings/${id}`;
 };
 
 /**
- * @summary Get the authenticated user's listings
- */
-export const getMyListings = async (
-  options?: Parameters<typeof customFetch>[1],
-): Promise<Listing[]> => {
-  return customFetch<Listing[]>(getGetMyListingsUrl(), {
-    ...options,
-    method: "GET",
-  });
-};
-
-export const getGetMyListingsQueryKey = () => {
-  return [`/api/listings/me`] as const;
-};
-
-export const getGetMyListingsQueryOptions = <
-  TData = Awaited<ReturnType<typeof getMyListings>>,
-  TError = ErrorType<void>,
->(options?: {
-  query?: Partial<
-    UseQueryOptions<Awaited<ReturnType<typeof getMyListings>>, TError, TData>
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey = queryOptions?.queryKey ?? getGetMyListingsQueryKey();
-
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyListings>>> = ({
-    signal,
-  }) => getMyListings({ signal, ...requestOptions });
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getMyListings>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-};
-
-export type GetMyListingsQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getMyListings>>
->;
-export type GetMyListingsQueryError = ErrorType<void>;
-
-export function useGetMyListings<
-  TData = Awaited<ReturnType<typeof getMyListings>>,
-  TError = ErrorType<void>,
->(
-  options: {
-    query: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof getMyListings>>, TError, TData>
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getMyListings>>,
-          TError,
-          Awaited<ReturnType<typeof getMyListings>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-};
-export function useGetMyListings<
-  TData = Awaited<ReturnType<typeof getMyListings>>,
-  TError = ErrorType<void>,
->(
-  options?: {
-    query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof getMyListings>>, TError, TData>
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getMyListings>>,
-          TError,
-          Awaited<ReturnType<typeof getMyListings>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-};
-export function useGetMyListings<
-  TData = Awaited<ReturnType<typeof getMyListings>>,
-  TError = ErrorType<void>,
->(
-  options?: {
-    query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof getMyListings>>, TError, TData>
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-};
-/**
- * @summary Get the authenticated user's listings
- */
-
-export function useGetMyListings<
-  TData = Awaited<ReturnType<typeof getMyListings>>,
-  TError = ErrorType<void>,
->(
-  options?: {
-    query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof getMyListings>>, TError, TData>
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-} {
-  const queryOptions = getGetMyListingsQueryOptions(options);
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-export const getGetFeaturedListingsUrl = (
-  params?: GetFeaturedListingsParams,
-) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? "null" : String(value));
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0
-    ? `/api/listings/featured?${stringifiedParams}`
-    : `/api/listings/featured`;
-};
-
-/**
- * @summary Get recent/featured listings for homepage
- */
-export const getFeaturedListings = async (
-  params?: GetFeaturedListingsParams,
-  options?: Parameters<typeof customFetch>[1],
-): Promise<Listing[]> => {
-  return customFetch<Listing[]>(getGetFeaturedListingsUrl(params), {
-    ...options,
-    method: "GET",
-  });
-};
-
-export const getGetFeaturedListingsQueryKey = (
-  params?: GetFeaturedListingsParams,
-) => {
-  return [`/api/listings/featured`, ...(params ? [params] : [])] as const;
-};
-
-export const getGetFeaturedListingsQueryOptions = <
-  TData = Awaited<ReturnType<typeof getFeaturedListings>>,
-  TError = ErrorType<unknown>,
->(
-  params?: GetFeaturedListingsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getFeaturedListings>>,
-        TError,
-        TData
-      >
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey =
-    queryOptions?.queryKey ?? getGetFeaturedListingsQueryKey(params);
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getFeaturedListings>>
-  > = ({ signal }) =>
-    getFeaturedListings(params, { signal, ...requestOptions });
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getFeaturedListings>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-};
-
-export type GetFeaturedListingsQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getFeaturedListings>>
->;
-export type GetFeaturedListingsQueryError = ErrorType<unknown>;
-
-export function useGetFeaturedListings<
-  TData = Awaited<ReturnType<typeof getFeaturedListings>>,
-  TError = ErrorType<unknown>,
->(
-  params: undefined | GetFeaturedListingsParams,
-  options: {
-    query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getFeaturedListings>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getFeaturedListings>>,
-          TError,
-          Awaited<ReturnType<typeof getFeaturedListings>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-};
-export function useGetFeaturedListings<
-  TData = Awaited<ReturnType<typeof getFeaturedListings>>,
-  TError = ErrorType<unknown>,
->(
-  params?: GetFeaturedListingsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getFeaturedListings>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getFeaturedListings>>,
-          TError,
-          Awaited<ReturnType<typeof getFeaturedListings>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-};
-export function useGetFeaturedListings<
-  TData = Awaited<ReturnType<typeof getFeaturedListings>>,
-  TError = ErrorType<unknown>,
->(
-  params?: GetFeaturedListingsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getFeaturedListings>>,
-        TError,
-        TData
-      >
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-};
-/**
- * @summary Get recent/featured listings for homepage
- */
-
-export function useGetFeaturedListings<
-  TData = Awaited<ReturnType<typeof getFeaturedListings>>,
-  TError = ErrorType<unknown>,
->(
-  params?: GetFeaturedListingsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getFeaturedListings>>,
-        TError,
-        TData
-      >
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-} {
-  const queryOptions = getGetFeaturedListingsQueryOptions(params, options);
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-export const getGetListingUrl = (id: number) => {
-  return `/api/listings/${id}`;
-};
-
-/**
+ * Optional auth. PUBLISHED or SOLD listings are visible to anyone. Any other status (DRAFT, PENDING_REVIEW, REJECTED, EXPIRED) returns 404 to everyone except the owning seller or an admin — deliberately 404 rather than 403, so the API never reveals that a private listing exists. Fires a LISTING_VIEWED analytics event.
  * @summary Get a listing by ID
  */
 export const getListing = async (
-  id: number,
+  id: string,
   options?: Parameters<typeof customFetch>[1],
-): Promise<Listing> => {
-  return customFetch<Listing>(getGetListingUrl(id), {
+): Promise<ListingResponse> => {
+  return customFetch<ListingResponse>(getGetListingUrl(id), {
     ...options,
     method: "GET",
   });
 };
 
-export const getGetListingQueryKey = (id: number) => {
-  return [`/api/listings/${id}`] as const;
+export const getGetListingQueryKey = (id: string) => {
+  return [`/api/v1/listings/${id}`] as const;
 };
 
 export const getGetListingQueryOptions = <
   TData = Awaited<ReturnType<typeof getListing>>,
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
-  id: number,
+  id: string,
   options?: {
     query?: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof getListing>>, TError, TData>
@@ -813,13 +512,13 @@ export const getGetListingQueryOptions = <
 export type GetListingQueryResult = NonNullable<
   Awaited<ReturnType<typeof getListing>>
 >;
-export type GetListingQueryError = ErrorType<void>;
+export type GetListingQueryError = ErrorType<ApiErrorResponse>;
 
 export function useGetListing<
   TData = Awaited<ReturnType<typeof getListing>>,
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
-  id: number,
+  id: string,
   options: {
     query: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof getListing>>, TError, TData>
@@ -840,9 +539,9 @@ export function useGetListing<
 };
 export function useGetListing<
   TData = Awaited<ReturnType<typeof getListing>>,
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
-  id: number,
+  id: string,
   options?: {
     query?: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof getListing>>, TError, TData>
@@ -863,9 +562,9 @@ export function useGetListing<
 };
 export function useGetListing<
   TData = Awaited<ReturnType<typeof getListing>>,
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
-  id: number,
+  id: string,
   options?: {
     query?: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof getListing>>, TError, TData>
@@ -882,9 +581,9 @@ export function useGetListing<
 
 export function useGetListing<
   TData = Awaited<ReturnType<typeof getListing>>,
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
-  id: number,
+  id: string,
   options?: {
     query?: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof getListing>>, TError, TData>
@@ -905,19 +604,20 @@ export function useGetListing<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export const getUpdateListingUrl = (id: number) => {
-  return `/api/listings/${id}`;
+export const getUpdateListingUrl = (id: string) => {
+  return `/api/v1/listings/${id}`;
 };
 
 /**
- * @summary Update a listing (auth required, must be owner)
+ * Same body shape as create, all fields optional (partial update).
+ * @summary Update a listing (auth required, must be owner or admin)
  */
 export const updateListing = async (
-  id: number,
+  id: string,
   listingUpdate: ListingUpdate,
   options?: Parameters<typeof customFetch>[1],
-): Promise<Listing> => {
-  return customFetch<Listing>(getUpdateListingUrl(id), {
+): Promise<ListingResponse> => {
+  return customFetch<ListingResponse>(getUpdateListingUrl(id), {
     ...options,
     method: "PATCH",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -926,20 +626,20 @@ export const updateListing = async (
 };
 
 export const getUpdateListingMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof updateListing>>,
     TError,
-    { id: number; data: BodyType<ListingUpdate> },
+    { id: string; data: BodyType<ListingUpdate> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof updateListing>>,
   TError,
-  { id: number; data: BodyType<ListingUpdate> },
+  { id: string; data: BodyType<ListingUpdate> },
   TContext
 > => {
   const mutationKey = ["updateListing"];
@@ -953,7 +653,7 @@ export const getUpdateListingMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof updateListing>>,
-    { id: number; data: BodyType<ListingUpdate> }
+    { id: string; data: BodyType<ListingUpdate> }
   > = (props) => {
     const { id, data } = props ?? {};
 
@@ -967,17 +667,20 @@ export type UpdateListingMutationResult = NonNullable<
   Awaited<ReturnType<typeof updateListing>>
 >;
 export type UpdateListingMutationBody = BodyType<ListingUpdate>;
-export type UpdateListingMutationError = ErrorType<void>;
+export type UpdateListingMutationError = ErrorType<ApiErrorResponse>;
 
 /**
- * @summary Update a listing (auth required, must be owner)
+ * @summary Update a listing (auth required, must be owner or admin)
  */
-export const useUpdateListing = <TError = ErrorType<void>, TContext = unknown>(
+export const useUpdateListing = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof updateListing>>,
       TError,
-      { id: number; data: BodyType<ListingUpdate> },
+      { id: string; data: BodyType<ListingUpdate> },
       TContext
     >;
     request?: SecondParameter<typeof customFetch>;
@@ -986,21 +689,21 @@ export const useUpdateListing = <TError = ErrorType<void>, TContext = unknown>(
 ): UseMutationResult<
   Awaited<ReturnType<typeof updateListing>>,
   TError,
-  { id: number; data: BodyType<ListingUpdate> },
+  { id: string; data: BodyType<ListingUpdate> },
   TContext
 > => {
   return useMutation(getUpdateListingMutationOptions(options), queryClient);
 };
 
-export const getDeleteListingUrl = (id: number) => {
-  return `/api/listings/${id}`;
+export const getDeleteListingUrl = (id: string) => {
+  return `/api/v1/listings/${id}`;
 };
 
 /**
- * @summary Delete a listing (auth required, must be owner)
+ * @summary Delete a listing (auth required, must be owner or admin)
  */
 export const deleteListing = async (
-  id: number,
+  id: string,
   options?: Parameters<typeof customFetch>[1],
 ): Promise<void> => {
   return customFetch<void>(getDeleteListingUrl(id), {
@@ -1010,20 +713,20 @@ export const deleteListing = async (
 };
 
 export const getDeleteListingMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof deleteListing>>,
     TError,
-    { id: number },
+    { id: string },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof deleteListing>>,
   TError,
-  { id: number },
+  { id: string },
   TContext
 > => {
   const mutationKey = ["deleteListing"];
@@ -1037,7 +740,7 @@ export const getDeleteListingMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof deleteListing>>,
-    { id: number }
+    { id: string }
   > = (props) => {
     const { id } = props ?? {};
 
@@ -1051,17 +754,20 @@ export type DeleteListingMutationResult = NonNullable<
   Awaited<ReturnType<typeof deleteListing>>
 >;
 
-export type DeleteListingMutationError = ErrorType<void>;
+export type DeleteListingMutationError = ErrorType<ApiErrorResponse>;
 
 /**
- * @summary Delete a listing (auth required, must be owner)
+ * @summary Delete a listing (auth required, must be owner or admin)
  */
-export const useDeleteListing = <TError = ErrorType<void>, TContext = unknown>(
+export const useDeleteListing = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof deleteListing>>,
       TError,
-      { id: number },
+      { id: string },
       TContext
     >;
     request?: SecondParameter<typeof customFetch>;
@@ -1070,10 +776,445 @@ export const useDeleteListing = <TError = ErrorType<void>, TContext = unknown>(
 ): UseMutationResult<
   Awaited<ReturnType<typeof deleteListing>>,
   TError,
-  { id: number },
+  { id: string },
   TContext
 > => {
   return useMutation(getDeleteListingMutationOptions(options), queryClient);
+};
+
+export const getUpdateListingStatusUrl = (id: string) => {
+  return `/api/v1/listings/${id}/status`;
+};
+
+/**
+ * Allowed transitions are enforced server-side and differ by role. Owner (seller): DRAFT -> PENDING_REVIEW, PUBLISHED -> SOLD. Admin: DRAFT -> PENDING_REVIEW, PENDING_REVIEW -> PUBLISHED/REJECTED, PUBLISHED -> SOLD/EXPIRED. A seller cannot self-publish — that must go through admin review. Any other transition returns 409.
+ * @summary Move a listing through its lifecycle (auth required)
+ */
+export const updateListingStatus = async (
+  id: string,
+  listingStatusUpdate: ListingStatusUpdate,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ListingResponse> => {
+  return customFetch<ListingResponse>(getUpdateListingStatusUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(listingStatusUpdate),
+  });
+};
+
+export const getUpdateListingStatusMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateListingStatus>>,
+    TError,
+    { id: string; data: BodyType<ListingStatusUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateListingStatus>>,
+  TError,
+  { id: string; data: BodyType<ListingStatusUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateListingStatus"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateListingStatus>>,
+    { id: string; data: BodyType<ListingStatusUpdate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateListingStatus(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateListingStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateListingStatus>>
+>;
+export type UpdateListingStatusMutationBody = BodyType<ListingStatusUpdate>;
+export type UpdateListingStatusMutationError = ErrorType<ApiErrorResponse>;
+
+/**
+ * @summary Move a listing through its lifecycle (auth required)
+ */
+export const useUpdateListingStatus = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateListingStatus>>,
+      TError,
+      { id: string; data: BodyType<ListingStatusUpdate> },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateListingStatus>>,
+  TError,
+  { id: string; data: BodyType<ListingStatusUpdate> },
+  TContext
+> => {
+  return useMutation(
+    getUpdateListingStatusMutationOptions(options),
+    queryClient,
+  );
+};
+
+export const getCreateInquiryUrl = (listingId: string) => {
+  return `/api/v1/listings/${listingId}/inquiries`;
+};
+
+/**
+ * Rate-limited to 20/hour per user. `buyerId` is the caller (from the token); `sellerId` is derived server-side from the listing's `sellerId` — neither is client-supplied. Does not currently check listing visibility, so a listing can be inquired on by ID even in DRAFT (flagged by the backend team as a pending product decision, not treated as a bug).
+ * @summary Contact a seller about a listing (auth required)
+ */
+export const createInquiry = async (
+  listingId: string,
+  inquiryInput: InquiryInput,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<InquiryResponse> => {
+  return customFetch<InquiryResponse>(getCreateInquiryUrl(listingId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(inquiryInput),
+  });
+};
+
+export const getCreateInquiryMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createInquiry>>,
+    TError,
+    { listingId: string; data: BodyType<InquiryInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createInquiry>>,
+  TError,
+  { listingId: string; data: BodyType<InquiryInput> },
+  TContext
+> => {
+  const mutationKey = ["createInquiry"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createInquiry>>,
+    { listingId: string; data: BodyType<InquiryInput> }
+  > = (props) => {
+    const { listingId, data } = props ?? {};
+
+    return createInquiry(listingId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateInquiryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createInquiry>>
+>;
+export type CreateInquiryMutationBody = BodyType<InquiryInput>;
+export type CreateInquiryMutationError = ErrorType<ApiErrorResponse>;
+
+/**
+ * @summary Contact a seller about a listing (auth required)
+ */
+export const useCreateInquiry = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createInquiry>>,
+      TError,
+      { listingId: string; data: BodyType<InquiryInput> },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createInquiry>>,
+  TError,
+  { listingId: string; data: BodyType<InquiryInput> },
+  TContext
+> => {
+  return useMutation(getCreateInquiryMutationOptions(options), queryClient);
+};
+
+export const getGetInquiriesUrl = (params?: GetInquiriesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/inquiries?${stringifiedParams}`
+    : `/api/v1/inquiries`;
+};
+
+/**
+ * Returns only inquiries where the caller is the buyer or the seller (admins see all). This is a single feed for both "sent" and "received" — filter client-side on buyerId/sellerId against the current user's ID to split into tabs.
+ * @summary Get the authenticated user's inquiries (sent and received)
+ */
+export const getInquiries = async (
+  params?: GetInquiriesParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<InquiriesResponse> => {
+  return customFetch<InquiriesResponse>(getGetInquiriesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetInquiriesQueryKey = (params?: GetInquiriesParams) => {
+  return [`/api/v1/inquiries`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetInquiriesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getInquiries>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetInquiriesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getInquiries>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetInquiriesQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getInquiries>>> = ({
+    signal,
+  }) => getInquiries(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getInquiries>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetInquiriesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getInquiries>>
+>;
+export type GetInquiriesQueryError = ErrorType<ApiErrorResponse>;
+
+export function useGetInquiries<
+  TData = Awaited<ReturnType<typeof getInquiries>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: undefined | GetInquiriesParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getInquiries>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInquiries>>,
+          TError,
+          Awaited<ReturnType<typeof getInquiries>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetInquiries<
+  TData = Awaited<ReturnType<typeof getInquiries>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetInquiriesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getInquiries>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInquiries>>,
+          TError,
+          Awaited<ReturnType<typeof getInquiries>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetInquiries<
+  TData = Awaited<ReturnType<typeof getInquiries>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetInquiriesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getInquiries>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Get the authenticated user's inquiries (sent and received)
+ */
+
+export function useGetInquiries<
+  TData = Awaited<ReturnType<typeof getInquiries>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetInquiriesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getInquiries>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetInquiriesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getUpdateInquiryStatusUrl = (id: string) => {
+  return `/api/v1/inquiries/${id}/status`;
+};
+
+/**
+ * Only the buyer, the seller, or an admin may change it. No status-transition graph is enforced (unlike listings/requests) — any participant can set any of the three values at any time.
+ * @summary Update an inquiry's status (auth required, participant or admin only)
+ */
+export const updateInquiryStatus = async (
+  id: string,
+  inquiryStatusUpdate: InquiryStatusUpdate,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<InquiryResponse> => {
+  return customFetch<InquiryResponse>(getUpdateInquiryStatusUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(inquiryStatusUpdate),
+  });
+};
+
+export const getUpdateInquiryStatusMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateInquiryStatus>>,
+    TError,
+    { id: string; data: BodyType<InquiryStatusUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateInquiryStatus>>,
+  TError,
+  { id: string; data: BodyType<InquiryStatusUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateInquiryStatus"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateInquiryStatus>>,
+    { id: string; data: BodyType<InquiryStatusUpdate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateInquiryStatus(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateInquiryStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateInquiryStatus>>
+>;
+export type UpdateInquiryStatusMutationBody = BodyType<InquiryStatusUpdate>;
+export type UpdateInquiryStatusMutationError = ErrorType<ApiErrorResponse>;
+
+/**
+ * @summary Update an inquiry's status (auth required, participant or admin only)
+ */
+export const useUpdateInquiryStatus = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateInquiryStatus>>,
+      TError,
+      { id: string; data: BodyType<InquiryStatusUpdate> },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateInquiryStatus>>,
+  TError,
+  { id: string; data: BodyType<InquiryStatusUpdate> },
+  TContext
+> => {
+  return useMutation(
+    getUpdateInquiryStatusMutationOptions(options),
+    queryClient,
+  );
 };
 
 export const getGetRequestsUrl = (params?: GetRequestsParams) => {
@@ -1088,30 +1229,31 @@ export const getGetRequestsUrl = (params?: GetRequestsParams) => {
   const stringifiedParams = normalizedParams.toString();
 
   return stringifiedParams.length > 0
-    ? `/api/requests?${stringifiedParams}`
-    : `/api/requests`;
+    ? `/api/v1/requests?${stringifiedParams}`
+    : `/api/v1/requests`;
 };
 
 /**
- * @summary Get public hardware requests
+ * Auth required. Non-admins only ever see their own requests (userId forced server-side) — there's no way to browse other users' demand requests through this endpoint, by design (these are private leads, not public listings). Admins see everyone's.
+ * @summary Get the authenticated user's hardware requests
  */
 export const getRequests = async (
   params?: GetRequestsParams,
   options?: Parameters<typeof customFetch>[1],
-): Promise<HardwareRequest[]> => {
-  return customFetch<HardwareRequest[]>(getGetRequestsUrl(params), {
+): Promise<HardwareRequestsResponse> => {
+  return customFetch<HardwareRequestsResponse>(getGetRequestsUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
 export const getGetRequestsQueryKey = (params?: GetRequestsParams) => {
-  return [`/api/requests`, ...(params ? [params] : [])] as const;
+  return [`/api/v1/requests`, ...(params ? [params] : [])] as const;
 };
 
 export const getGetRequestsQueryOptions = <
   TData = Awaited<ReturnType<typeof getRequests>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
   params?: GetRequestsParams,
   options?: {
@@ -1139,11 +1281,11 @@ export const getGetRequestsQueryOptions = <
 export type GetRequestsQueryResult = NonNullable<
   Awaited<ReturnType<typeof getRequests>>
 >;
-export type GetRequestsQueryError = ErrorType<unknown>;
+export type GetRequestsQueryError = ErrorType<ApiErrorResponse>;
 
 export function useGetRequests<
   TData = Awaited<ReturnType<typeof getRequests>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
   params: undefined | GetRequestsParams,
   options: {
@@ -1166,7 +1308,7 @@ export function useGetRequests<
 };
 export function useGetRequests<
   TData = Awaited<ReturnType<typeof getRequests>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
   params?: GetRequestsParams,
   options?: {
@@ -1189,7 +1331,7 @@ export function useGetRequests<
 };
 export function useGetRequests<
   TData = Awaited<ReturnType<typeof getRequests>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
   params?: GetRequestsParams,
   options?: {
@@ -1203,12 +1345,12 @@ export function useGetRequests<
   queryKey: DataTag<QueryKey, TData, TError>;
 };
 /**
- * @summary Get public hardware requests
+ * @summary Get the authenticated user's hardware requests
  */
 
 export function useGetRequests<
   TData = Awaited<ReturnType<typeof getRequests>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
   params?: GetRequestsParams,
   options?: {
@@ -1232,17 +1374,18 @@ export function useGetRequests<
 }
 
 export const getCreateRequestUrl = () => {
-  return `/api/requests`;
+  return `/api/v1/requests`;
 };
 
 /**
+ * Rate-limited to 20/hour per user. `userId` comes from the token. Status always starts OPEN. This is a lead-capture form, not a listing (see CLAUDE.md section 21/23).
  * @summary Submit a hardware request (auth required)
  */
 export const createRequest = async (
   hardwareRequestInput: HardwareRequestInput,
   options?: Parameters<typeof customFetch>[1],
-): Promise<HardwareRequest> => {
-  return customFetch<HardwareRequest>(getCreateRequestUrl(), {
+): Promise<HardwareRequestResponse> => {
+  return customFetch<HardwareRequestResponse>(getCreateRequestUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -1251,7 +1394,7 @@ export const createRequest = async (
 };
 
 export const getCreateRequestMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1292,12 +1435,15 @@ export type CreateRequestMutationResult = NonNullable<
   Awaited<ReturnType<typeof createRequest>>
 >;
 export type CreateRequestMutationBody = BodyType<HardwareRequestInput>;
-export type CreateRequestMutationError = ErrorType<void>;
+export type CreateRequestMutationError = ErrorType<ApiErrorResponse>;
 
 /**
  * @summary Submit a hardware request (auth required)
  */
-export const useCreateRequest = <TError = ErrorType<void>, TContext = unknown>(
+export const useCreateRequest = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof createRequest>>,
@@ -1317,68 +1463,79 @@ export const useCreateRequest = <TError = ErrorType<void>, TContext = unknown>(
   return useMutation(getCreateRequestMutationOptions(options), queryClient);
 };
 
-export const getGetMyRequestsUrl = () => {
-  return `/api/requests/me`;
+export const getGetRequestUrl = (id: string) => {
+  return `/api/v1/requests/${id}`;
 };
 
 /**
- * @summary Get the authenticated user's hardware requests
+ * Returns 403 (not 404, unlike listings) if you don't own it and aren't an admin.
+ * @summary Get a hardware request by ID (owner or admin only)
  */
-export const getMyRequests = async (
+export const getRequest = async (
+  id: string,
   options?: Parameters<typeof customFetch>[1],
-): Promise<HardwareRequest[]> => {
-  return customFetch<HardwareRequest[]>(getGetMyRequestsUrl(), {
+): Promise<HardwareRequestResponse> => {
+  return customFetch<HardwareRequestResponse>(getGetRequestUrl(id), {
     ...options,
     method: "GET",
   });
 };
 
-export const getGetMyRequestsQueryKey = () => {
-  return [`/api/requests/me`] as const;
+export const getGetRequestQueryKey = (id: string) => {
+  return [`/api/v1/requests/${id}`] as const;
 };
 
-export const getGetMyRequestsQueryOptions = <
-  TData = Awaited<ReturnType<typeof getMyRequests>>,
-  TError = ErrorType<void>,
->(options?: {
-  query?: Partial<
-    UseQueryOptions<Awaited<ReturnType<typeof getMyRequests>>, TError, TData>
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+export const getGetRequestQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRequest>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getRequest>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetMyRequestsQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getGetRequestQueryKey(id);
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyRequests>>> = ({
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRequest>>> = ({
     signal,
-  }) => getMyRequests({ signal, ...requestOptions });
+  }) => getRequest(id, { signal, ...requestOptions });
 
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getMyRequests>>,
+  return {
+    queryKey,
+    queryFn,
+    enabled: id !== null && id !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRequest>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 };
 
-export type GetMyRequestsQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getMyRequests>>
+export type GetRequestQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRequest>>
 >;
-export type GetMyRequestsQueryError = ErrorType<void>;
+export type GetRequestQueryError = ErrorType<ApiErrorResponse>;
 
-export function useGetMyRequests<
-  TData = Awaited<ReturnType<typeof getMyRequests>>,
-  TError = ErrorType<void>,
+export function useGetRequest<
+  TData = Awaited<ReturnType<typeof getRequest>>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
+  id: string,
   options: {
     query: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof getMyRequests>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof getRequest>>, TError, TData>
     > &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getMyRequests>>,
+          Awaited<ReturnType<typeof getRequest>>,
           TError,
-          Awaited<ReturnType<typeof getMyRequests>>
+          Awaited<ReturnType<typeof getRequest>>
         >,
         "initialData"
       >;
@@ -1388,19 +1545,20 @@ export function useGetMyRequests<
 ): DefinedUseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
-export function useGetMyRequests<
-  TData = Awaited<ReturnType<typeof getMyRequests>>,
-  TError = ErrorType<void>,
+export function useGetRequest<
+  TData = Awaited<ReturnType<typeof getRequest>>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
+  id: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof getMyRequests>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof getRequest>>, TError, TData>
     > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getMyRequests>>,
+          Awaited<ReturnType<typeof getRequest>>,
           TError,
-          Awaited<ReturnType<typeof getMyRequests>>
+          Awaited<ReturnType<typeof getRequest>>
         >,
         "initialData"
       >;
@@ -1410,13 +1568,14 @@ export function useGetMyRequests<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
-export function useGetMyRequests<
-  TData = Awaited<ReturnType<typeof getMyRequests>>,
-  TError = ErrorType<void>,
+export function useGetRequest<
+  TData = Awaited<ReturnType<typeof getRequest>>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
+  id: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof getMyRequests>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof getRequest>>, TError, TData>
     >;
     request?: SecondParameter<typeof customFetch>;
   },
@@ -1425,16 +1584,17 @@ export function useGetMyRequests<
   queryKey: DataTag<QueryKey, TData, TError>;
 };
 /**
- * @summary Get the authenticated user's hardware requests
+ * @summary Get a hardware request by ID (owner or admin only)
  */
 
-export function useGetMyRequests<
-  TData = Awaited<ReturnType<typeof getMyRequests>>,
-  TError = ErrorType<void>,
+export function useGetRequest<
+  TData = Awaited<ReturnType<typeof getRequest>>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
+  id: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof getMyRequests>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof getRequest>>, TError, TData>
     >;
     request?: SecondParameter<typeof customFetch>;
   },
@@ -1442,7 +1602,7 @@ export function useGetMyRequests<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
-  const queryOptions = getGetMyRequestsQueryOptions(options);
+  const queryOptions = getGetRequestQueryOptions(id, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -1452,19 +1612,20 @@ export function useGetMyRequests<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export const getUpdateRequestUrl = (id: number) => {
-  return `/api/requests/${id}`;
+export const getUpdateRequestUrl = (id: string) => {
+  return `/api/v1/requests/${id}`;
 };
 
 /**
- * @summary Update a hardware request (auth required, must be owner)
+ * Partial update of any of the create-body fields.
+ * @summary Update a hardware request (auth required, owner or admin only)
  */
 export const updateRequest = async (
-  id: number,
+  id: string,
   hardwareRequestUpdate: HardwareRequestUpdate,
   options?: Parameters<typeof customFetch>[1],
-): Promise<HardwareRequest> => {
-  return customFetch<HardwareRequest>(getUpdateRequestUrl(id), {
+): Promise<HardwareRequestResponse> => {
+  return customFetch<HardwareRequestResponse>(getUpdateRequestUrl(id), {
     ...options,
     method: "PATCH",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -1473,20 +1634,20 @@ export const updateRequest = async (
 };
 
 export const getUpdateRequestMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof updateRequest>>,
     TError,
-    { id: number; data: BodyType<HardwareRequestUpdate> },
+    { id: string; data: BodyType<HardwareRequestUpdate> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof updateRequest>>,
   TError,
-  { id: number; data: BodyType<HardwareRequestUpdate> },
+  { id: string; data: BodyType<HardwareRequestUpdate> },
   TContext
 > => {
   const mutationKey = ["updateRequest"];
@@ -1500,7 +1661,7 @@ export const getUpdateRequestMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof updateRequest>>,
-    { id: number; data: BodyType<HardwareRequestUpdate> }
+    { id: string; data: BodyType<HardwareRequestUpdate> }
   > = (props) => {
     const { id, data } = props ?? {};
 
@@ -1514,17 +1675,20 @@ export type UpdateRequestMutationResult = NonNullable<
   Awaited<ReturnType<typeof updateRequest>>
 >;
 export type UpdateRequestMutationBody = BodyType<HardwareRequestUpdate>;
-export type UpdateRequestMutationError = ErrorType<void>;
+export type UpdateRequestMutationError = ErrorType<ApiErrorResponse>;
 
 /**
- * @summary Update a hardware request (auth required, must be owner)
+ * @summary Update a hardware request (auth required, owner or admin only)
  */
-export const useUpdateRequest = <TError = ErrorType<void>, TContext = unknown>(
+export const useUpdateRequest = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof updateRequest>>,
       TError,
-      { id: number; data: BodyType<HardwareRequestUpdate> },
+      { id: string; data: BodyType<HardwareRequestUpdate> },
       TContext
     >;
     request?: SecondParameter<typeof customFetch>;
@@ -1533,21 +1697,21 @@ export const useUpdateRequest = <TError = ErrorType<void>, TContext = unknown>(
 ): UseMutationResult<
   Awaited<ReturnType<typeof updateRequest>>,
   TError,
-  { id: number; data: BodyType<HardwareRequestUpdate> },
+  { id: string; data: BodyType<HardwareRequestUpdate> },
   TContext
 > => {
   return useMutation(getUpdateRequestMutationOptions(options), queryClient);
 };
 
-export const getDeleteRequestUrl = (id: number) => {
-  return `/api/requests/${id}`;
+export const getDeleteRequestUrl = (id: string) => {
+  return `/api/v1/requests/${id}`;
 };
 
 /**
- * @summary Cancel/delete a hardware request (auth required, must be owner)
+ * @summary Delete a hardware request (auth required, owner or admin only)
  */
 export const deleteRequest = async (
-  id: number,
+  id: string,
   options?: Parameters<typeof customFetch>[1],
 ): Promise<void> => {
   return customFetch<void>(getDeleteRequestUrl(id), {
@@ -1557,20 +1721,20 @@ export const deleteRequest = async (
 };
 
 export const getDeleteRequestMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof deleteRequest>>,
     TError,
-    { id: number },
+    { id: string },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof deleteRequest>>,
   TError,
-  { id: number },
+  { id: string },
   TContext
 > => {
   const mutationKey = ["deleteRequest"];
@@ -1584,7 +1748,7 @@ export const getDeleteRequestMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof deleteRequest>>,
-    { id: number }
+    { id: string }
   > = (props) => {
     const { id } = props ?? {};
 
@@ -1598,17 +1762,20 @@ export type DeleteRequestMutationResult = NonNullable<
   Awaited<ReturnType<typeof deleteRequest>>
 >;
 
-export type DeleteRequestMutationError = ErrorType<void>;
+export type DeleteRequestMutationError = ErrorType<ApiErrorResponse>;
 
 /**
- * @summary Cancel/delete a hardware request (auth required, must be owner)
+ * @summary Delete a hardware request (auth required, owner or admin only)
  */
-export const useDeleteRequest = <TError = ErrorType<void>, TContext = unknown>(
+export const useDeleteRequest = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof deleteRequest>>,
       TError,
-      { id: number },
+      { id: string },
       TContext
     >;
     request?: SecondParameter<typeof customFetch>;
@@ -1617,48 +1784,166 @@ export const useDeleteRequest = <TError = ErrorType<void>, TContext = unknown>(
 ): UseMutationResult<
   Awaited<ReturnType<typeof deleteRequest>>,
   TError,
-  { id: number },
+  { id: string },
   TContext
 > => {
   return useMutation(getDeleteRequestMutationOptions(options), queryClient);
 };
 
-export const getGetSavedListingsUrl = () => {
-  return `/api/saved`;
+export const getUpdateRequestStatusUrl = (id: string) => {
+  return `/api/v1/requests/${id}/status`;
 };
 
 /**
- * @summary Get authenticated user's saved listings
+ * Owner: OPEN -> CANCELLED, MATCHED -> CANCELLED. Admin: OPEN -> MATCHED/CANCELLED, MATCHED -> CLOSED/CANCELLED. A requester can cancel their own request but can't self-mark it MATCHED or CLOSED — that's an admin/procurement action.
+ * @summary Move a hardware request through its lifecycle (auth required)
+ */
+export const updateRequestStatus = async (
+  id: string,
+  hardwareRequestStatusUpdate: HardwareRequestStatusUpdate,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<HardwareRequestResponse> => {
+  return customFetch<HardwareRequestResponse>(getUpdateRequestStatusUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(hardwareRequestStatusUpdate),
+  });
+};
+
+export const getUpdateRequestStatusMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateRequestStatus>>,
+    TError,
+    { id: string; data: BodyType<HardwareRequestStatusUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateRequestStatus>>,
+  TError,
+  { id: string; data: BodyType<HardwareRequestStatusUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateRequestStatus"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateRequestStatus>>,
+    { id: string; data: BodyType<HardwareRequestStatusUpdate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateRequestStatus(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateRequestStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateRequestStatus>>
+>;
+export type UpdateRequestStatusMutationBody =
+  BodyType<HardwareRequestStatusUpdate>;
+export type UpdateRequestStatusMutationError = ErrorType<ApiErrorResponse>;
+
+/**
+ * @summary Move a hardware request through its lifecycle (auth required)
+ */
+export const useUpdateRequestStatus = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateRequestStatus>>,
+      TError,
+      { id: string; data: BodyType<HardwareRequestStatusUpdate> },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateRequestStatus>>,
+  TError,
+  { id: string; data: BodyType<HardwareRequestStatusUpdate> },
+  TContext
+> => {
+  return useMutation(
+    getUpdateRequestStatusMutationOptions(options),
+    queryClient,
+  );
+};
+
+export const getGetSavedListingsUrl = (params?: GetSavedListingsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/saved-listings?${stringifiedParams}`
+    : `/api/v1/saved-listings`;
+};
+
+/**
+ * @summary Get the authenticated user's saved listings
  */
 export const getSavedListings = async (
+  params?: GetSavedListingsParams,
   options?: Parameters<typeof customFetch>[1],
-): Promise<Listing[]> => {
-  return customFetch<Listing[]>(getGetSavedListingsUrl(), {
+): Promise<SavedListingsResponse> => {
+  return customFetch<SavedListingsResponse>(getGetSavedListingsUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getGetSavedListingsQueryKey = () => {
-  return [`/api/saved`] as const;
+export const getGetSavedListingsQueryKey = (
+  params?: GetSavedListingsParams,
+) => {
+  return [`/api/v1/saved-listings`, ...(params ? [params] : [])] as const;
 };
 
 export const getGetSavedListingsQueryOptions = <
   TData = Awaited<ReturnType<typeof getSavedListings>>,
-  TError = ErrorType<void>,
->(options?: {
-  query?: Partial<
-    UseQueryOptions<Awaited<ReturnType<typeof getSavedListings>>, TError, TData>
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetSavedListingsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getSavedListings>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetSavedListingsQueryKey();
+  const queryKey =
+    queryOptions?.queryKey ?? getGetSavedListingsQueryKey(params);
 
   const queryFn: QueryFunction<
     Awaited<ReturnType<typeof getSavedListings>>
-  > = ({ signal }) => getSavedListings({ signal, ...requestOptions });
+  > = ({ signal }) => getSavedListings(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof getSavedListings>>,
@@ -1670,12 +1955,13 @@ export const getGetSavedListingsQueryOptions = <
 export type GetSavedListingsQueryResult = NonNullable<
   Awaited<ReturnType<typeof getSavedListings>>
 >;
-export type GetSavedListingsQueryError = ErrorType<void>;
+export type GetSavedListingsQueryError = ErrorType<ApiErrorResponse>;
 
 export function useGetSavedListings<
   TData = Awaited<ReturnType<typeof getSavedListings>>,
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
+  params: undefined | GetSavedListingsParams,
   options: {
     query: Partial<
       UseQueryOptions<
@@ -1700,8 +1986,9 @@ export function useGetSavedListings<
 };
 export function useGetSavedListings<
   TData = Awaited<ReturnType<typeof getSavedListings>>,
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
+  params?: GetSavedListingsParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
@@ -1726,8 +2013,9 @@ export function useGetSavedListings<
 };
 export function useGetSavedListings<
   TData = Awaited<ReturnType<typeof getSavedListings>>,
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
+  params?: GetSavedListingsParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
@@ -1743,13 +2031,14 @@ export function useGetSavedListings<
   queryKey: DataTag<QueryKey, TData, TError>;
 };
 /**
- * @summary Get authenticated user's saved listings
+ * @summary Get the authenticated user's saved listings
  */
 
 export function useGetSavedListings<
   TData = Awaited<ReturnType<typeof getSavedListings>>,
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
+  params?: GetSavedListingsParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
@@ -1764,7 +2053,7 @@ export function useGetSavedListings<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
-  const queryOptions = getGetSavedListingsQueryOptions(options);
+  const queryOptions = getGetSavedListingsQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -1774,40 +2063,39 @@ export function useGetSavedListings<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export const getSaveListingUrl = () => {
-  return `/api/saved`;
+export const getSaveListingUrl = (listingId: string) => {
+  return `/api/v1/saved-listings/${listingId}`;
 };
 
 /**
+ * No body. Idempotent (upsert on userId+listingId) — calling it twice returns the same row, 201 both times. Runs the same visibility check as `GET /listings/:id` — 404 if the listing doesn't exist or isn't visible to the caller, so you can only save what you could otherwise legally view.
  * @summary Save a listing (auth required)
  */
 export const saveListing = async (
-  saveListingInput: SaveListingInput,
+  listingId: string,
   options?: Parameters<typeof customFetch>[1],
-): Promise<SavedConfirmation> => {
-  return customFetch<SavedConfirmation>(getSaveListingUrl(), {
+): Promise<SavedListingResponse> => {
+  return customFetch<SavedListingResponse>(getSaveListingUrl(listingId), {
     ...options,
     method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(saveListingInput),
   });
 };
 
 export const getSaveListingMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof saveListing>>,
     TError,
-    { data: BodyType<SaveListingInput> },
+    { listingId: string },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof saveListing>>,
   TError,
-  { data: BodyType<SaveListingInput> },
+  { listingId: string },
   TContext
 > => {
   const mutationKey = ["saveListing"];
@@ -1821,11 +2109,11 @@ export const getSaveListingMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof saveListing>>,
-    { data: BodyType<SaveListingInput> }
+    { listingId: string }
   > = (props) => {
-    const { data } = props ?? {};
+    const { listingId } = props ?? {};
 
-    return saveListing(data, requestOptions);
+    return saveListing(listingId, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -1834,18 +2122,21 @@ export const getSaveListingMutationOptions = <
 export type SaveListingMutationResult = NonNullable<
   Awaited<ReturnType<typeof saveListing>>
 >;
-export type SaveListingMutationBody = BodyType<SaveListingInput>;
-export type SaveListingMutationError = ErrorType<void>;
+
+export type SaveListingMutationError = ErrorType<ApiErrorResponse>;
 
 /**
  * @summary Save a listing (auth required)
  */
-export const useSaveListing = <TError = ErrorType<void>, TContext = unknown>(
+export const useSaveListing = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof saveListing>>,
       TError,
-      { data: BodyType<SaveListingInput> },
+      { listingId: string },
       TContext
     >;
     request?: SecondParameter<typeof customFetch>;
@@ -1854,21 +2145,22 @@ export const useSaveListing = <TError = ErrorType<void>, TContext = unknown>(
 ): UseMutationResult<
   Awaited<ReturnType<typeof saveListing>>,
   TError,
-  { data: BodyType<SaveListingInput> },
+  { listingId: string },
   TContext
 > => {
   return useMutation(getSaveListingMutationOptions(options), queryClient);
 };
 
-export const getUnsaveListingUrl = (listingId: number) => {
-  return `/api/saved/${listingId}`;
+export const getUnsaveListingUrl = (listingId: string) => {
+  return `/api/v1/saved-listings/${listingId}`;
 };
 
 /**
+ * Safe to call even if it was never saved (no error either way).
  * @summary Remove a saved listing
  */
 export const unsaveListing = async (
-  listingId: number,
+  listingId: string,
   options?: Parameters<typeof customFetch>[1],
 ): Promise<void> => {
   return customFetch<void>(getUnsaveListingUrl(listingId), {
@@ -1878,20 +2170,20 @@ export const unsaveListing = async (
 };
 
 export const getUnsaveListingMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof unsaveListing>>,
     TError,
-    { listingId: number },
+    { listingId: string },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof unsaveListing>>,
   TError,
-  { listingId: number },
+  { listingId: string },
   TContext
 > => {
   const mutationKey = ["unsaveListing"];
@@ -1905,7 +2197,7 @@ export const getUnsaveListingMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof unsaveListing>>,
-    { listingId: number }
+    { listingId: string }
   > = (props) => {
     const { listingId } = props ?? {};
 
@@ -1919,17 +2211,20 @@ export type UnsaveListingMutationResult = NonNullable<
   Awaited<ReturnType<typeof unsaveListing>>
 >;
 
-export type UnsaveListingMutationError = ErrorType<void>;
+export type UnsaveListingMutationError = ErrorType<ApiErrorResponse>;
 
 /**
  * @summary Remove a saved listing
  */
-export const useUnsaveListing = <TError = ErrorType<void>, TContext = unknown>(
+export const useUnsaveListing = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof unsaveListing>>,
       TError,
-      { listingId: number },
+      { listingId: string },
       TContext
     >;
     request?: SecondParameter<typeof customFetch>;
@@ -1938,14 +2233,14 @@ export const useUnsaveListing = <TError = ErrorType<void>, TContext = unknown>(
 ): UseMutationResult<
   Awaited<ReturnType<typeof unsaveListing>>,
   TError,
-  { listingId: number },
+  { listingId: string },
   TContext
 > => {
   return useMutation(getUnsaveListingMutationOptions(options), queryClient);
 };
 
 export const getGetDashboardStatsUrl = () => {
-  return `/api/stats/dashboard`;
+  return `/api/v1/stats/dashboard`;
 };
 
 /**
@@ -1961,7 +2256,7 @@ export const getDashboardStats = async (
 };
 
 export const getGetDashboardStatsQueryKey = () => {
-  return [`/api/stats/dashboard`] as const;
+  return [`/api/v1/stats/dashboard`] as const;
 };
 
 export const getGetDashboardStatsQueryOptions = <
@@ -2100,7 +2395,7 @@ export function useGetDashboardStats<
 }
 
 export const getGetMarketplaceStatsUrl = () => {
-  return `/api/stats/marketplace`;
+  return `/api/v1/stats/marketplace`;
 };
 
 /**
@@ -2116,7 +2411,7 @@ export const getMarketplaceStats = async (
 };
 
 export const getGetMarketplaceStatsQueryKey = () => {
-  return [`/api/stats/marketplace`] as const;
+  return [`/api/v1/stats/marketplace`] as const;
 };
 
 export const getGetMarketplaceStatsQueryOptions = <
@@ -2255,11 +2550,12 @@ export function useGetMarketplaceStats<
 }
 
 export const getGetMyProfileUrl = () => {
-  return `/api/users/profile`;
+  return `/api/v1/me`;
 };
 
 /**
- * @summary Get authenticated user's profile
+ * Always operates on the token's own user, never an arbitrary ID.
+ * @summary Get the authenticated user's own profile
  */
 export const getMyProfile = async (
   options?: Parameters<typeof customFetch>[1],
@@ -2271,12 +2567,12 @@ export const getMyProfile = async (
 };
 
 export const getGetMyProfileQueryKey = () => {
-  return [`/api/users/profile`] as const;
+  return [`/api/v1/me`] as const;
 };
 
 export const getGetMyProfileQueryOptions = <
   TData = Awaited<ReturnType<typeof getMyProfile>>,
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
 >(options?: {
   query?: Partial<
     UseQueryOptions<Awaited<ReturnType<typeof getMyProfile>>, TError, TData>
@@ -2301,11 +2597,11 @@ export const getGetMyProfileQueryOptions = <
 export type GetMyProfileQueryResult = NonNullable<
   Awaited<ReturnType<typeof getMyProfile>>
 >;
-export type GetMyProfileQueryError = ErrorType<void>;
+export type GetMyProfileQueryError = ErrorType<ApiErrorResponse>;
 
 export function useGetMyProfile<
   TData = Awaited<ReturnType<typeof getMyProfile>>,
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
   options: {
     query: Partial<
@@ -2327,7 +2623,7 @@ export function useGetMyProfile<
 };
 export function useGetMyProfile<
   TData = Awaited<ReturnType<typeof getMyProfile>>,
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
   options?: {
     query?: Partial<
@@ -2349,7 +2645,7 @@ export function useGetMyProfile<
 };
 export function useGetMyProfile<
   TData = Awaited<ReturnType<typeof getMyProfile>>,
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
   options?: {
     query?: Partial<
@@ -2362,12 +2658,12 @@ export function useGetMyProfile<
   queryKey: DataTag<QueryKey, TData, TError>;
 };
 /**
- * @summary Get authenticated user's profile
+ * @summary Get the authenticated user's own profile
  */
 
 export function useGetMyProfile<
   TData = Awaited<ReturnType<typeof getMyProfile>>,
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
 >(
   options?: {
     query?: Partial<
@@ -2390,11 +2686,11 @@ export function useGetMyProfile<
 }
 
 export const getUpdateProfileUrl = () => {
-  return `/api/users/profile`;
+  return `/api/v1/me`;
 };
 
 /**
- * @summary Update authenticated user's profile
+ * @summary Update the authenticated user's own profile
  */
 export const updateProfile = async (
   userProfileUpdate: UserProfileUpdate,
@@ -2409,7 +2705,7 @@ export const updateProfile = async (
 };
 
 export const getUpdateProfileMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ApiErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2450,12 +2746,15 @@ export type UpdateProfileMutationResult = NonNullable<
   Awaited<ReturnType<typeof updateProfile>>
 >;
 export type UpdateProfileMutationBody = BodyType<UserProfileUpdate>;
-export type UpdateProfileMutationError = ErrorType<void>;
+export type UpdateProfileMutationError = ErrorType<ApiErrorResponse>;
 
 /**
- * @summary Update authenticated user's profile
+ * @summary Update the authenticated user's own profile
  */
-export const useUpdateProfile = <TError = ErrorType<void>, TContext = unknown>(
+export const useUpdateProfile = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof updateProfile>>,

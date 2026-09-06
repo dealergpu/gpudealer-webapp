@@ -7,14 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ListingCategory, ListingCondition, ListingSortBy } from "@/lib/api";
 
 export type SearchFilterValues = {
   q?: string;
-  category?: string;
-  condition?: string;
-  vramMin?: number;
-  priceMax?: number;
-  sort?: string;
+  category?: ListingCategory;
+  condition?: ListingCondition;
+  minVramGb?: number;
+  maxPrice?: number;
+  sortBy?: ListingSortBy;
 };
 
 function buildQuery(filters: SearchFilterValues): string {
@@ -22,9 +23,9 @@ function buildQuery(filters: SearchFilterValues): string {
   if (filters.q) params.set("q", filters.q);
   if (filters.category) params.set("category", filters.category);
   if (filters.condition) params.set("condition", filters.condition);
-  if (filters.vramMin) params.set("vramMin", String(filters.vramMin));
-  if (filters.priceMax) params.set("priceMax", String(filters.priceMax));
-  if (filters.sort) params.set("sort", filters.sort);
+  if (filters.minVramGb) params.set("minVramGb", String(filters.minVramGb));
+  if (filters.maxPrice) params.set("maxPrice", String(filters.maxPrice));
+  if (filters.sortBy) params.set("sortBy", filters.sortBy);
   return params.toString();
 }
 
@@ -40,7 +41,7 @@ export function SearchFilters({ initialFilters }: { initialFilters: SearchFilter
     router.push(query ? `/gpus?${query}` : "/gpus", { scroll: false });
   };
 
-  const updateFilter = (key: keyof SearchFilterValues, value: string | number | undefined) => {
+  const updateFilter = <K extends keyof SearchFilterValues>(key: K, value: SearchFilterValues[K] | undefined) => {
     const next = { ...filters, [key]: value || undefined };
     setFilters(next);
     navigate(next);
@@ -112,17 +113,17 @@ export function SearchFilters({ initialFilters }: { initialFilters: SearchFilter
             <Label>Category</Label>
             <Select
               value={filters.category || "all"}
-              onValueChange={(val) => updateFilter("category", val === "all" ? undefined : val)}
+              onValueChange={(val) => updateFilter("category", val === "all" ? undefined : (val as ListingCategory))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="gpu">GPUs</SelectItem>
-                <SelectItem value="server">Servers</SelectItem>
-                <SelectItem value="memory">Memory & Storage</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+                <SelectItem value={ListingCategory.GPU}>GPUs</SelectItem>
+                <SelectItem value={ListingCategory.SERVER}>Servers</SelectItem>
+                <SelectItem value={ListingCategory.MEMORY}>Memory & Storage</SelectItem>
+                <SelectItem value={ListingCategory.OTHER}>Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -131,16 +132,16 @@ export function SearchFilters({ initialFilters }: { initialFilters: SearchFilter
             <Label>Condition</Label>
             <Select
               value={filters.condition || "all"}
-              onValueChange={(val) => updateFilter("condition", val === "all" ? undefined : val)}
+              onValueChange={(val) => updateFilter("condition", val === "all" ? undefined : (val as ListingCondition))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Any Condition" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Any Condition</SelectItem>
-                <SelectItem value="new">New</SelectItem>
-                <SelectItem value="used">Used</SelectItem>
-                <SelectItem value="refurbished">Refurbished</SelectItem>
+                <SelectItem value={ListingCondition.NEW}>New</SelectItem>
+                <SelectItem value={ListingCondition.USED}>Used</SelectItem>
+                <SelectItem value={ListingCondition.REFURBISHED}>Refurbished</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -151,8 +152,8 @@ export function SearchFilters({ initialFilters }: { initialFilters: SearchFilter
               id="vram"
               type="number"
               placeholder="e.g. 24"
-              value={filters.vramMin || ""}
-              onChange={(e) => updateFilter("vramMin", e.target.value ? Number(e.target.value) : undefined)}
+              value={filters.minVramGb || ""}
+              onChange={(e) => updateFilter("minVramGb", e.target.value ? Number(e.target.value) : undefined)}
             />
           </div>
 
@@ -162,8 +163,8 @@ export function SearchFilters({ initialFilters }: { initialFilters: SearchFilter
               id="price"
               type="number"
               placeholder="e.g. 5000"
-              value={filters.priceMax || ""}
-              onChange={(e) => updateFilter("priceMax", e.target.value ? Number(e.target.value) : undefined)}
+              value={filters.maxPrice || ""}
+              onChange={(e) => updateFilter("maxPrice", e.target.value ? Number(e.target.value) : undefined)}
             />
           </div>
 
@@ -176,30 +177,30 @@ export function SearchFilters({ initialFilters }: { initialFilters: SearchFilter
   );
 }
 
-export function SortSelect({ value }: { value?: string }) {
+export function SortSelect({ value }: { value?: ListingSortBy }) {
   const router = useRouter();
 
-  const onChange = (sort: string) => {
+  const onChange = (sortBy: string) => {
     const params = new URLSearchParams(window.location.search);
-    if (sort === "newest") {
-      params.delete("sort");
+    if (sortBy === ListingSortBy.newest) {
+      params.delete("sortBy");
     } else {
-      params.set("sort", sort);
+      params.set("sortBy", sortBy);
     }
     const query = params.toString();
     router.push(query ? `/gpus?${query}` : "/gpus", { scroll: false });
   };
 
   return (
-    <Select value={value || "newest"} onValueChange={onChange}>
+    <Select value={value || ListingSortBy.newest} onValueChange={onChange}>
       <SelectTrigger className="w-[180px] bg-card">
         <SelectValue placeholder="Newest First" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="newest">Newest First</SelectItem>
-        <SelectItem value="price_asc">Price: Low to High</SelectItem>
-        <SelectItem value="price_desc">Price: High to Low</SelectItem>
-        <SelectItem value="relevance">Relevance</SelectItem>
+        <SelectItem value={ListingSortBy.newest}>Newest First</SelectItem>
+        <SelectItem value={ListingSortBy.price_asc}>Price: Low to High</SelectItem>
+        <SelectItem value={ListingSortBy.price_desc}>Price: High to Low</SelectItem>
+        <SelectItem value={ListingSortBy.relevance}>Relevance</SelectItem>
       </SelectContent>
     </Select>
   );

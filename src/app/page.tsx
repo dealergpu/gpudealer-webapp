@@ -3,7 +3,7 @@ import { ArrowRight, Search, ShieldCheck, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ListingCard, ListingCardSkeleton } from "@/components/ListingCard";
 import { HeroIntro } from "@/components/home/HeroIntro";
-import { getFeaturedListings, getMarketplaceStats, type Listing, type MarketplaceStats } from "@/lib/api";
+import { getListings, getMarketplaceStats, ListingSortBy, ListingStatus, type Listing, type MarketplaceStats } from "@/lib/api";
 
 // Revalidate periodically so the homepage stays reasonably fresh without
 // refetching on every single request.
@@ -14,11 +14,11 @@ async function loadHomeData(): Promise<{
   stats: MarketplaceStats | null;
 }> {
   try {
-    const [featured, stats] = await Promise.all([
-      getFeaturedListings({ limit: 4 }),
+    const [listings, stats] = await Promise.all([
+      getListings({ status: ListingStatus.PUBLISHED, sortBy: ListingSortBy.newest, limit: 4 }),
       getMarketplaceStats(),
     ]);
-    return { featured, stats };
+    return { featured: listings.data, stats };
   } catch {
     // No backend reachable yet (or a transient error) — degrade gracefully
     // instead of taking the whole page down.

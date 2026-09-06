@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
-  Server, Cpu, Zap, HardDrive, Network, Tag,
+  Zap,
   MapPin, Clock, ExternalLink, ShieldCheck, User,
   ChevronLeft,
 } from "lucide-react";
@@ -10,19 +10,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { getListing, type Listing } from "@/lib/api";
+import { getListing, ListingCondition, ListingSourceType, type Listing } from "@/lib/api";
+import { ListingActions } from "@/components/listing/ListingActions";
 
-async function loadListing(id: number): Promise<Listing | null> {
+async function loadListing(id: string): Promise<Listing | null> {
   try {
-    return await getListing(id);
+    const response = await getListing(id);
+    return response.data;
   } catch {
     return null;
   }
 }
 
-function parseId(idParam: string): number | null {
-  const id = Number(idParam);
-  return Number.isNaN(id) ? null : id;
+function formatLocation(listing: Listing): string | null {
+  return [listing.locationCity, listing.locationRegion, listing.locationCountry]
+    .filter(Boolean)
+    .join(", ") || null;
 }
 
 export async function generateMetadata({
@@ -30,9 +33,8 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const { id: idParam } = await params;
-  const id = parseId(idParam);
-  const listing = id === null ? null : await loadListing(id);
+  const { id } = await params;
+  const listing = await loadListing(id);
 
   if (!listing) {
     return { title: "Listing" };
@@ -62,9 +64,8 @@ export default async function ListingDetail({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id: idParam } = await params;
-  const id = parseId(idParam);
-  const listing = id === null ? null : await loadListing(id);
+  const { id } = await params;
+  const listing = await loadListing(id);
 
   if (!listing) {
     notFound();
@@ -73,7 +74,10 @@ export default async function ListingDetail({
   const formattedPrice = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: listing.currency || "USD",
-  }).format(listing.price);
+  }).format(Number(listing.price));
+
+  const location = formatLocation(listing);
+  const isThirdParty = listing.sourceType && listing.sourceType !== ListingSourceType.GPUDEALER;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -90,14 +94,13 @@ export default async function ListingDetail({
               <Badge variant="outline" className="font-mono text-xs uppercase bg-secondary/50">
                 {listing.category}
               </Badge>
-              {listing.condition === "new" && <Badge variant="success" className="uppercase text-xs">New</Badge>}
-              {listing.condition === "refurbished" && <Badge variant="warning" className="uppercase text-xs bg-orange-500 text-white">Refurbished</Badge>}
-              {listing.condition === "used" && <Badge variant="secondary" className="uppercase text-xs">Used</Badge>}
+              {listing.condition === ListingCondition.NEW && <Badge variant="success" className="uppercase text-xs">New</Badge>}
+              {listing.condition === ListingCondition.REFURBISHED && <Badge variant="warning" className="uppercase text-xs bg-orange-500 text-white">Refurbished</Badge>}
+              {listing.condition === ListingCondition.USED && <Badge variant="secondary" className="uppercase text-xs">Used</Badge>}
 
-              {listing.verified && (
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 uppercase text-xs flex items-center gap-1 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
-                  <ShieldCheck className="h-3 w-3" />
-                  Verified
+              {isThirdParty && (
+                <Badge variant="outline" className="uppercase text-xs">
+                  via {listing.sourceType}
                 </Badge>
               )}
             </div>
@@ -107,19 +110,15 @@ export default async function ListingDetail({
             </h1>
 
             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-              {listing.location && (
+              {location && (
                 <div className="flex items-center gap-1">
                   <MapPin className="h-4 w-4" />
-                  <span>{listing.location}</span>
+                  <span>{location}</span>
                 </div>
               )}
               <div className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
                 <span>Listed {formatDate(listing.createdAt)}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Tag className="h-4 w-4" />
-                <span>ID: #{listing.id}</span>
               </div>
             </div>
           </div>
@@ -153,58 +152,24 @@ export default async function ListingDetail({
                     <TableCell className="font-medium">{listing.model}</TableCell>
                   </TableRow>
                 )}
-                {listing.vram != null && (
+                {listing.gpuModel && (
+                  <TableRow>
+                    <TableCell className="font-medium text-muted-foreground bg-muted/10">GPU Model</TableCell>
+                    <TableCell className="font-medium">{listing.gpuModel}</TableCell>
+                  </TableRow>
+                )}
+                {listing.vramGb != null && (
                   <TableRow>
                     <TableCell className="font-medium text-muted-foreground bg-muted/10 flex items-center gap-2">
                       <Zap className="h-4 w-4" /> VRAM
                     </TableCell>
-                    <TableCell className="font-mono">{listing.vram} GB</TableCell>
+                    <TableCell className="font-mono">{listing.vramGb} GB</TableCell>
                   </TableRow>
                 )}
-                {listing.gpuCount != null && (
-                  <TableRow>
-                    <TableCell className="font-medium text-muted-foreground bg-muted/10 flex items-center gap-2">
-                      <Server className="h-4 w-4" /> GPU Count
-                    </TableCell>
-                    <TableCell>{listing.gpuCount}</TableCell>
-                  </TableRow>
-                )}
-                {listing.cpu && (
-                  <TableRow>
-                    <TableCell className="font-medium text-muted-foreground bg-muted/10 flex items-center gap-2">
-                      <Cpu className="h-4 w-4" /> CPU
-                    </TableCell>
-                    <TableCell>{listing.cpu}</TableCell>
-                  </TableRow>
-                )}
-                {listing.ram && (
-                  <TableRow>
-                    <TableCell className="font-medium text-muted-foreground bg-muted/10">RAM</TableCell>
-                    <TableCell>{listing.ram}</TableCell>
-                  </TableRow>
-                )}
-                {listing.storage && (
-                  <TableRow>
-                    <TableCell className="font-medium text-muted-foreground bg-muted/10 flex items-center gap-2">
-                      <HardDrive className="h-4 w-4" /> Storage
-                    </TableCell>
-                    <TableCell>{listing.storage}</TableCell>
-                  </TableRow>
-                )}
-                {listing.networking && (
-                  <TableRow>
-                    <TableCell className="font-medium text-muted-foreground bg-muted/10 flex items-center gap-2">
-                      <Network className="h-4 w-4" /> Networking
-                    </TableCell>
-                    <TableCell>{listing.networking}</TableCell>
-                  </TableRow>
-                )}
-                {listing.formFactor && (
-                  <TableRow>
-                    <TableCell className="font-medium text-muted-foreground bg-muted/10">Form Factor</TableCell>
-                    <TableCell>{listing.formFactor}</TableCell>
-                  </TableRow>
-                )}
+                <TableRow>
+                  <TableCell className="font-medium text-muted-foreground bg-muted/10">Quantity Available</TableCell>
+                  <TableCell>{listing.quantity ?? 1}</TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           </div>
@@ -216,7 +181,7 @@ export default async function ListingDetail({
             <div className="bg-primary p-6 text-primary-foreground text-center">
               <p className="text-sm font-medium opacity-80 uppercase tracking-widest mb-1">Asking Price</p>
               <h3 className="text-4xl font-bold font-mono tracking-tight">{formattedPrice}</h3>
-              {listing.quantity && listing.quantity > 1 && (
+              {listing.quantity != null && listing.quantity > 1 && (
                 <p className="text-sm mt-2 font-medium bg-white/10 inline-block px-3 py-1 rounded-full">
                   Qty Available: {listing.quantity}
                 </p>
@@ -224,17 +189,15 @@ export default async function ListingDetail({
             </div>
 
             <CardContent className="p-6 space-y-4">
-              {listing.source === "external" && listing.externalUrl ? (
+              {isThirdParty && listing.sourceUrl ? (
                 <Button className="w-full h-12 text-base font-bold" asChild>
-                  <a href={listing.externalUrl} target="_blank" rel="noopener noreferrer">
+                  <a href={listing.sourceUrl} target="_blank" rel="noopener noreferrer">
                     View Original Listing
                     <ExternalLink className="ml-2 h-4 w-4" />
                   </a>
                 </Button>
               ) : (
-                <Button className="w-full h-12 text-base font-bold bg-accent hover:bg-accent/90 text-white">
-                  Contact Seller
-                </Button>
+                <ListingActions listing={listing} />
               )}
 
               <Link href="/request">
@@ -249,8 +212,10 @@ export default async function ListingDetail({
                 <User className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Seller</p>
-                <p className="font-semibold text-sm truncate">{listing.sellerName || "Anonymous User"}</p>
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Listed via</p>
+                <p className="font-semibold text-sm truncate">
+                  {isThirdParty ? listing.sourceType : "GPUDealer Seller"}
+                </p>
               </div>
             </div>
           </Card>

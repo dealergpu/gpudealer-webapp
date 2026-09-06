@@ -13,319 +13,363 @@ export type ListingCategory =
   (typeof ListingCategory)[keyof typeof ListingCategory];
 
 export const ListingCategory = {
-  gpu: "gpu",
-  server: "server",
-  memory: "memory",
-  other: "other",
+  GPU: "GPU",
+  SERVER: "SERVER",
+  MEMORY: "MEMORY",
+  OTHER: "OTHER",
 } as const;
 
 export type ListingCondition =
   (typeof ListingCondition)[keyof typeof ListingCondition];
 
 export const ListingCondition = {
-  new: "new",
-  used: "used",
-  refurbished: "refurbished",
+  NEW: "NEW",
+  USED: "USED",
+  REFURBISHED: "REFURBISHED",
+  UNKNOWN: "UNKNOWN",
+} as const;
+
+export type ListingSourceType =
+  (typeof ListingSourceType)[keyof typeof ListingSourceType];
+
+export const ListingSourceType = {
+  GPUDEALER: "GPUDEALER",
+  EBAY: "EBAY",
+  REDDIT: "REDDIT",
+  FACEBOOK: "FACEBOOK",
+  OTHER: "OTHER",
 } as const;
 
 export type ListingStatus = (typeof ListingStatus)[keyof typeof ListingStatus];
 
 export const ListingStatus = {
-  draft: "draft",
-  pending_review: "pending_review",
-  published: "published",
-  rejected: "rejected",
-  sold: "sold",
-  expired: "expired",
+  DRAFT: "DRAFT",
+  PENDING_REVIEW: "PENDING_REVIEW",
+  PUBLISHED: "PUBLISHED",
+  REJECTED: "REJECTED",
+  SOLD: "SOLD",
+  EXPIRED: "EXPIRED",
 } as const;
 
-export type ListingSource = (typeof ListingSource)[keyof typeof ListingSource];
+export type ListingSortBy = (typeof ListingSortBy)[keyof typeof ListingSortBy];
 
-export const ListingSource = {
-  gpudealer: "gpudealer",
-  external: "external",
+export const ListingSortBy = {
+  relevance: "relevance",
+  price_asc: "price_asc",
+  price_desc: "price_desc",
+  newest: "newest",
 } as const;
+
+export interface ListingImage {
+  /** @nullable */
+  id?: string | null;
+  url: string;
+  sortOrder?: number;
+  /** @nullable */
+  altText?: string | null;
+}
 
 export interface Listing {
-  id: number;
+  id: string;
+  sellerId: string;
   title: string;
+  /** @nullable */
+  description?: string | null;
   category: ListingCategory;
   /** @nullable */
   manufacturer?: string | null;
   /** @nullable */
   model?: string | null;
-  /**
-   * VRAM in GB
-   * @nullable
-   */
-  vram?: number | null;
+  /** @nullable */
+  gpuModel?: string | null;
+  /** @nullable */
+  normalizedModel?: string | null;
+  /** @nullable */
+  vramGb?: number | null;
   quantity?: number;
   condition: ListingCondition;
-  price: number;
+  /** Decimal amount serialized as a string, e.g. "1299.99" */
+  price: string;
   currency: string;
   /** @nullable */
-  location?: string | null;
+  locationCountry?: string | null;
   /** @nullable */
-  description?: string | null;
+  locationRegion?: string | null;
+  /** @nullable */
+  locationCity?: string | null;
+  sourceType?: ListingSourceType;
+  /** @nullable */
+  sourceUrl?: string | null;
   status: ListingStatus;
-  source?: ListingSource;
-  /** @nullable */
-  externalUrl?: string | null;
-  verified?: boolean;
-  imageUrls?: string[];
-  /** @nullable */
-  sellerName?: string | null;
-  /** @nullable */
-  sellerId?: string | null;
-  /** @nullable */
-  gpuCount?: number | null;
-  /** @nullable */
-  ram?: string | null;
-  /** @nullable */
-  cpu?: string | null;
-  /** @nullable */
-  storage?: string | null;
-  /** @nullable */
-  networking?: string | null;
-  /** @nullable */
-  memType?: string | null;
-  /** @nullable */
-  memCapacity?: string | null;
-  /** @nullable */
-  memSpeed?: string | null;
-  /** @nullable */
-  ecc?: boolean | null;
-  /** @nullable */
-  formFactor?: string | null;
+  slug: string;
+  images?: ListingImage[];
   createdAt: string;
   /** @nullable */
   updatedAt?: string | null;
 }
 
-export type ListingInputCategory =
-  (typeof ListingInputCategory)[keyof typeof ListingInputCategory];
-
-export const ListingInputCategory = {
-  gpu: "gpu",
-  server: "server",
-  memory: "memory",
-  other: "other",
-} as const;
-
-export type ListingInputCondition =
-  (typeof ListingInputCondition)[keyof typeof ListingInputCondition];
-
-export const ListingInputCondition = {
-  new: "new",
-  used: "used",
-  refurbished: "refurbished",
-} as const;
+export type ListingInputImagesItem = {
+  url: string;
+  sortOrder?: number;
+  altText?: string;
+};
 
 export interface ListingInput {
   title: string;
-  category: ListingInputCategory;
+  /** @maxLength 10000 */
+  description?: string;
+  category: ListingCategory;
   manufacturer?: string;
   model?: string;
-  vram?: number;
+  gpuModel?: string;
+  vramGb?: number;
   quantity?: number;
-  condition: ListingInputCondition;
+  condition: ListingCondition;
   price: number;
   currency: string;
-  location?: string;
-  description?: string;
-  imageUrls?: string[];
-  gpuCount?: number;
-  ram?: string;
-  cpu?: string;
-  storage?: string;
-  networking?: string;
-  memType?: string;
-  memCapacity?: string;
-  memSpeed?: string;
-  ecc?: boolean;
-  formFactor?: string;
+  locationCountry?: string;
+  locationRegion?: string;
+  locationCity?: string;
+  images?: ListingInputImagesItem[];
 }
 
-export type ListingUpdateCondition =
-  (typeof ListingUpdateCondition)[keyof typeof ListingUpdateCondition];
+export type ListingUpdateImagesItem = {
+  url: string;
+  sortOrder?: number;
+  altText?: string;
+};
 
-export const ListingUpdateCondition = {
-  new: "new",
-  used: "used",
-  refurbished: "refurbished",
-} as const;
-
-export type ListingUpdateStatus =
-  (typeof ListingUpdateStatus)[keyof typeof ListingUpdateStatus];
-
-export const ListingUpdateStatus = {
-  draft: "draft",
-  sold: "sold",
-  expired: "expired",
-} as const;
-
+/**
+ * Same shape as ListingInput; every field is optional (partial update).
+ */
 export interface ListingUpdate {
   title?: string;
-  condition?: ListingUpdateCondition;
-  price?: number;
-  quantity?: number;
-  location?: string;
+  /** @maxLength 10000 */
   description?: string;
-  status?: ListingUpdateStatus;
+  category?: ListingCategory;
+  manufacturer?: string;
+  model?: string;
+  gpuModel?: string;
+  vramGb?: number;
+  quantity?: number;
+  condition?: ListingCondition;
+  price?: number;
+  currency?: string;
+  locationCountry?: string;
+  locationRegion?: string;
+  locationCity?: string;
+  images?: ListingUpdateImagesItem[];
+}
+
+export interface ListingStatusUpdate {
+  status: ListingStatus;
+}
+
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface ListingResponse {
+  data: Listing;
 }
 
 export interface ListingsResponse {
-  listings: Listing[];
-  total: number;
-  page: number;
-  limit: number;
+  data: Listing[];
+  pagination: Pagination;
 }
 
-export type HardwareRequestCategory =
-  (typeof HardwareRequestCategory)[keyof typeof HardwareRequestCategory];
+export type ApiErrorResponseErrorCode =
+  (typeof ApiErrorResponseErrorCode)[keyof typeof ApiErrorResponseErrorCode];
 
-export const HardwareRequestCategory = {
-  gpu: "gpu",
-  server: "server",
-  memory: "memory",
-  other: "other",
+export const ApiErrorResponseErrorCode = {
+  VALIDATION_ERROR: "VALIDATION_ERROR",
+  UNAUTHORIZED: "UNAUTHORIZED",
+  FORBIDDEN: "FORBIDDEN",
+  NOT_FOUND: "NOT_FOUND",
+  CONFLICT: "CONFLICT",
+  RATE_LIMITED: "RATE_LIMITED",
+  INTERNAL_ERROR: "INTERNAL_ERROR",
 } as const;
 
-export type HardwareRequestConditionPreference =
-  (typeof HardwareRequestConditionPreference)[keyof typeof HardwareRequestConditionPreference];
+export type ApiErrorResponseErrorFields = { [key: string]: unknown };
 
-export const HardwareRequestConditionPreference = {
-  new: "new",
-  used: "used",
-  refurbished: "refurbished",
-  any: "any",
+export type ApiErrorResponseError = {
+  code: ApiErrorResponseErrorCode;
+  message: string;
+  fields?: ApiErrorResponseErrorFields;
+};
+
+export interface ApiErrorResponse {
+  error: ApiErrorResponseError;
+}
+
+export interface SavedListing {
+  id: string;
+  userId: string;
+  listingId: string;
+  createdAt: string;
+  listing?: Listing | null;
+}
+
+export interface SavedListingResponse {
+  data: SavedListing;
+}
+
+export interface SavedListingsResponse {
+  data: SavedListing[];
+  pagination: Pagination;
+}
+
+export type InquiryStatus = (typeof InquiryStatus)[keyof typeof InquiryStatus];
+
+export const InquiryStatus = {
+  OPEN: "OPEN",
+  RESPONDED: "RESPONDED",
+  CLOSED: "CLOSED",
 } as const;
 
-/**
- * @nullable
- */
-export type HardwareRequestRequiredBy =
-  | (typeof HardwareRequestRequiredBy)[keyof typeof HardwareRequestRequiredBy]
-  | null;
+export interface InquiryInput {
+  /** @minLength 1 */
+  message: string;
+}
 
-export const HardwareRequestRequiredBy = {
-  asap: "asap",
-  "1_4_weeks": "1_4_weeks",
-  "1_3_months": "1_3_months",
-  flexible: "flexible",
-} as const;
+export interface InquiryStatusUpdate {
+  status: InquiryStatus;
+}
+
+export interface Inquiry {
+  id: string;
+  listingId: string;
+  buyerId: string;
+  sellerId: string;
+  message: string;
+  status: InquiryStatus;
+  createdAt: string;
+  /** @nullable */
+  updatedAt?: string | null;
+  listing?: Listing | null;
+}
+
+export interface InquiryResponse {
+  data: Inquiry;
+}
+
+export interface InquiriesResponse {
+  data: Inquiry[];
+  pagination: Pagination;
+}
 
 export type HardwareRequestStatus =
   (typeof HardwareRequestStatus)[keyof typeof HardwareRequestStatus];
 
 export const HardwareRequestStatus = {
-  open: "open",
-  matched: "matched",
-  closed: "closed",
-  cancelled: "cancelled",
+  OPEN: "OPEN",
+  MATCHED: "MATCHED",
+  CLOSED: "CLOSED",
+  CANCELLED: "CANCELLED",
 } as const;
 
+/**
+ * @nullable
+ */
+export type HardwareRequestSpecifications = { [key: string]: unknown } | null;
+
 export interface HardwareRequest {
-  id: number;
-  category: HardwareRequestCategory;
-  modelRequirement: string;
+  id: string;
+  userId: string;
+  category: ListingCategory;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  requestedModel: string;
   quantity: number;
   /** @nullable */
-  vramMin?: number | null;
+  minVramGb?: number | null;
   /** @nullable */
-  budgetPerUnit?: number | null;
+  maxBudgetPerUnit?: number | null;
   /** @nullable */
-  totalBudget?: number | null;
+  maxTotalBudget?: number | null;
   currency?: string;
-  conditionPreference: HardwareRequestConditionPreference;
+  conditionPreference: ListingCondition;
+  /** @nullable */
+  preferredCountry?: string | null;
   /** @nullable */
   destinationCountry?: string | null;
   /** @nullable */
   destinationCity?: string | null;
   /** @nullable */
-  requiredBy?: HardwareRequestRequiredBy;
+  neededBy?: string | null;
   /** @nullable */
-  additionalRequirements?: string | null;
+  urgency?: string | null;
+  /** @nullable */
+  specifications?: HardwareRequestSpecifications;
   status: HardwareRequestStatus;
-  /** @nullable */
-  userId?: string | null;
-  /** @nullable */
-  userName?: string | null;
   createdAt: string;
+  /** @nullable */
+  updatedAt?: string | null;
 }
 
-export type HardwareRequestInputCategory =
-  (typeof HardwareRequestInputCategory)[keyof typeof HardwareRequestInputCategory];
-
-export const HardwareRequestInputCategory = {
-  gpu: "gpu",
-  server: "server",
-  memory: "memory",
-  other: "other",
-} as const;
-
-export type HardwareRequestInputConditionPreference =
-  (typeof HardwareRequestInputConditionPreference)[keyof typeof HardwareRequestInputConditionPreference];
-
-export const HardwareRequestInputConditionPreference = {
-  new: "new",
-  used: "used",
-  refurbished: "refurbished",
-  any: "any",
-} as const;
-
-export type HardwareRequestInputRequiredBy =
-  (typeof HardwareRequestInputRequiredBy)[keyof typeof HardwareRequestInputRequiredBy];
-
-export const HardwareRequestInputRequiredBy = {
-  asap: "asap",
-  "1_4_weeks": "1_4_weeks",
-  "1_3_months": "1_3_months",
-  flexible: "flexible",
-} as const;
+export type HardwareRequestInputSpecifications = { [key: string]: unknown };
 
 export interface HardwareRequestInput {
-  category: HardwareRequestInputCategory;
+  category: ListingCategory;
+  title: string;
+  description?: string;
   /** @minLength 1 */
-  modelRequirement: string;
+  requestedModel: string;
   /** @minimum 1 */
   quantity: number;
-  vramMin?: number;
-  budgetPerUnit?: number;
-  totalBudget?: number;
+  minVramGb?: number;
+  maxBudgetPerUnit?: number;
+  maxTotalBudget?: number;
   currency?: string;
-  conditionPreference: HardwareRequestInputConditionPreference;
+  conditionPreference: ListingCondition;
+  preferredCountry?: string;
   destinationCountry?: string;
   destinationCity?: string;
-  requiredBy?: HardwareRequestInputRequiredBy;
-  additionalRequirements?: string;
+  neededBy?: string;
+  urgency?: string;
+  specifications?: HardwareRequestInputSpecifications;
 }
 
-export type HardwareRequestUpdateStatus =
-  (typeof HardwareRequestUpdateStatus)[keyof typeof HardwareRequestUpdateStatus];
+export type HardwareRequestUpdateSpecifications = { [key: string]: unknown };
 
-export const HardwareRequestUpdateStatus = {
-  open: "open",
-  closed: "closed",
-  cancelled: "cancelled",
-} as const;
-
+/**
+ * Partial update of any HardwareRequestInput field.
+ */
 export interface HardwareRequestUpdate {
-  modelRequirement?: string;
+  category?: ListingCategory;
+  title?: string;
+  description?: string;
+  requestedModel?: string;
   quantity?: number;
-  budgetPerUnit?: number;
-  totalBudget?: number;
-  status?: HardwareRequestUpdateStatus;
-  additionalRequirements?: string;
+  minVramGb?: number;
+  maxBudgetPerUnit?: number;
+  maxTotalBudget?: number;
+  currency?: string;
+  conditionPreference?: ListingCondition;
+  preferredCountry?: string;
+  destinationCountry?: string;
+  destinationCity?: string;
+  neededBy?: string;
+  urgency?: string;
+  specifications?: HardwareRequestUpdateSpecifications;
 }
 
-export interface SaveListingInput {
-  listingId: number;
+export interface HardwareRequestStatusUpdate {
+  status: HardwareRequestStatus;
 }
 
-export interface SavedConfirmation {
-  listingId: number;
-  savedAt: string;
+export interface HardwareRequestResponse {
+  data: HardwareRequest;
+}
+
+export interface HardwareRequestsResponse {
+  data: HardwareRequest[];
+  pagination: Pagination;
 }
 
 export interface DashboardStats {
@@ -371,68 +415,55 @@ export interface UserProfileUpdate {
 
 export type GetListingsParams = {
   /**
-   * Keyword search
+   * Free-text search over title/description/normalized model
    */
   q?: string;
-  category?: GetListingsCategory;
-  model?: string;
+  category?: ListingCategory;
+  /**
+   * Matched against normalized model (RTX 4090, rtx4090, 4090 all match)
+   */
+  gpuModel?: string;
   manufacturer?: string;
-  vramMin?: number;
-  priceMax?: number;
-  condition?: GetListingsCondition;
-  location?: string;
-  sort?: GetListingsSort;
+  minVramGb?: number;
+  maxVramGb?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  currency?: string;
+  condition?: ListingCondition;
+  country?: string;
+  region?: string;
+  city?: string;
+  sourceType?: ListingSourceType;
+  /**
+   * Defaults to PUBLISHED. A non-public value (DRAFT, PENDING_REVIEW, REJECTED, EXPIRED) requires auth and only ever returns the caller's own listings.
+   */
+  status?: ListingStatus;
+  sortBy?: ListingSortBy;
+  /**
+   * @minimum 1
+   */
   page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
   limit?: number;
 };
 
-export type GetListingsCategory =
-  (typeof GetListingsCategory)[keyof typeof GetListingsCategory];
-
-export const GetListingsCategory = {
-  gpu: "gpu",
-  server: "server",
-  memory: "memory",
-  other: "other",
-} as const;
-
-export type GetListingsCondition =
-  (typeof GetListingsCondition)[keyof typeof GetListingsCondition];
-
-export const GetListingsCondition = {
-  new: "new",
-  used: "used",
-  refurbished: "refurbished",
-  any: "any",
-} as const;
-
-export type GetListingsSort =
-  (typeof GetListingsSort)[keyof typeof GetListingsSort];
-
-export const GetListingsSort = {
-  relevance: "relevance",
-  price_asc: "price_asc",
-  price_desc: "price_desc",
-  newest: "newest",
-  price_per_gb: "price_per_gb",
-} as const;
-
-export type GetFeaturedListingsParams = {
+export type GetInquiriesParams = {
+  page?: number;
   limit?: number;
+  status?: InquiryStatus;
 };
 
 export type GetRequestsParams = {
-  category?: GetRequestsCategory;
+  page?: number;
+  limit?: number;
+  status?: HardwareRequestStatus;
+  category?: ListingCategory;
+};
+
+export type GetSavedListingsParams = {
   page?: number;
   limit?: number;
 };
-
-export type GetRequestsCategory =
-  (typeof GetRequestsCategory)[keyof typeof GetRequestsCategory];
-
-export const GetRequestsCategory = {
-  gpu: "gpu",
-  server: "server",
-  memory: "memory",
-  other: "other",
-} as const;

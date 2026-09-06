@@ -1,56 +1,207 @@
 'use client';
 
 import Link from "next/link";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import {
-  useGetDashboardStats,
-  useGetMyListings,
-  useGetMyRequests
+  getGetListingsQueryOptions,
+  getGetListingsQueryKey,
+  getGetRequestsQueryKey,
+  getGetSavedListingsQueryKey,
+  getGetInquiriesQueryKey,
+  useUpdateListingStatus,
+  useDeleteListing,
+  useGetRequests,
+  useUpdateRequestStatus,
+  useGetSavedListings,
+  useUnsaveListing,
+  useGetInquiries,
+  useUpdateInquiryStatus,
+  ListingStatus,
+  HardwareRequestStatus,
+  InquiryStatus,
+  type Listing,
+  type HardwareRequest,
+  type Inquiry,
 } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Activity, HardDrive, Inbox, Bookmark,
-  Plus, Search, ExternalLink
+  HardDrive, Inbox, Bookmark,
+  Plus, ExternalLink, Trash2, Send, X, MessageSquare, CheckCheck
 } from "lucide-react";
-import { ListingCard } from "@/components/ListingCard";
+import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
+// The backend only exposes "my listings" as a filter on the public search
+// endpoint (`GET /listings?status=DRAFT`, etc.), and only non-public
+// statuses are guaranteed to be scoped to the caller — PUBLISHED/SOLD
+// listings you own aren't retrievable through a dedicated query today.
+const MY_LISTING_STATUSES = [
+  ListingStatus.DRAFT,
+  ListingStatus.PENDING_REVIEW,
+  ListingStatus.REJECTED,
+  ListingStatus.EXPIRED,
+] as const;
+
+function useMyListings() {
+  const results = useQueries({
+    queries: MY_LISTING_STATUSES.map((status) =>
+      getGetListingsQueryOptions({ status, limit: 100 }),
+    ),
+  });
+
+  const isLoading = results.some((r) => r.isLoading);
+  const listings = results
+    .flatMap((r) => r.data?.data ?? [])
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  return { listings, isLoading };
+}
+
+const formatDate = (dateString: string) =>
+  new Date(dateString).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+
+function getStatusBadge(status: string) {
+  switch (status) {
+    case ListingStatus.PUBLISHED:
+    case HardwareRequestStatus.OPEN:
+      return <Badge variant="success" className="uppercase text-[10px]">Active</Badge>;
+    case ListingStatus.PENDING_REVIEW:
+    case HardwareRequestStatus.MATCHED:
+      return <Badge variant="warning" className="uppercase text-[10px] bg-yellow-500 text-white">Pending</Badge>;
+    case ListingStatus.DRAFT:
+    case HardwareRequestStatus.CANCELLED:
+    case ListingStatus.EXPIRED:
+      return <Badge variant="secondary" className="uppercase text-[10px]">Inactive</Badge>;
+    case ListingStatus.SOLD:
+    case HardwareRequestStatus.CLOSED:
+      return <Badge variant="default" className="uppercase text-[10px]">Completed</Badge>;
+    case ListingStatus.REJECTED:
+      return <Badge variant="destructive" className="uppercase text-[10px]">Rejected</Badge>;
+    default:
+      return <Badge variant="outline" className="uppercase text-[10px]">{status}</Badge>;
+  }
+}
+
+function getInquiryStatusBadge(status: string) {
+  switch (status) {
+    case InquiryStatus.OPEN:
+      return <Badge variant="warning" className="uppercase text-[10px] bg-yellow-500 text-white">Open</Badge>;
+    case InquiryStatus.RESPONDED:
+      return <Badge variant="success" className="uppercase text-[10px]">Responded</Badge>;
+    case InquiryStatus.CLOSED:
+      return <Badge variant="secondary" className="uppercase text-[10px]">Closed</Badge>;
+    default:
+      return <Badge variant="outline" className="uppercase text-[10px]">{status}</Badge>;
+  }
+}
+
 export function DashboardClient() {
-  const { data: stats, isLoading: statsLoading } = useGetDashboardStats();
-  const { data: myListings, isLoading: listingsLoading } = useGetMyListings();
-  const { data: myRequests, isLoading: requestsLoading } = useGetMyRequests();
+  const { user } = useAuth();
+  const { listings: myListings, isLoading: listingsLoading } = useMyListings();
+  const { data: myRequestsData, isLoading: requestsLoading } = useGetRequests();
+  const { data: savedData, isLoading: savedLoading } = useGetSavedListings();
+  const { data: inquiriesData, isLoading: inquiriesLoading } = useGetInquiries();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const updateStatus = useUpdateListingStatus();
+  const deleteListing = useDeleteListing();
+  const updateRequestStatus = useUpdateRequestStatus();
+  const unsaveListing = useUnsaveListing();
+  const updateInquiryStatus = useUpdateInquiryStatus();
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric"
-    });
+  const myRequests = myRequestsData?.data ?? [];
+  const savedListings = savedData?.data ?? [];
+  const inquiries = inquiriesData?.data ?? [];
+  const receivedInquiries = inquiries.filter((i) => i.sellerId === user?.id);
+  const sentInquiries = inquiries.filter((i) => i.buyerId === user?.id);
+
+  const refreshMyListings = () => {
+    queryClient.invalidateQueries({ queryKey: getGetListingsQueryKey() });
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'published':
-      case 'open':
-        return <Badge variant="success" className="uppercase text-[10px]">Active</Badge>;
-      case 'pending_review':
-      case 'matched':
-        return <Badge variant="warning" className="uppercase text-[10px] bg-yellow-500 text-white">Pending</Badge>;
-      case 'draft':
-      case 'cancelled':
-      case 'expired':
-        return <Badge variant="secondary" className="uppercase text-[10px]">Inactive</Badge>;
-      case 'sold':
-      case 'closed':
-        return <Badge variant="default" className="uppercase text-[10px]">Completed</Badge>;
-      case 'rejected':
-        return <Badge variant="destructive" className="uppercase text-[10px]">Rejected</Badge>;
-      default:
-        return <Badge variant="outline" className="uppercase text-[10px]">{status}</Badge>;
-    }
+  const handleSubmitForReview = (listing: Listing) => {
+    updateStatus.mutate(
+      { id: listing.id, data: { status: ListingStatus.PENDING_REVIEW } },
+      {
+        onSuccess: () => {
+          refreshMyListings();
+          toast({ title: "Submitted for review", description: "An admin will review your listing shortly." });
+        },
+        onError: () => {
+          toast({ title: "Error", description: "Couldn't submit this listing for review.", variant: "destructive" });
+        },
+      },
+    );
   };
+
+  const handleDeleteListing = (listing: Listing) => {
+    deleteListing.mutate(
+      { id: listing.id },
+      {
+        onSuccess: () => {
+          refreshMyListings();
+          toast({ title: "Listing deleted" });
+        },
+        onError: () => {
+          toast({ title: "Error", description: "Couldn't delete this listing.", variant: "destructive" });
+        },
+      },
+    );
+  };
+
+  const handleCancelRequest = (request: HardwareRequest) => {
+    updateRequestStatus.mutate(
+      { id: request.id, data: { status: HardwareRequestStatus.CANCELLED } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetRequestsQueryKey() });
+          toast({ title: "Request cancelled" });
+        },
+        onError: () => {
+          toast({ title: "Error", description: "Couldn't cancel this request.", variant: "destructive" });
+        },
+      },
+    );
+  };
+
+  const handleUnsave = (listingId: string) => {
+    unsaveListing.mutate(
+      { listingId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetSavedListingsQueryKey() });
+          toast({ title: "Removed from saved listings" });
+        },
+      },
+    );
+  };
+
+  const handleInquiryStatus = (inquiry: Inquiry, status: (typeof InquiryStatus)[keyof typeof InquiryStatus]) => {
+    updateInquiryStatus.mutate(
+      { id: inquiry.id, data: { status } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetInquiriesQueryKey() });
+        },
+        onError: () => {
+          toast({ title: "Error", description: "Couldn't update this inquiry.", variant: "destructive" });
+        },
+      },
+    );
+  };
+
+  const activeListingsCount = myListings.filter((l) => l.status === ListingStatus.PENDING_REVIEW).length;
+  const draftListingsCount = myListings.filter((l) => l.status === ListingStatus.DRAFT).length;
+  const openRequestsCount = myRequests.filter((r) => r.status === HardwareRequestStatus.OPEN).length;
+  const openInquiriesCount = receivedInquiries.filter((i) => i.status === InquiryStatus.OPEN).length;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -71,26 +222,26 @@ export function DashboardClient() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         <Card className="border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Listings</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Drafts</CardTitle>
             <HardDrive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold font-mono">
-              {statsLoading ? "..." : stats?.activeListings || 0}
+              {listingsLoading ? "..." : draftListingsCount}
             </div>
           </CardContent>
         </Card>
         <Card className="border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Items</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Review</CardTitle>
+            <Send className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold font-mono text-yellow-600 dark:text-yellow-500">
-              {statsLoading ? "..." : stats?.pendingListings || 0}
+              {listingsLoading ? "..." : activeListingsCount}
             </div>
           </CardContent>
         </Card>
@@ -101,34 +252,47 @@ export function DashboardClient() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold font-mono">
-              {statsLoading ? "..." : stats?.openRequests || 0}
+              {requestsLoading ? "..." : openRequestsCount}
             </div>
           </CardContent>
         </Card>
         <Card className="border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Saved Items</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Saved</CardTitle>
             <Bookmark className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold font-mono">
-              {statsLoading ? "..." : stats?.savedCount || 0}
+              {savedLoading ? "..." : savedListings.length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-border">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Open Inquiries</CardTitle>
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold font-mono">
+              {inquiriesLoading ? "..." : openInquiriesCount}
             </div>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="listings" className="w-full">
-        <TabsList className="mb-6 w-full sm:w-auto h-auto p-1 bg-muted/50 border border-border">
+        <TabsList className="mb-6 w-full sm:w-auto h-auto p-1 bg-muted/50 border border-border flex-wrap">
           <TabsTrigger value="listings" className="py-2.5 px-6 font-semibold">My Listings</TabsTrigger>
           <TabsTrigger value="requests" className="py-2.5 px-6 font-semibold">My Requests</TabsTrigger>
+          <TabsTrigger value="saved" className="py-2.5 px-6 font-semibold">Saved</TabsTrigger>
+          <TabsTrigger value="inquiries" className="py-2.5 px-6 font-semibold">Inquiries</TabsTrigger>
         </TabsList>
 
         <TabsContent value="listings" className="m-0">
           <Card className="border-border shadow-sm">
             {listingsLoading ? (
               <div className="p-8 text-center text-muted-foreground">Loading your listings...</div>
-            ) : myListings && myListings.length > 0 ? (
+            ) : myListings.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
@@ -149,19 +313,41 @@ export function DashboardClient() {
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-sm">
-                        ${listing.price.toLocaleString()}
+                        ${Number(listing.price).toLocaleString()}
                       </TableCell>
                       <TableCell>{getStatusBadge(listing.status)}</TableCell>
                       <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                         {formatDate(listing.createdAt)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1">
+                          {listing.status === ListingStatus.DRAFT && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              title="Submit for review"
+                              disabled={updateStatus.isPending}
+                              onClick={() => handleSubmitForReview(listing)}
+                            >
+                              <Send className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Link href={`/listing/${listing.id}`}>
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                               <ExternalLink className="h-4 w-4" />
                             </Button>
                           </Link>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            title="Delete listing"
+                            disabled={deleteListing.isPending}
+                            onClick={() => handleDeleteListing(listing)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -187,14 +373,14 @@ export function DashboardClient() {
           <Card className="border-border shadow-sm">
             {requestsLoading ? (
               <div className="p-8 text-center text-muted-foreground">Loading your requests...</div>
-            ) : myRequests && myRequests.length > 0 ? (
+            ) : myRequests.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
                     <TableHead>Requirement</TableHead>
                     <TableHead>Budget/Unit</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="hidden md:table-cell">Timeline</TableHead>
+                    <TableHead className="hidden md:table-cell">Destination</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -203,21 +389,32 @@ export function DashboardClient() {
                     <TableRow key={req.id}>
                       <TableCell className="font-medium">
                         <div className="flex flex-col">
-                          <span className="truncate max-w-[200px] sm:max-w-[300px]">{req.modelRequirement}</span>
-                          <span className="text-xs text-muted-foreground font-mono">Qty: {req.quantity} • {req.vramMin ? `${req.vramMin}GB+` : 'Any VRAM'}</span>
+                          <span className="truncate max-w-[200px] sm:max-w-[300px]">{req.title}</span>
+                          <span className="text-xs text-muted-foreground font-mono">Qty: {req.quantity} • {req.minVramGb ? `${req.minVramGb}GB+` : 'Any VRAM'}</span>
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-sm">
-                        {req.budgetPerUnit ? `$${req.budgetPerUnit.toLocaleString()}` : 'Open'}
+                        {req.maxBudgetPerUnit ? `$${req.maxBudgetPerUnit.toLocaleString()}` : 'Open'}
                       </TableCell>
                       <TableCell>{getStatusBadge(req.status)}</TableCell>
                       <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                        {req.requiredBy ? req.requiredBy.replace('_', ' ') : 'Flexible'}
+                        {req.destinationCity || req.destinationCountry
+                          ? [req.destinationCity, req.destinationCountry].filter(Boolean).join(", ")
+                          : '—'}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                          <Search className="h-4 w-4" />
-                        </Button>
+                        {(req.status === HardwareRequestStatus.OPEN || req.status === HardwareRequestStatus.MATCHED) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            title="Cancel request"
+                            disabled={updateRequestStatus.isPending}
+                            onClick={() => handleCancelRequest(req)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -236,6 +433,201 @@ export function DashboardClient() {
               </div>
             )}
           </Card>
+        </TabsContent>
+
+        <TabsContent value="saved" className="m-0">
+          <Card className="border-border shadow-sm">
+            {savedLoading ? (
+              <div className="p-8 text-center text-muted-foreground">Loading saved listings...</div>
+            ) : savedListings.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30">
+                    <TableHead>Hardware</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead className="hidden md:table-cell">Saved</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {savedListings.map((saved) => (
+                    <TableRow key={saved.id}>
+                      <TableCell className="font-medium">
+                        {saved.listing ? (
+                          <div className="flex flex-col">
+                            <span className="truncate max-w-[200px] sm:max-w-[300px]">{saved.listing.title}</span>
+                            <span className="text-xs text-muted-foreground font-mono">{saved.listing.manufacturer} {saved.listing.model}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground italic">Listing no longer available</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {saved.listing ? `$${Number(saved.listing.price).toLocaleString()}` : '—'}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                        {formatDate(saved.createdAt)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          {saved.listing && (
+                            <Link href={`/listing/${saved.listingId}`}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            title="Remove from saved"
+                            disabled={unsaveListing.isPending}
+                            onClick={() => handleUnsave(saved.listingId)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="p-12 flex flex-col items-center justify-center text-center">
+                <Bookmark className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-bold mb-2">No saved listings</h3>
+                <p className="text-muted-foreground max-w-sm mb-6">
+                  Save listings from the marketplace to find them here later.
+                </p>
+                <Link href="/gpus">
+                  <Button>Browse Hardware</Button>
+                </Link>
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="inquiries" className="m-0 space-y-6">
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3">Received</h3>
+            <Card className="border-border shadow-sm">
+              {inquiriesLoading ? (
+                <div className="p-8 text-center text-muted-foreground">Loading inquiries...</div>
+              ) : receivedInquiries.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead>Listing</TableHead>
+                      <TableHead>Message</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {receivedInquiries.map((inquiry) => (
+                      <TableRow key={inquiry.id}>
+                        <TableCell className="font-medium">
+                          {inquiry.listing ? (
+                            <Link href={`/listing/${inquiry.listingId}`} className="hover:text-accent truncate max-w-[160px] block">
+                              {inquiry.listing.title}
+                            </Link>
+                          ) : (
+                            <span className="text-muted-foreground italic">Listing</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[280px] truncate">{inquiry.message}</TableCell>
+                        <TableCell>{getInquiryStatusBadge(inquiry.status)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            {inquiry.status === InquiryStatus.OPEN && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                title="Mark responded"
+                                disabled={updateInquiryStatus.isPending}
+                                onClick={() => handleInquiryStatus(inquiry, InquiryStatus.RESPONDED)}
+                              >
+                                <CheckCheck className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {inquiry.status !== InquiryStatus.CLOSED && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                title="Close inquiry"
+                                disabled={updateInquiryStatus.isPending}
+                                onClick={() => handleInquiryStatus(inquiry, InquiryStatus.CLOSED)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="p-8 text-center text-muted-foreground">No inquiries on your listings yet.</div>
+              )}
+            </Card>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3">Sent</h3>
+            <Card className="border-border shadow-sm">
+              {inquiriesLoading ? (
+                <div className="p-8 text-center text-muted-foreground">Loading inquiries...</div>
+              ) : sentInquiries.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead>Listing</TableHead>
+                      <TableHead>Message</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sentInquiries.map((inquiry) => (
+                      <TableRow key={inquiry.id}>
+                        <TableCell className="font-medium">
+                          {inquiry.listing ? (
+                            <Link href={`/listing/${inquiry.listingId}`} className="hover:text-accent truncate max-w-[160px] block">
+                              {inquiry.listing.title}
+                            </Link>
+                          ) : (
+                            <span className="text-muted-foreground italic">Listing</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[280px] truncate">{inquiry.message}</TableCell>
+                        <TableCell>{getInquiryStatusBadge(inquiry.status)}</TableCell>
+                        <TableCell className="text-right">
+                          {inquiry.status !== InquiryStatus.CLOSED && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              title="Close inquiry"
+                              disabled={updateInquiryStatus.isPending}
+                              onClick={() => handleInquiryStatus(inquiry, InquiryStatus.CLOSED)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="p-8 text-center text-muted-foreground">You haven't contacted any sellers yet.</div>
+              )}
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

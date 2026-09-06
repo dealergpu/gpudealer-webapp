@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/hooks/use-toast";
 import { createClientSafely } from "@/lib/supabase/client";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 
 const passwordSchema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -30,7 +31,7 @@ export default function SignIn() {
   const router = useRouter();
   const { toast } = useToast();
   const [supabase] = useState(createClientSafely);
-  const [mode, setMode] = useState<"password" | "magic-link">("password");
+  const [mode, setMode] = useState<"google" | "password" | "magic-link">("google");
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -86,59 +87,81 @@ export default function SignIn() {
           <CardDescription>Sign in to access your account</CardDescription>
         </CardHeader>
         <CardContent>
-          {mode === "password" ? (
-            <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" autoComplete="email" {...passwordForm.register("email")} />
-                {passwordForm.formState.errors.email && (
-                  <p className="text-sm text-destructive">{passwordForm.formState.errors.email.message}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" autoComplete="current-password" {...passwordForm.register("password")} />
-                {passwordForm.formState.errors.password && (
-                  <p className="text-sm text-destructive">{passwordForm.formState.errors.password.message}</p>
-                )}
-              </div>
-              <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white" disabled={isSubmitting}>
-                {isSubmitting ? <Spinner className="mr-2" /> : null}
-                Sign In
-              </Button>
-              <button
-                type="button"
-                className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
-                onClick={() => setMode("magic-link")}
-              >
-                Use a magic link instead
-              </button>
-            </form>
-          ) : magicLinkSent ? (
-            <p className="text-sm text-muted-foreground">
-              Check your email for a link to sign in.
-            </p>
-          ) : (
-            <form onSubmit={magicLinkForm.handleSubmit(onMagicLinkSubmit)} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="magic-email">Email</Label>
-                <Input id="magic-email" type="email" autoComplete="email" {...magicLinkForm.register("email")} />
-                {magicLinkForm.formState.errors.email && (
-                  <p className="text-sm text-destructive">{magicLinkForm.formState.errors.email.message}</p>
-                )}
-              </div>
-              <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white" disabled={isSubmitting}>
-                {isSubmitting ? <Spinner className="mr-2" /> : null}
-                Send Magic Link
-              </Button>
+          {mode === "google" ? (
+            <div className="space-y-4">
+              <GoogleSignInButton supabase={supabase} />
               <button
                 type="button"
                 className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
                 onClick={() => setMode("password")}
               >
-                Use a password instead
+                Use email and password instead
               </button>
-            </form>
+            </div>
+          ) : (
+            <>
+              {mode === "password" ? (
+                <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" autoComplete="email" {...passwordForm.register("email")} />
+                    {passwordForm.formState.errors.email && (
+                      <p className="text-sm text-destructive">{passwordForm.formState.errors.email.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input id="password" type="password" autoComplete="current-password" {...passwordForm.register("password")} />
+                    {passwordForm.formState.errors.password && (
+                      <p className="text-sm text-destructive">{passwordForm.formState.errors.password.message}</p>
+                    )}
+                  </div>
+                  <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white" disabled={isSubmitting}>
+                    {isSubmitting ? <Spinner className="mr-2" /> : null}
+                    Sign In
+                  </Button>
+                  <button
+                    type="button"
+                    className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+                    onClick={() => setMode("magic-link")}
+                  >
+                    Use a magic link instead
+                  </button>
+                </form>
+              ) : magicLinkSent ? (
+                <p className="text-sm text-muted-foreground">
+                  Check your email for a link to sign in.
+                </p>
+              ) : (
+                <form onSubmit={magicLinkForm.handleSubmit(onMagicLinkSubmit)} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="magic-email">Email</Label>
+                    <Input id="magic-email" type="email" autoComplete="email" {...magicLinkForm.register("email")} />
+                    {magicLinkForm.formState.errors.email && (
+                      <p className="text-sm text-destructive">{magicLinkForm.formState.errors.email.message}</p>
+                    )}
+                  </div>
+                  <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white" disabled={isSubmitting}>
+                    {isSubmitting ? <Spinner className="mr-2" /> : null}
+                    Send Magic Link
+                  </Button>
+                  <button
+                    type="button"
+                    className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+                    onClick={() => setMode("password")}
+                  >
+                    Use a password instead
+                  </button>
+                </form>
+              )}
+              <button
+                type="button"
+                className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-foreground"
+                onClick={() => setMode("google")}
+              >
+                &larr; Back to Google sign in
+              </button>
+            </>
           )}
 
           <p className="mt-6 text-center text-sm text-muted-foreground">

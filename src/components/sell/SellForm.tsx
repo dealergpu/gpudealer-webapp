@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCreateListing, ListingInputCategory, ListingInputCondition, getGetListingsQueryKey, getGetMyListingsQueryKey } from "@/lib/api";
+import { useCreateListing, ListingCategory, ListingCondition, getGetListingsQueryKey } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,15 +16,19 @@ import { useToast } from "@/hooks/use-toast";
 
 const listingSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters"),
-  category: z.nativeEnum(ListingInputCategory),
+  category: z.nativeEnum(ListingCategory),
   manufacturer: z.string().optional(),
   model: z.string().optional(),
-  vram: z.coerce.number().optional().or(z.literal("").transform(() => undefined)),
+  gpuModel: z.string().optional(),
+  vramGb: z.coerce.number().optional().or(z.literal("").transform(() => undefined)),
   quantity: z.coerce.number().min(1, "Quantity must be at least 1").default(1),
-  condition: z.nativeEnum(ListingInputCondition),
+  condition: z.nativeEnum(ListingCondition),
   price: z.coerce.number().min(1, "Price must be at least $1"),
   currency: z.string().default("USD"),
-  location: z.string().optional(),
+  locationCountry: z.string().optional(),
+  locationRegion: z.string().optional(),
+  locationCity: z.string().optional(),
+  imageUrl: z.string().url("Enter a valid URL").optional().or(z.literal("").transform(() => undefined)),
   description: z.string().optional(),
 });
 
@@ -35,30 +39,34 @@ export function SellForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const createListing = useCreateListing();
-  const [activeTab, setActiveTab] = useState<"basics" | "specs">("basics");
 
   const form = useForm<ListingFormValues>({
     resolver: zodResolver(listingSchema),
     defaultValues: {
-      category: "gpu",
-      condition: "used",
+      category: ListingCategory.GPU,
+      condition: ListingCondition.USED,
       quantity: 1,
       currency: "USD",
     },
   });
 
   const onSubmit = (data: ListingFormValues) => {
+    const { imageUrl, ...rest } = data;
     createListing.mutate(
-      { data },
       {
-        onSuccess: (newListing) => {
+        data: {
+          ...rest,
+          images: imageUrl ? [{ url: imageUrl, sortOrder: 0 }] : undefined,
+        },
+      },
+      {
+        onSuccess: (response) => {
           queryClient.invalidateQueries({ queryKey: getGetListingsQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getGetMyListingsQueryKey() });
           toast({
             title: "Listing Created",
-            description: "Your hardware has been successfully listed.",
+            description: "Your hardware has been saved as a draft. Submit it for review from your dashboard to publish it.",
           });
-          router.push(`/listing/${newListing.id}`);
+          router.push(`/listing/${response.data.id}`);
         },
         onError: () => {
           toast({
@@ -105,16 +113,16 @@ export function SellForm() {
                 <Label htmlFor="category" className="font-semibold">Category <span className="text-destructive">*</span></Label>
                 <Select
                   value={form.watch("category")}
-                  onValueChange={(val) => form.setValue("category", val as ListingInputCategory)}
+                  onValueChange={(val) => form.setValue("category", val as ListingCategory)}
                 >
                   <SelectTrigger id="category">
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="gpu">GPU</SelectItem>
-                    <SelectItem value="server">Server / Rack</SelectItem>
-                    <SelectItem value="memory">Memory / Storage</SelectItem>
-                    <SelectItem value="other">Other Components</SelectItem>
+                    <SelectItem value={ListingCategory.GPU}>GPU</SelectItem>
+                    <SelectItem value={ListingCategory.SERVER}>Server / Rack</SelectItem>
+                    <SelectItem value={ListingCategory.MEMORY}>Memory / Storage</SelectItem>
+                    <SelectItem value={ListingCategory.OTHER}>Other Components</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -123,15 +131,15 @@ export function SellForm() {
                 <Label htmlFor="condition" className="font-semibold">Condition <span className="text-destructive">*</span></Label>
                 <Select
                   value={form.watch("condition")}
-                  onValueChange={(val) => form.setValue("condition", val as ListingInputCondition)}
+                  onValueChange={(val) => form.setValue("condition", val as ListingCondition)}
                 >
                   <SelectTrigger id="condition">
                     <SelectValue placeholder="Select condition" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="new">New (Sealed)</SelectItem>
-                    <SelectItem value="used">Used (Working)</SelectItem>
-                    <SelectItem value="refurbished">Refurbished</SelectItem>
+                    <SelectItem value={ListingCondition.NEW}>New (Sealed)</SelectItem>
+                    <SelectItem value={ListingCondition.USED}>Used (Working)</SelectItem>
+                    <SelectItem value={ListingCondition.REFURBISHED}>Refurbished</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -192,24 +200,64 @@ export function SellForm() {
                 />
               </div>
 
-              {currentCategory === "gpu" && (
-                <div className="space-y-2">
-                  <Label htmlFor="vram">VRAM per GPU (GB)</Label>
-                  <Input
-                    id="vram"
-                    type="number"
-                    placeholder="e.g. 24"
-                    {...form.register("vram")}
-                  />
-                </div>
+              {currentCategory === ListingCategory.GPU && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="gpuModel">GPU Model</Label>
+                    <Input
+                      id="gpuModel"
+                      placeholder="e.g. RTX 4090"
+                      {...form.register("gpuModel")}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vramGb">VRAM per GPU (GB)</Label>
+                    <Input
+                      id="vramGb"
+                      type="number"
+                      placeholder="e.g. 24"
+                      {...form.register("vramGb")}
+                    />
+                  </div>
+                </>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="location">Location / Ships From</Label>
+                <Label htmlFor="imageUrl">Image URL <span className="text-muted-foreground font-normal text-xs ml-1">(Optional)</span></Label>
                 <Input
-                  id="location"
-                  placeholder="e.g. San Jose, CA"
-                  {...form.register("location")}
+                  id="imageUrl"
+                  placeholder="https://..."
+                  {...form.register("imageUrl")}
+                />
+                {form.formState.errors.imageUrl && (
+                  <p className="text-sm text-destructive">{form.formState.errors.imageUrl.message}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="locationCity">City <span className="text-muted-foreground font-normal text-xs ml-1">(Optional)</span></Label>
+                <Input
+                  id="locationCity"
+                  placeholder="e.g. San Jose"
+                  {...form.register("locationCity")}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="locationRegion">State / Region <span className="text-muted-foreground font-normal text-xs ml-1">(Optional)</span></Label>
+                <Input
+                  id="locationRegion"
+                  placeholder="e.g. California"
+                  {...form.register("locationRegion")}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="locationCountry">Country <span className="text-muted-foreground font-normal text-xs ml-1">(Optional)</span></Label>
+                <Input
+                  id="locationCountry"
+                  placeholder="e.g. USA"
+                  {...form.register("locationCountry")}
                 />
               </div>
             </div>
@@ -237,7 +285,7 @@ export function SellForm() {
             className="bg-accent hover:bg-accent/90 text-white font-bold px-8"
             disabled={createListing.isPending}
           >
-            {createListing.isPending ? "Publishing..." : "Publish Listing"}
+            {createListing.isPending ? "Saving..." : "Save Listing"}
           </Button>
         </div>
       </form>

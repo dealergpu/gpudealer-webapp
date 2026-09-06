@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/hooks/use-toast";
 import { createClientSafely } from "@/lib/supabase/client";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 
 const signUpSchema = z
   .object({
@@ -33,6 +34,7 @@ export default function SignUp() {
   const [supabase] = useState(createClientSafely);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
 
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
@@ -80,34 +82,54 @@ export default function SignUp() {
             <p className="text-sm text-muted-foreground">
               Check your email to confirm your account, then sign in.
             </p>
+          ) : !showEmailForm ? (
+            <div className="space-y-4">
+              <GoogleSignInButton supabase={supabase} />
+              <button
+                type="button"
+                className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+                onClick={() => setShowEmailForm(true)}
+              >
+                Use email and password instead
+              </button>
+            </div>
           ) : (
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" autoComplete="email" {...form.register("email")} />
-                {form.formState.errors.email && (
-                  <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" autoComplete="new-password" {...form.register("password")} />
-                {form.formState.errors.password && (
-                  <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input id="confirmPassword" type="password" autoComplete="new-password" {...form.register("confirmPassword")} />
-                {form.formState.errors.confirmPassword && (
-                  <p className="text-sm text-destructive">{form.formState.errors.confirmPassword.message}</p>
-                )}
-              </div>
-              <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white" disabled={isSubmitting}>
-                {isSubmitting ? <Spinner className="mr-2" /> : null}
-                Create Account
-              </Button>
-            </form>
+            <>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" type="email" autoComplete="email" {...form.register("email")} />
+                  {form.formState.errors.email && (
+                    <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input id="password" type="password" autoComplete="new-password" {...form.register("password")} />
+                  {form.formState.errors.password && (
+                    <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input id="confirmPassword" type="password" autoComplete="new-password" {...form.register("confirmPassword")} />
+                  {form.formState.errors.confirmPassword && (
+                    <p className="text-sm text-destructive">{form.formState.errors.confirmPassword.message}</p>
+                  )}
+                </div>
+                <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white" disabled={isSubmitting}>
+                  {isSubmitting ? <Spinner className="mr-2" /> : null}
+                  Create Account
+                </Button>
+              </form>
+              <button
+                type="button"
+                className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-foreground"
+                onClick={() => setShowEmailForm(false)}
+              >
+                &larr; Back to Google sign up
+              </button>
+            </>
           )}
 
           <p className="mt-6 text-center text-sm text-muted-foreground">

@@ -4,9 +4,9 @@ import { ListingCard, ListingCardSkeleton } from "@/components/ListingCard";
 import { SearchFilters, SortSelect, type SearchFilterValues } from "@/components/gpus/SearchFilters";
 import {
   getListings,
-  type GetListingsCategory,
-  type GetListingsCondition,
-  type GetListingsSort,
+  type ListingCategory,
+  type ListingCondition,
+  type ListingSortBy,
   type ListingsResponse,
 } from "@/lib/api";
 import Link from "next/link";
@@ -27,14 +27,14 @@ function first(value: string | string[] | undefined): string | undefined {
 
 function parseFilters(searchParams: SearchParams) {
   const q = first(searchParams.q);
-  const category = first(searchParams.category) as GetListingsCategory | undefined;
-  const condition = first(searchParams.condition) as GetListingsCondition | undefined;
-  const sort = first(searchParams.sort) as GetListingsSort | undefined;
-  const vramMin = first(searchParams.vramMin) ? Number(first(searchParams.vramMin)) : undefined;
-  const priceMax = first(searchParams.priceMax) ? Number(first(searchParams.priceMax)) : undefined;
+  const category = first(searchParams.category) as ListingCategory | undefined;
+  const condition = first(searchParams.condition) as ListingCondition | undefined;
+  const sortBy = first(searchParams.sortBy) as ListingSortBy | undefined;
+  const minVramGb = first(searchParams.minVramGb) ? Number(first(searchParams.minVramGb)) : undefined;
+  const maxPrice = first(searchParams.maxPrice) ? Number(first(searchParams.maxPrice)) : undefined;
   const page = first(searchParams.page) ? Number(first(searchParams.page)) : 1;
 
-  return { q, category, condition, sort, vramMin, priceMax, page };
+  return { q, category, condition, sortBy, minVramGb, maxPrice, page };
 }
 
 async function loadListings(filters: ReturnType<typeof parseFilters>): Promise<ListingsResponse | null> {
@@ -52,15 +52,15 @@ export default async function GPUSearch({
 }) {
   const resolvedSearchParams = await searchParams;
   const filters = parseFilters(resolvedSearchParams);
-  const data = await loadListings(filters);
+  const result = await loadListings(filters);
 
   const currentFilters: SearchFilterValues = {
     q: filters.q,
     category: filters.category,
     condition: filters.condition,
-    sort: filters.sort,
-    vramMin: filters.vramMin,
-    priceMax: filters.priceMax,
+    sortBy: filters.sortBy,
+    minVramGb: filters.minVramGb,
+    maxPrice: filters.maxPrice,
   };
 
   const pageQuery = (page: number) => {
@@ -68,9 +68,9 @@ export default async function GPUSearch({
     if (filters.q) params.set("q", filters.q);
     if (filters.category) params.set("category", filters.category);
     if (filters.condition) params.set("condition", filters.condition);
-    if (filters.sort) params.set("sort", filters.sort);
-    if (filters.vramMin) params.set("vramMin", String(filters.vramMin));
-    if (filters.priceMax) params.set("priceMax", String(filters.priceMax));
+    if (filters.sortBy) params.set("sortBy", filters.sortBy);
+    if (filters.minVramGb) params.set("minVramGb", String(filters.minVramGb));
+    if (filters.maxPrice) params.set("maxPrice", String(filters.maxPrice));
     if (page > 1) params.set("page", String(page));
     const query = params.toString();
     return query ? `/gpus?${query}` : "/gpus";
@@ -86,34 +86,34 @@ export default async function GPUSearch({
 
           <div className="flex items-center gap-3">
             <Label className="whitespace-nowrap text-muted-foreground">Sort by:</Label>
-            <SortSelect value={filters.sort} />
+            <SortSelect value={filters.sortBy} />
           </div>
         </div>
 
         <div className="md:hidden flex items-center gap-2 mb-6">
-          <SortSelect value={filters.sort} />
+          <SortSelect value={filters.sortBy} />
         </div>
 
-        {data === null ? (
+        {result === null ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => <ListingCardSkeleton key={i} />)}
           </div>
-        ) : data.listings.length > 0 ? (
+        ) : result.data.length > 0 ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {data.listings.map((listing) => (
+              {result.data.map((listing) => (
                 <ListingCard key={listing.id} listing={listing} />
               ))}
             </div>
 
-            {data.total > PAGE_SIZE && (
+            {result.pagination.totalPages > 1 && (
               <div className="mt-10 flex justify-center gap-2">
                 {filters.page > 1 && (
                   <Link href={pageQuery(filters.page - 1)}>
                     <Button variant="outline">Previous</Button>
                   </Link>
                 )}
-                {filters.page * PAGE_SIZE < data.total && (
+                {filters.page < result.pagination.totalPages && (
                   <Link href={pageQuery(filters.page + 1)}>
                     <Button variant="outline">Next</Button>
                   </Link>

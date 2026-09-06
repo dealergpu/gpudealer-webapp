@@ -5,7 +5,7 @@ info:
   version: 0.1.0
   description: GPUDealer API specification
 servers:
-  - url: /api
+  - url: /api/v1
     description: Base API path
 tags:
   - name: health
@@ -13,9 +13,11 @@ tags:
   - name: listings
     description: Hardware listing operations
   - name: requests
-    description: Hardware request operations
+    description: Hardware request (buyer demand) operations
   - name: saved
     description: Saved listing operations
+  - name: inquiries
+    description: Buyer-to-seller inquiry operations
   - name: stats
     description: Statistics and dashboard operations
   - name: users
@@ -41,41 +43,73 @@ paths:
       operationId: getListings
       tags: [listings]
       summary: List/search hardware listings
+      description: >-
+        Public; no auth required for public results. Rate-limited to 60
+        req/min per user/IP. Passing a non-public `status` (DRAFT,
+        PENDING_REVIEW, REJECTED, EXPIRED) requires auth and always scopes
+        the result to the caller's own listings — this doubles as the "My
+        Listings" query, e.g. `?status=DRAFT` while signed in.
       parameters:
         - name: q
           in: query
           schema: { type: string }
-          description: Keyword search
+          description: Free-text search over title/description/normalized model
         - name: category
           in: query
-          schema: { type: string, enum: [gpu, server, memory, other] }
-        - name: model
+          schema: { $ref: "#/components/schemas/ListingCategory" }
+        - name: gpuModel
           in: query
           schema: { type: string }
+          description: Matched against normalized model (RTX 4090, rtx4090, 4090 all match)
         - name: manufacturer
           in: query
           schema: { type: string }
-        - name: vramMin
+        - name: minVramGb
           in: query
           schema: { type: integer }
-        - name: priceMax
+        - name: maxVramGb
+          in: query
+          schema: { type: integer }
+        - name: minPrice
           in: query
           schema: { type: number }
-        - name: condition
+        - name: maxPrice
           in: query
-          schema: { type: string, enum: [new, used, refurbished, any] }
-        - name: location
+          schema: { type: number }
+        - name: currency
           in: query
           schema: { type: string }
-        - name: sort
+        - name: condition
           in: query
-          schema: { type: string, enum: [relevance, price_asc, price_desc, newest, price_per_gb] }
+          schema: { $ref: "#/components/schemas/ListingCondition" }
+        - name: country
+          in: query
+          schema: { type: string }
+        - name: region
+          in: query
+          schema: { type: string }
+        - name: city
+          in: query
+          schema: { type: string }
+        - name: sourceType
+          in: query
+          schema: { $ref: "#/components/schemas/ListingSourceType" }
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/ListingStatus" }
+          description: >-
+            Defaults to PUBLISHED. A non-public value (DRAFT,
+            PENDING_REVIEW, REJECTED, EXPIRED) requires auth and only ever
+            returns the caller's own listings.
+        - name: sortBy
+          in: query
+          schema: { $ref: "#/components/schemas/ListingSortBy" }
         - name: page
           in: query
-          schema: { type: integer, default: 1 }
+          schema: { type: integer, default: 1, minimum: 1 }
         - name: limit
           in: query
-          schema: { type: integer, default: 24 }
+          schema: { type: integer, default: 24, minimum: 1, maximum: 100 }
       responses:
         "200":
           description: Listings response
@@ -83,11 +117,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ListingsResponse"
+        "401":
+          description: Unauthorized (only when requesting a non-public status)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
     post:
       operationId: createListing
       tags: [listings]
       summary: Create a new hardware listing (auth required)
+      description: >-
+        Requires Authorization; rate-limited to 20/hour per user. The
+        seller is taken from the verified auth token — the client cannot
+        set it. New listings always start as DRAFT; there is no way to
+        create one already PUBLISHED. The server auto-generates `slug`
+        and `normalizedModel`.
       requestBody:
         required: true
         content:
@@ -100,75 +150,62 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Listing"
-        "401":
-          description: Unauthorized
-
-  /listings/me:
-    get:
-      operationId: getMyListings
-      tags: [listings]
-      summary: Get the authenticated user's listings
-      responses:
-        "200":
-          description: My listings
+                $ref: "#/components/schemas/ListingResponse"
+        "400":
+          description: Validation error
           content:
             application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Listing"
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
         "401":
           description: Unauthorized
-
-  /listings/featured:
-    get:
-      operationId: getFeaturedListings
-      tags: [listings]
-      summary: Get recent/featured listings for homepage
-      parameters:
-        - name: limit
-          in: query
-          schema: { type: integer, default: 12 }
-      responses:
-        "200":
-          description: Featured listings
           content:
             application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Listing"
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
   /listings/{id}:
     get:
       operationId: getListing
       tags: [listings]
       summary: Get a listing by ID
+      description: >-
+        Optional auth. PUBLISHED or SOLD listings are visible to anyone.
+        Any other status (DRAFT, PENDING_REVIEW, REJECTED, EXPIRED)
+        returns 404 to everyone except the owning seller or an admin —
+        deliberately 404 rather than 403, so the API never reveals that a
+        private listing exists. Fires a LISTING_VIEWED analytics event.
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema: { type: string, format: uuid }
       responses:
         "200":
           description: Listing detail
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Listing"
+                $ref: "#/components/schemas/ListingResponse"
         "404":
           description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
     patch:
       operationId: updateListing
       tags: [listings]
-      summary: Update a listing (auth required, must be owner)
+      summary: Update a listing (auth required, must be owner or admin)
+      description: Same body shape as create, all fields optional (partial update).
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema: { type: string, format: uuid }
       requestBody:
         required: true
         content:
@@ -181,60 +218,257 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Listing"
+                $ref: "#/components/schemas/ListingResponse"
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
         "403":
-          description: Forbidden
+          description: Forbidden — not the owner or an admin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
         "404":
           description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
     delete:
       operationId: deleteListing
       tags: [listings]
-      summary: Delete a listing (auth required, must be owner)
+      summary: Delete a listing (auth required, must be owner or admin)
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema: { type: string, format: uuid }
       responses:
         "204":
           description: Deleted
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
         "403":
           description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
-  /requests:
-    get:
-      operationId: getRequests
-      tags: [requests]
-      summary: Get public hardware requests
+  /listings/{id}/status:
+    patch:
+      operationId: updateListingStatus
+      tags: [listings]
+      summary: Move a listing through its lifecycle (auth required)
+      description: >-
+        Allowed transitions are enforced server-side and differ by role.
+        Owner (seller): DRAFT -> PENDING_REVIEW, PUBLISHED -> SOLD. Admin:
+        DRAFT -> PENDING_REVIEW, PENDING_REVIEW -> PUBLISHED/REJECTED,
+        PUBLISHED -> SOLD/EXPIRED. A seller cannot self-publish — that
+        must go through admin review. Any other transition returns 409.
       parameters:
-        - name: category
-          in: query
-          schema: { type: string, enum: [gpu, server, memory, other] }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListingStatusUpdate"
+      responses:
+        "200":
+          description: Updated listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "409":
+          description: Disallowed transition for this role
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /listings/{listingId}/inquiries:
+    post:
+      operationId: createInquiry
+      tags: [inquiries]
+      summary: Contact a seller about a listing (auth required)
+      description: >-
+        Rate-limited to 20/hour per user. `buyerId` is the caller (from
+        the token); `sellerId` is derived server-side from the listing's
+        `sellerId` — neither is client-supplied. Does not currently check
+        listing visibility, so a listing can be inquired on by ID even in
+        DRAFT (flagged by the backend team as a pending product decision,
+        not treated as a bug).
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InquiryInput"
+      responses:
+        "201":
+          description: Created inquiry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InquiryResponse"
+        "400":
+          description: Validation error, e.g. inquiring on your own listing
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "404":
+          description: Listing not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /inquiries:
+    get:
+      operationId: getInquiries
+      tags: [inquiries]
+      summary: Get the authenticated user's inquiries (sent and received)
+      description: >-
+        Returns only inquiries where the caller is the buyer or the seller
+        (admins see all). This is a single feed for both "sent" and
+        "received" — filter client-side on buyerId/sellerId against the
+        current user's ID to split into tabs.
+      parameters:
         - name: page
           in: query
           schema: { type: integer, default: 1 }
         - name: limit
           in: query
           schema: { type: integer, default: 20 }
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/InquiryStatus" }
+      responses:
+        "200":
+          description: Inquiries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InquiriesResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /inquiries/{id}/status:
+    patch:
+      operationId: updateInquiryStatus
+      tags: [inquiries]
+      summary: Update an inquiry's status (auth required, participant or admin only)
+      description: >-
+        Only the buyer, the seller, or an admin may change it. No
+        status-transition graph is enforced (unlike listings/requests) —
+        any participant can set any of the three values at any time.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InquiryStatusUpdate"
+      responses:
+        "200":
+          description: Updated inquiry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InquiryResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "403":
+          description: Forbidden — not a participant or an admin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /requests:
+    get:
+      operationId: getRequests
+      tags: [requests]
+      summary: Get the authenticated user's hardware requests
+      description: >-
+        Auth required. Non-admins only ever see their own requests
+        (userId forced server-side) — there's no way to browse other
+        users' demand requests through this endpoint, by design (these
+        are private leads, not public listings). Admins see everyone's.
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/HardwareRequestStatus" }
+        - name: category
+          in: query
+          schema: { $ref: "#/components/schemas/ListingCategory" }
       responses:
         "200":
           description: Hardware requests
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/HardwareRequest"
+                $ref: "#/components/schemas/HardwareRequestsResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
     post:
       operationId: createRequest
       tags: [requests]
       summary: Submit a hardware request (auth required)
+      description: >-
+        Rate-limited to 20/hour per user. `userId` comes from the token.
+        Status always starts OPEN. This is a lead-capture form, not a
+        listing (see CLAUDE.md section 21/23).
       requestBody:
         required: true
         content:
@@ -247,37 +481,54 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HardwareRequest"
+                $ref: "#/components/schemas/HardwareRequestResponse"
         "401":
           description: Unauthorized
-
-  /requests/me:
-    get:
-      operationId: getMyRequests
-      tags: [requests]
-      summary: Get the authenticated user's hardware requests
-      responses:
-        "200":
-          description: My requests
           content:
             application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/HardwareRequest"
-        "401":
-          description: Unauthorized
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
   /requests/{id}:
-    patch:
-      operationId: updateRequest
+    get:
+      operationId: getRequest
       tags: [requests]
-      summary: Update a hardware request (auth required, must be owner)
+      summary: Get a hardware request by ID (owner or admin only)
+      description: >-
+        Returns 403 (not 404, unlike listings) if you don't own it and
+        aren't an admin.
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Request detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HardwareRequestResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+    patch:
+      operationId: updateRequest
+      tags: [requests]
+      summary: Update a hardware request (auth required, owner or admin only)
+      description: Partial update of any of the create-body fields.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
       requestBody:
         required: true
         content:
@@ -290,79 +541,162 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HardwareRequest"
+                $ref: "#/components/schemas/HardwareRequestResponse"
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
         "403":
           description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
     delete:
       operationId: deleteRequest
       tags: [requests]
-      summary: Cancel/delete a hardware request (auth required, must be owner)
+      summary: Delete a hardware request (auth required, owner or admin only)
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema: { type: string, format: uuid }
       responses:
         "204":
           description: Deleted
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
-  /saved:
+  /requests/{id}/status:
+    patch:
+      operationId: updateRequestStatus
+      tags: [requests]
+      summary: Move a hardware request through its lifecycle (auth required)
+      description: >-
+        Owner: OPEN -> CANCELLED, MATCHED -> CANCELLED. Admin: OPEN ->
+        MATCHED/CANCELLED, MATCHED -> CLOSED/CANCELLED. A requester can
+        cancel their own request but can't self-mark it MATCHED or
+        CLOSED — that's an admin/procurement action.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HardwareRequestStatusUpdate"
+      responses:
+        "200":
+          description: Updated request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HardwareRequestResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "409":
+          description: Disallowed transition for this role
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /saved-listings:
     get:
       operationId: getSavedListings
       tags: [saved]
-      summary: Get authenticated user's saved listings
+      summary: Get the authenticated user's saved listings
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 24 }
       responses:
         "200":
           description: Saved listings
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Listing"
+                $ref: "#/components/schemas/SavedListingsResponse"
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
+  /saved-listings/{listingId}:
     post:
       operationId: saveListing
       tags: [saved]
       summary: Save a listing (auth required)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SaveListingInput"
+      description: >-
+        No body. Idempotent (upsert on userId+listingId) — calling it
+        twice returns the same row, 201 both times. Runs the same
+        visibility check as `GET /listings/:id` — 404 if the listing
+        doesn't exist or isn't visible to the caller, so you can only
+        save what you could otherwise legally view.
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
       responses:
         "201":
           description: Saved
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SavedConfirmation"
+                $ref: "#/components/schemas/SavedListingResponse"
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "404":
+          description: Listing doesn't exist or isn't visible to the caller
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
-  /saved/{listingId}:
     delete:
       operationId: unsaveListing
       tags: [saved]
       summary: Remove a saved listing
+      description: Safe to call even if it was never saved (no error either way).
       parameters:
         - name: listingId
           in: path
           required: true
-          schema: { type: integer }
+          schema: { type: string, format: uuid }
       responses:
         "204":
           description: Removed
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
   /stats/dashboard:
     get:
@@ -392,11 +726,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/MarketplaceStats"
 
-  /users/profile:
+  /me:
     get:
       operationId: getMyProfile
       tags: [users]
-      summary: Get authenticated user's profile
+      summary: Get the authenticated user's own profile
+      description: Always operates on the token's own user, never an arbitrary ID.
       responses:
         "200":
           description: User profile
@@ -406,11 +741,14 @@ paths:
                 $ref: "#/components/schemas/UserProfile"
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
     patch:
       operationId: updateProfile
       tags: [users]
-      summary: Update authenticated user's profile
+      summary: Update the authenticated user's own profile
       requestBody:
         required: true
         content:
@@ -426,6 +764,9 @@ paths:
                 $ref: "#/components/schemas/UserProfile"
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
 components:
   schemas:
@@ -437,41 +778,70 @@ components:
       required:
         - status
 
+    ListingCategory:
+      type: string
+      enum: [GPU, SERVER, MEMORY, OTHER]
+
+    ListingCondition:
+      type: string
+      enum: [NEW, USED, REFURBISHED, UNKNOWN]
+
+    ListingSourceType:
+      type: string
+      enum: [GPUDEALER, EBAY, REDDIT, FACEBOOK, OTHER]
+
+    ListingStatus:
+      type: string
+      enum: [DRAFT, PENDING_REVIEW, PUBLISHED, REJECTED, SOLD, EXPIRED]
+
+    ListingSortBy:
+      type: string
+      enum: [relevance, price_asc, price_desc, newest]
+
+    ListingImage:
+      type: object
+      required: [url]
+      properties:
+        id: { type: ["string", "null"] }
+        url: { type: string }
+        sortOrder: { type: integer, default: 0 }
+        altText: { type: ["string", "null"] }
+
     Listing:
       type: object
-      required: [id, title, category, condition, price, currency, status, createdAt]
+      required: [id, sellerId, title, category, condition, price, currency, status, slug, createdAt]
       properties:
-        id: { type: integer }
+        id: { type: string, format: uuid }
+        sellerId: { type: string, format: uuid }
         title: { type: string }
-        category: { type: string, enum: [gpu, server, memory, other] }
+        description: { type: ["string", "null"] }
+        category: { $ref: "#/components/schemas/ListingCategory" }
         manufacturer: { type: ["string", "null"] }
         model: { type: ["string", "null"] }
-        vram: { type: ["integer", "null"], description: "VRAM in GB" }
+        gpuModel: { type: ["string", "null"] }
+        normalizedModel: { type: ["string", "null"] }
+        vramGb: { type: ["integer", "null"] }
         quantity: { type: integer, default: 1 }
-        condition: { type: string, enum: [new, used, refurbished] }
-        price: { type: number }
+        condition: { $ref: "#/components/schemas/ListingCondition" }
+        price:
+          type: string
+          description: Decimal amount serialized as a string, e.g. "1299.99"
         currency: { type: string, default: "USD" }
-        location: { type: ["string", "null"] }
-        description: { type: ["string", "null"] }
-        status: { type: string, enum: [draft, pending_review, published, rejected, sold, expired] }
-        source: { type: string, enum: [gpudealer, external], default: "gpudealer" }
-        externalUrl: { type: ["string", "null"] }
-        verified: { type: boolean, default: false }
-        imageUrls: { type: array, items: { type: string } }
-        sellerName: { type: ["string", "null"] }
-        sellerId: { type: ["string", "null"] }
-        # GPU-specific fields
-        gpuCount: { type: ["integer", "null"] }
-        ram: { type: ["string", "null"] }
-        cpu: { type: ["string", "null"] }
-        storage: { type: ["string", "null"] }
-        networking: { type: ["string", "null"] }
-        # Memory-specific fields
-        memType: { type: ["string", "null"] }
-        memCapacity: { type: ["string", "null"] }
-        memSpeed: { type: ["string", "null"] }
-        ecc: { type: ["boolean", "null"] }
-        formFactor: { type: ["string", "null"] }
+        locationCountry: { type: ["string", "null"] }
+        locationRegion: { type: ["string", "null"] }
+        locationCity: { type: ["string", "null"] }
+        sourceType: { $ref: "#/components/schemas/ListingSourceType" }
+        # NOTE: not part of the backend contract shared with the frontend
+        # team — kept optional so the UI degrades gracefully if it's
+        # absent or named differently server-side. Confirm the real field
+        # name for the third-party "original listing" URL before relying
+        # on it (see CLAUDE.md section 27).
+        sourceUrl: { type: ["string", "null"] }
+        status: { $ref: "#/components/schemas/ListingStatus" }
+        slug: { type: string }
+        images:
+          type: array
+          items: { $ref: "#/components/schemas/ListingImage" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: ["string", "null"], format: date-time }
 
@@ -480,112 +850,284 @@ components:
       required: [title, category, condition, price, currency]
       properties:
         title: { type: string }
-        category: { type: string, enum: [gpu, server, memory, other] }
+        description: { type: string, maxLength: 10000 }
+        category: { $ref: "#/components/schemas/ListingCategory" }
         manufacturer: { type: string }
         model: { type: string }
-        vram: { type: integer }
+        gpuModel: { type: string }
+        vramGb: { type: integer }
         quantity: { type: integer, default: 1 }
-        condition: { type: string, enum: [new, used, refurbished] }
+        condition: { $ref: "#/components/schemas/ListingCondition" }
         price: { type: number }
         currency: { type: string, default: "USD" }
-        location: { type: string }
-        description: { type: string }
-        imageUrls: { type: array, items: { type: string } }
-        gpuCount: { type: integer }
-        ram: { type: string }
-        cpu: { type: string }
-        storage: { type: string }
-        networking: { type: string }
-        memType: { type: string }
-        memCapacity: { type: string }
-        memSpeed: { type: string }
-        ecc: { type: boolean }
-        formFactor: { type: string }
+        locationCountry: { type: string }
+        locationRegion: { type: string }
+        locationCity: { type: string }
+        images:
+          type: array
+          items:
+            type: object
+            required: [url]
+            properties:
+              url: { type: string }
+              sortOrder: { type: integer, default: 0 }
+              altText: { type: string }
 
     ListingUpdate:
       type: object
+      description: Same shape as ListingInput; every field is optional (partial update).
       properties:
         title: { type: string }
-        condition: { type: string, enum: [new, used, refurbished] }
-        price: { type: number }
+        description: { type: string, maxLength: 10000 }
+        category: { $ref: "#/components/schemas/ListingCategory" }
+        manufacturer: { type: string }
+        model: { type: string }
+        gpuModel: { type: string }
+        vramGb: { type: integer }
         quantity: { type: integer }
-        location: { type: string }
-        description: { type: string }
-        status: { type: string, enum: [draft, sold, expired] }
+        condition: { $ref: "#/components/schemas/ListingCondition" }
+        price: { type: number }
+        currency: { type: string }
+        locationCountry: { type: string }
+        locationRegion: { type: string }
+        locationCity: { type: string }
+        images:
+          type: array
+          items:
+            type: object
+            required: [url]
+            properties:
+              url: { type: string }
+              sortOrder: { type: integer }
+              altText: { type: string }
+
+    ListingStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: "#/components/schemas/ListingStatus" }
+
+    Pagination:
+      type: object
+      required: [page, limit, total, totalPages]
+      properties:
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+        totalPages: { type: integer }
+
+    ListingResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: "#/components/schemas/Listing" }
 
     ListingsResponse:
       type: object
-      required: [listings, total, page, limit]
+      required: [data, pagination]
       properties:
-        listings:
+        data:
           type: array
-          items:
-            $ref: "#/components/schemas/Listing"
-        total: { type: integer }
-        page: { type: integer }
-        limit: { type: integer }
+          items: { $ref: "#/components/schemas/Listing" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+
+    ApiErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [VALIDATION_ERROR, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT, RATE_LIMITED, INTERNAL_ERROR]
+            message: { type: string }
+            fields: { type: object, additionalProperties: true }
+
+    SavedListing:
+      type: object
+      required: [id, userId, listingId, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        listingId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        # Only populated on GET /saved-listings — a snapshot of the
+        # listing as it was when saved. It is NOT re-checked for
+        # visibility on read, so it can keep showing a listing the
+        # seller has since reverted to DRAFT.
+        listing:
+          allOf:
+            - $ref: "#/components/schemas/Listing"
+          nullable: true
+
+    SavedListingResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: "#/components/schemas/SavedListing" }
+
+    SavedListingsResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/SavedListing" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+
+    InquiryStatus:
+      type: string
+      enum: [OPEN, RESPONDED, CLOSED]
+
+    InquiryInput:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, minLength: 1 }
+
+    InquiryStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: "#/components/schemas/InquiryStatus" }
+
+    Inquiry:
+      type: object
+      required: [id, listingId, buyerId, sellerId, message, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        listingId: { type: string, format: uuid }
+        buyerId: { type: string, format: uuid }
+        sellerId: { type: string, format: uuid }
+        message: { type: string }
+        status: { $ref: "#/components/schemas/InquiryStatus" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: ["string", "null"], format: date-time }
+        # Only populated on GET /inquiries.
+        listing:
+          allOf:
+            - $ref: "#/components/schemas/Listing"
+          nullable: true
+
+    InquiryResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: "#/components/schemas/Inquiry" }
+
+    InquiriesResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Inquiry" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+
+    HardwareRequestStatus:
+      type: string
+      enum: [OPEN, MATCHED, CLOSED, CANCELLED]
 
     HardwareRequest:
       type: object
-      required: [id, category, modelRequirement, quantity, conditionPreference, status, createdAt]
+      required: [id, userId, category, title, requestedModel, quantity, conditionPreference, status, createdAt]
       properties:
-        id: { type: integer }
-        category: { type: string, enum: [gpu, server, memory, other] }
-        modelRequirement: { type: string }
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        category: { $ref: "#/components/schemas/ListingCategory" }
+        title: { type: string }
+        description: { type: ["string", "null"] }
+        requestedModel: { type: string }
         quantity: { type: integer }
-        vramMin: { type: ["integer", "null"] }
-        budgetPerUnit: { type: ["number", "null"] }
-        totalBudget: { type: ["number", "null"] }
+        minVramGb: { type: ["integer", "null"] }
+        maxBudgetPerUnit: { type: ["number", "null"] }
+        maxTotalBudget: { type: ["number", "null"] }
         currency: { type: string, default: "USD" }
-        conditionPreference: { type: string, enum: [new, used, refurbished, any] }
+        conditionPreference: { $ref: "#/components/schemas/ListingCondition" }
+        preferredCountry: { type: ["string", "null"] }
         destinationCountry: { type: ["string", "null"] }
         destinationCity: { type: ["string", "null"] }
-        requiredBy: { type: ["string", "null"], enum: [asap, "1_4_weeks", "1_3_months", flexible] }
-        additionalRequirements: { type: ["string", "null"] }
-        status: { type: string, enum: [open, matched, closed, cancelled] }
-        userId: { type: ["string", "null"] }
-        userName: { type: ["string", "null"] }
+        neededBy: { type: ["string", "null"], format: date-time }
+        # NOTE: the backend confirmed this field and one example value
+        # ("WITHIN_1_MONTH") but not the full enum — left as a free
+        # string rather than guessing the other members. Not currently
+        # exposed as a choice in the create/edit form for that reason.
+        urgency: { type: ["string", "null"] }
+        specifications:
+          type: ["object", "null"]
+          additionalProperties: true
+        status: { $ref: "#/components/schemas/HardwareRequestStatus" }
         createdAt: { type: string, format: date-time }
+        updatedAt: { type: ["string", "null"], format: date-time }
 
     HardwareRequestInput:
       type: object
-      required: [category, modelRequirement, quantity, conditionPreference]
+      required: [category, title, requestedModel, quantity, conditionPreference]
       properties:
-        category: { type: string, enum: [gpu, server, memory, other] }
-        modelRequirement: { type: string, minLength: 1 }
+        category: { $ref: "#/components/schemas/ListingCategory" }
+        title: { type: string }
+        description: { type: string }
+        requestedModel: { type: string, minLength: 1 }
         quantity: { type: integer, minimum: 1 }
-        vramMin: { type: integer }
-        budgetPerUnit: { type: number }
-        totalBudget: { type: number }
+        minVramGb: { type: integer }
+        maxBudgetPerUnit: { type: number }
+        maxTotalBudget: { type: number }
         currency: { type: string, default: "USD" }
-        conditionPreference: { type: string, enum: [new, used, refurbished, any] }
+        conditionPreference: { $ref: "#/components/schemas/ListingCondition" }
+        preferredCountry: { type: string }
         destinationCountry: { type: string }
         destinationCity: { type: string }
-        requiredBy: { type: string, enum: [asap, "1_4_weeks", "1_3_months", flexible] }
-        additionalRequirements: { type: string }
+        neededBy: { type: string, format: date-time }
+        urgency: { type: string }
+        specifications:
+          type: object
+          additionalProperties: true
 
     HardwareRequestUpdate:
       type: object
+      description: Partial update of any HardwareRequestInput field.
       properties:
-        modelRequirement: { type: string }
+        category: { $ref: "#/components/schemas/ListingCategory" }
+        title: { type: string }
+        description: { type: string }
+        requestedModel: { type: string }
         quantity: { type: integer }
-        budgetPerUnit: { type: number }
-        totalBudget: { type: number }
-        status: { type: string, enum: [open, closed, cancelled] }
-        additionalRequirements: { type: string }
+        minVramGb: { type: integer }
+        maxBudgetPerUnit: { type: number }
+        maxTotalBudget: { type: number }
+        currency: { type: string }
+        conditionPreference: { $ref: "#/components/schemas/ListingCondition" }
+        preferredCountry: { type: string }
+        destinationCountry: { type: string }
+        destinationCity: { type: string }
+        neededBy: { type: string, format: date-time }
+        urgency: { type: string }
+        specifications:
+          type: object
+          additionalProperties: true
 
-    SaveListingInput:
+    HardwareRequestStatusUpdate:
       type: object
-      required: [listingId]
+      required: [status]
       properties:
-        listingId: { type: integer }
+        status: { $ref: "#/components/schemas/HardwareRequestStatus" }
 
-    SavedConfirmation:
+    HardwareRequestResponse:
       type: object
-      required: [listingId, savedAt]
+      required: [data]
       properties:
-        listingId: { type: integer }
-        savedAt: { type: string, format: date-time }
+        data: { $ref: "#/components/schemas/HardwareRequest" }
+
+    HardwareRequestsResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/HardwareRequest" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
 
     DashboardStats:
       type: object

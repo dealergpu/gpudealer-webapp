@@ -1,21 +1,28 @@
 import Link from "next/link";
-import { Listing } from "@/lib/api";
+import { Listing, ListingCondition } from "@/lib/api";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Server, Zap, Cpu, CheckCircle } from "lucide-react";
+import { MapPin, Server, Zap, Cpu } from "lucide-react";
 
 interface ListingCardProps {
   listing: Listing;
 }
 
+function formatLocation(listing: Listing): string | null {
+  return [listing.locationCity, listing.locationRegion, listing.locationCountry]
+    .filter(Boolean)
+    .join(", ") || null;
+}
+
 export function ListingCard({ listing }: ListingCardProps) {
-  // Format price
   const formattedPrice = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: listing.currency || "USD",
     maximumFractionDigits: 0,
-  }).format(listing.price);
+  }).format(Number(listing.price));
+
+  const location = formatLocation(listing);
 
   return (
     <Card className="flex flex-col h-full group border-border card-hover">
@@ -25,13 +32,13 @@ export function ListingCard({ listing }: ListingCardProps) {
             {listing.category}
           </Badge>
           <div className="flex gap-1">
-            {listing.condition === "new" && (
+            {listing.condition === ListingCondition.NEW && (
               <Badge variant="success" className="text-[10px] uppercase px-1.5 h-5">New</Badge>
             )}
-            {listing.condition === "refurbished" && (
+            {listing.condition === ListingCondition.REFURBISHED && (
               <Badge variant="warning" className="text-[10px] uppercase px-1.5 h-5 bg-orange-500 text-white border-transparent">Refurb</Badge>
             )}
-            {listing.condition === "used" && (
+            {listing.condition === ListingCondition.USED && (
               <Badge variant="secondary" className="text-[10px] uppercase px-1.5 h-5">Used</Badge>
             )}
           </div>
@@ -42,7 +49,7 @@ export function ListingCard({ listing }: ListingCardProps) {
           </Link>
         </h3>
       </CardHeader>
-      
+
       <CardContent className="p-4 flex-1 flex flex-col gap-3">
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground font-mono bg-muted/30 p-2 rounded border border-border/50">
           <Server className="h-4 w-4 shrink-0 text-foreground" />
@@ -50,10 +57,10 @@ export function ListingCard({ listing }: ListingCardProps) {
         </div>
 
         <div className="grid grid-cols-2 gap-2 mt-auto">
-          {listing.vram != null && (
+          {listing.vramGb != null && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Zap className="h-3.5 w-3.5 shrink-0" />
-              <span>{listing.vram}GB VRAM</span>
+              <span>{listing.vramGb}GB VRAM</span>
             </div>
           )}
           {listing.quantity != null && (
@@ -62,10 +69,10 @@ export function ListingCard({ listing }: ListingCardProps) {
               <span>Qty: {listing.quantity}</span>
             </div>
           )}
-          {listing.location && (
+          {location && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground col-span-2">
               <MapPin className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{listing.location}</span>
+              <span className="truncate">{location}</span>
             </div>
           )}
         </div>
