@@ -5,9 +5,10 @@ import { ListingCard, ListingCardSkeleton } from "@/components/ListingCard";
 import { HeroIntro } from "@/components/home/HeroIntro";
 import { getListings, getMarketplaceStats, ListingSortBy, ListingStatus, type Listing, type MarketplaceStats } from "@/lib/api";
 
-// Revalidate periodically so the homepage stays reasonably fresh without
-// refetching on every single request.
-export const revalidate = 60;
+// Render per request. `revalidate` (ISR) needs an OpenNext incremental cache
+// (R2/KV) on Cloudflare, which isn't configured — without it the page stays
+// frozen at whatever the API returned during the build.
+export const dynamic = "force-dynamic";
 
 async function loadHomeData(): Promise<{
   featured: Listing[] | null;

@@ -27,7 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const queryClient = useQueryClient();
-  const prevUserIdRef = useRef<string | null>(null);
+  // `undefined` = the initial session hasn't been seen yet. Only a change
+  // *after* that is a real sign-in/sign-out/account switch.
+  const prevUserIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     if (!supabase) {
@@ -41,15 +43,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     supabase.auth.getSession().then(({ data }) => {
-      prevUserIdRef.current = data.session?.user.id ?? null;
+      if (prevUserIdRef.current === undefined) {
+        prevUserIdRef.current = data.session?.user.id ?? null;
+      }
       setSession(data.session);
       setIsLoading(false);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
       const userId = newSession?.user.id ?? null;
-      if (prevUserIdRef.current !== userId) {
-        queryClient.clear();
+      if (prevUserIdRef.current !== undefined && prevUserIdRef.current !== userId) {
+        // resetQueries (not clear) keeps mounted observers attached to their
+        // cache entries, so active queries refetch and the UI updates.
+        queryClient.resetQueries();
       }
       prevUserIdRef.current = userId;
       setSession(newSession);
