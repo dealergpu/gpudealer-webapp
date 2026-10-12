@@ -14,17 +14,16 @@ async function loadHomeData(): Promise<{
   featured: Listing[] | null;
   stats: MarketplaceStats | null;
 }> {
-  try {
-    const [listings, stats] = await Promise.all([
-      getListings({ status: ListingStatus.PUBLISHED, sortBy: ListingSortBy.newest, limit: 4 }),
-      getMarketplaceStats(),
-    ]);
-    return { featured: listings.data, stats };
-  } catch {
-    // No backend reachable yet (or a transient error) — degrade gracefully
-    // instead of taking the whole page down.
-    return { featured: null, stats: null };
-  }
+  // Settled independently so one failing endpoint (e.g. stats not deployed
+  // yet) doesn't blank out the other — degrade gracefully per section.
+  const [listings, stats] = await Promise.allSettled([
+    getListings({ status: ListingStatus.PUBLISHED, sortBy: ListingSortBy.newest, limit: 4 }),
+    getMarketplaceStats(),
+  ]);
+  return {
+    featured: listings.status === "fulfilled" ? listings.value.data : null,
+    stats: stats.status === "fulfilled" ? stats.value : null,
+  };
 }
 
 export default async function Home() {
