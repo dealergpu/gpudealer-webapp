@@ -37,7 +37,7 @@ export function ListingActions({ listing }: { listing: Listing }) {
 
   // sellerId is the backend user id, not the Supabase auth id.
   const { data: profile } = useGetMyProfile({ query: { enabled: !!user } });
-  const isOwner = !!profile && profile.id === listing.sellerId;
+  const isOwner = !!profile && profile.data.id === listing.sellerId;
 
   const savedListings = useGetSavedListings(undefined, { query: { enabled: !!user } });
   const isSaved = savedListings.data?.data.some((s) => s.listingId === listing.id) ?? false;

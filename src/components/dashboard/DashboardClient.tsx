@@ -110,7 +110,7 @@ export function DashboardClient() {
   // Ownership fields (sellerId, buyerId) hold the backend user id, not the
   // Supabase auth id — compare against the backend profile.
   const { data: profile, isLoading: profileLoading } = useGetMyProfile();
-  const myId = profile?.id;
+  const myId = profile?.data.id;
   const { listings: myListings, isLoading: myListingsLoading } = useMyListings(myId);
   const listingsLoading = profileLoading || myListingsLoading;
   const { data: myRequestsData, isLoading: requestsLoading } = useGetRequests();

@@ -47,6 +47,7 @@ import type {
   SavedListingResponse,
   SavedListingsResponse,
   UserProfile,
+  UserProfileResponse,
   UserProfileUpdate,
 } from "./api.schemas";
 
@@ -2559,8 +2560,8 @@ export const getGetMyProfileUrl = () => {
  */
 export const getMyProfile = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<UserProfile> => {
-  return customFetch<UserProfile>(getGetMyProfileUrl(), {
+): Promise<UserProfileResponse> => {
+  return customFetch<UserProfileResponse>(getGetMyProfileUrl(), {
     ...options,
     method: "GET",
   });

@@ -394,16 +394,25 @@ export interface MarketplaceStats {
 
 export interface UserProfile {
   id: string;
+  supabaseUserId?: string;
   email: string;
   /** @nullable */
-  displayName?: string | null;
+  name?: string | null;
   /** @nullable */
-  company?: string | null;
+  phone?: string | null;
   /** @nullable */
-  location?: string | null;
+  companyName?: string | null;
   /** @nullable */
-  bio?: string | null;
+  country?: string | null;
+  /** @nullable */
+  city?: string | null;
+  role?: string;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface UserProfileResponse {
+  data: UserProfile;
 }
 
 export interface UserProfileUpdate {

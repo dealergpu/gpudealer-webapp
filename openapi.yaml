@@ -738,7 +738,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserProfile"
+                $ref: "#/components/schemas/UserProfileResponse"
         "401":
           description: Unauthorized
           content:
@@ -1168,13 +1168,25 @@ components:
       type: object
       required: [id, email, createdAt]
       properties:
+        # Backend user id — the value used in sellerId/buyerId. Not the
+        # Supabase auth id (that's supabaseUserId).
         id: { type: string }
+        supabaseUserId: { type: string }
         email: { type: string }
-        displayName: { type: ["string", "null"] }
-        company: { type: ["string", "null"] }
-        location: { type: ["string", "null"] }
-        bio: { type: ["string", "null"] }
+        name: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        companyName: { type: ["string", "null"] }
+        country: { type: ["string", "null"] }
+        city: { type: ["string", "null"] }
+        role: { type: string }
         createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    UserProfileResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: "#/components/schemas/UserProfile" }
 
     UserProfileUpdate:
       type: object
