@@ -11,6 +11,7 @@ import {
   useUpdateListingStatus,
   useDeleteListing,
   useGetRequests,
+  useGetMyProfile,
   useUpdateRequestStatus,
   useGetSavedListings,
   useUnsaveListing,
@@ -23,7 +24,6 @@ import {
   type HardwareRequest,
   type Inquiry,
 } from "@/lib/api";
-import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +38,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 // The backend only exposes "my listings" as a filter on the public search
 // endpoint (`GET /listings?status=DRAFT`, etc.). Non-public statuses are
 // scoped to the caller server-side, but PUBLISHED returns everyone's
-// listings — so results are filtered to the signed-in seller below.
+// listings — so results are filtered to the signed-in seller below, by the
+// backend user id from `GET /me` (it differs from the Supabase auth id).
 const MY_LISTING_STATUSES = [
   ListingStatus.PUBLISHED,
   ListingStatus.DRAFT,
@@ -106,8 +107,12 @@ function getInquiryStatusBadge(status: string) {
 }
 
 export function DashboardClient() {
-  const { user } = useAuth();
-  const { listings: myListings, isLoading: listingsLoading } = useMyListings(user?.id);
+  // Ownership fields (sellerId, buyerId) hold the backend user id, not the
+  // Supabase auth id — compare against the backend profile.
+  const { data: profile, isLoading: profileLoading } = useGetMyProfile();
+  const myId = profile?.id;
+  const { listings: myListings, isLoading: myListingsLoading } = useMyListings(myId);
+  const listingsLoading = profileLoading || myListingsLoading;
   const { data: myRequestsData, isLoading: requestsLoading } = useGetRequests();
   const { data: savedData, isLoading: savedLoading } = useGetSavedListings();
   const { data: inquiriesData, isLoading: inquiriesLoading } = useGetInquiries();
@@ -122,8 +127,8 @@ export function DashboardClient() {
   const myRequests = myRequestsData?.data ?? [];
   const savedListings = savedData?.data ?? [];
   const inquiries = inquiriesData?.data ?? [];
-  const receivedInquiries = inquiries.filter((i) => i.sellerId === user?.id);
-  const sentInquiries = inquiries.filter((i) => i.buyerId === user?.id);
+  const receivedInquiries = inquiries.filter((i) => i.sellerId === myId);
+  const sentInquiries = inquiries.filter((i) => i.buyerId === myId);
 
   const refreshMyListings = () => {
     queryClient.invalidateQueries({ queryKey: getGetListingsQueryKey() });

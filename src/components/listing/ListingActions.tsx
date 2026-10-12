@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   useCreateInquiry,
   useGetSavedListings,
+  useGetMyProfile,
   useSaveListing,
   useUnsaveListing,
   getGetSavedListingsQueryKey,
@@ -34,7 +35,9 @@ export function ListingActions({ listing }: { listing: Listing }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [message, setMessage] = useState("");
 
-  const isOwner = !!user && user.id === listing.sellerId;
+  // sellerId is the backend user id, not the Supabase auth id.
+  const { data: profile } = useGetMyProfile({ query: { enabled: !!user } });
+  const isOwner = !!profile && profile.id === listing.sellerId;
 
   const savedListings = useGetSavedListings(undefined, { query: { enabled: !!user } });
   const isSaved = savedListings.data?.data.some((s) => s.listingId === listing.id) ?? false;
