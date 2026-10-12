@@ -22,8 +22,23 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+async function getAccessToken(
+  client: NonNullable<ReturnType<typeof createClientSafely>>,
+) {
+  const { data } = await client.auth.getSession();
+  return data.session?.access_token ?? null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [supabase] = useState(createClientSafely);
+  const [supabase] = useState(() => {
+    const client = createClientSafely();
+    // Registered here, during the first render, rather than in the effect
+    // below: child effects run before parent effects, so children's queries
+    // would otherwise fire before the getter exists and go out without an
+    // Authorization header (401).
+    if (client) setAuthTokenGetter(() => getAccessToken(client));
+    return client;
+  });
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const queryClient = useQueryClient();
@@ -37,10 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setAuthTokenGetter(async () => {
-      const { data } = await supabase.auth.getSession();
-      return data.session?.access_token ?? null;
-    });
+    // Re-register in case a previous cleanup cleared it (StrictMode remount).
+    setAuthTokenGetter(() => getAccessToken(supabase));
 
     supabase.auth.getSession().then(({ data }) => {
       if (prevUserIdRef.current === undefined) {
