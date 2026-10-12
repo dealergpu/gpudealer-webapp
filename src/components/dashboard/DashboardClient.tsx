@@ -36,17 +36,18 @@ import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 // The backend only exposes "my listings" as a filter on the public search
-// endpoint (`GET /listings?status=DRAFT`, etc.), and only non-public
-// statuses are guaranteed to be scoped to the caller — PUBLISHED/SOLD
-// listings you own aren't retrievable through a dedicated query today.
+// endpoint (`GET /listings?status=DRAFT`, etc.). Non-public statuses are
+// scoped to the caller server-side, but PUBLISHED returns everyone's
+// listings — so results are filtered to the signed-in seller below.
 const MY_LISTING_STATUSES = [
+  ListingStatus.PUBLISHED,
   ListingStatus.DRAFT,
   ListingStatus.PENDING_REVIEW,
   ListingStatus.REJECTED,
   ListingStatus.EXPIRED,
 ] as const;
 
-function useMyListings() {
+function useMyListings(userId: string | undefined) {
   const results = useQueries({
     queries: MY_LISTING_STATUSES.map((status) =>
       getGetListingsQueryOptions({ status, limit: 100 }),
@@ -56,6 +57,7 @@ function useMyListings() {
   const isLoading = results.some((r) => r.isLoading);
   const listings = results
     .flatMap((r) => r.data?.data ?? [])
+    .filter((l) => l.sellerId === userId)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return { listings, isLoading };
@@ -105,7 +107,7 @@ function getInquiryStatusBadge(status: string) {
 
 export function DashboardClient() {
   const { user } = useAuth();
-  const { listings: myListings, isLoading: listingsLoading } = useMyListings();
+  const { listings: myListings, isLoading: listingsLoading } = useMyListings(user?.id);
   const { data: myRequestsData, isLoading: requestsLoading } = useGetRequests();
   const { data: savedData, isLoading: savedLoading } = useGetSavedListings();
   const { data: inquiriesData, isLoading: inquiriesLoading } = useGetInquiries();
