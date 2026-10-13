@@ -101,6 +101,12 @@ paths:
             Defaults to PUBLISHED. A non-public value (DRAFT,
             PENDING_REVIEW, REJECTED, EXPIRED) requires auth and only ever
             returns the caller's own listings.
+        - name: mine
+          in: query
+          schema: { type: boolean }
+          description: >-
+            Auth required. Returns only the caller's own listings, in every
+            status — the "My Listings" query.
         - name: sortBy
           in: query
           schema: { $ref: "#/components/schemas/ListingSortBy" }
@@ -831,6 +837,14 @@ components:
         locationRegion: { type: ["string", "null"] }
         locationCity: { type: ["string", "null"] }
         sourceType: { $ref: "#/components/schemas/ListingSourceType" }
+        cpuModel: { type: ["string", "null"] }
+        ramGb: { type: ["integer", "null"] }
+        storageGb: { type: ["integer", "null"] }
+        memoryType: { type: ["string", "null"] }
+        memorySpeed: { type: ["integer", "null"] }
+        memoryCapacityGb: { type: ["integer", "null"] }
+        ecc: { type: ["boolean", "null"] }
+        formFactor: { type: ["string", "null"] }
         # NOTE: not part of the backend contract shared with the frontend
         # team — kept optional so the UI degrades gracefully if it's
         # absent or named differently server-side. Confirm the real field
@@ -875,30 +889,43 @@ components:
 
     ListingUpdate:
       type: object
-      description: Same shape as ListingInput; every field is optional (partial update).
+      description: >-
+        Partial update — fields that are omitted are left unchanged; null
+        clears an optional field. `images`, when sent, replaces the whole
+        photo set (array order = display order; [] removes all photos).
+        Image URLs must be public gpu-pics bucket URLs inside the caller's
+        own `<supabase user id>/` folder. Owner only (403 otherwise).
       properties:
         title: { type: string }
-        description: { type: string, maxLength: 10000 }
+        description: { type: ["string", "null"], maxLength: 10000 }
         category: { $ref: "#/components/schemas/ListingCategory" }
-        manufacturer: { type: string }
-        model: { type: string }
-        gpuModel: { type: string }
-        vramGb: { type: integer }
+        manufacturer: { type: ["string", "null"] }
+        model: { type: ["string", "null"] }
+        gpuModel: { type: ["string", "null"] }
+        vramGb: { type: ["integer", "null"] }
         quantity: { type: integer }
         condition: { $ref: "#/components/schemas/ListingCondition" }
         price: { type: number }
         currency: { type: string }
-        locationCountry: { type: string }
-        locationRegion: { type: string }
-        locationCity: { type: string }
+        locationCountry: { type: ["string", "null"] }
+        locationRegion: { type: ["string", "null"] }
+        locationCity: { type: ["string", "null"] }
+        cpuModel: { type: ["string", "null"] }
+        ramGb: { type: ["integer", "null"] }
+        storageGb: { type: ["integer", "null"] }
+        memoryType: { type: ["string", "null"] }
+        memorySpeed: { type: ["integer", "null"] }
+        memoryCapacityGb: { type: ["integer", "null"] }
+        ecc: { type: ["boolean", "null"] }
+        formFactor: { type: ["string", "null"] }
         images:
           type: array
+          maxItems: 20
           items:
             type: object
             required: [url]
             properties:
               url: { type: string }
-              sortOrder: { type: integer }
               altText: { type: string }
 
     ListingStatusUpdate:

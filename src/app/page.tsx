@@ -138,7 +138,7 @@ export default async function Home() {
         <div className="absolute inset-0 bg-grid [mask-image:radial-gradient(ellipse_50%_80%_at_50%_50%,black,transparent)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-accent/15 via-background to-background" />
         <div className="relative z-10 max-w-3xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6 text-foreground font-heading">Can't find what you need?</h2>
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6 text-foreground font-heading">Can&apos;t find what you need?</h2>
           <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
             Post a hardware request. Our network of resellers and data centers will be notified of your exact requirements.
           </p>

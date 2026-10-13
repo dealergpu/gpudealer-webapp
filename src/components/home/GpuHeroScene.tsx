@@ -1,24 +1,13 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Environment, Float, RoundedBox, Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 const ACCENT_RED = '#ef3b46';
 const FIN_COUNT = 9;
-
-function useReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReduced(mq.matches);
-    const onChange = () => setReduced(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-  return reduced;
-}
 
 // Rotates the whole rig toward the pointer for a parallax-tilt feel, plus a
 // near-imperceptible idle yaw so the scene never looks frozen.
@@ -147,7 +136,7 @@ function Scene({ reducedMotion }: { reducedMotion: boolean }) {
 }
 
 export function GpuHeroScene() {
-  const reducedMotion = useReducedMotion();
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
 
   return (
     <Canvas

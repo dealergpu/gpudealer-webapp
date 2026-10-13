@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bookmark, BookmarkCheck, MessageSquare } from "lucide-react";
+import { Bookmark, BookmarkCheck, MessageSquare, Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -107,8 +108,10 @@ export function ListingActions({ listing }: { listing: Listing }) {
 
   if (isOwner) {
     return (
-      <Button variant="outline" className="w-full h-12 text-base font-semibold" disabled>
-        This is your listing
+      <Button asChild variant="outline" className="w-full h-12 text-base font-semibold">
+        <Link href={`/listing/${listing.id}/edit`}>
+          <Pencil className="mr-2 h-5 w-5" /> Edit your listing
+        </Link>
       </Button>
     );
   }

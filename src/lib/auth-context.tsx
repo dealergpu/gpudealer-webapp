@@ -40,17 +40,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return client;
   });
   const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Without a client there is no session to wait for.
+  const [isLoading, setIsLoading] = useState(supabase !== null);
   const queryClient = useQueryClient();
   // `undefined` = the initial session hasn't been seen yet. Only a change
   // *after* that is a real sign-in/sign-out/account switch.
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    if (!supabase) {
-      setIsLoading(false);
-      return;
-    }
+    if (!supabase) return;
 
     // Re-register in case a previous cleanup cleared it (StrictMode remount).
     setAuthTokenGetter(() => getAccessToken(supabase));

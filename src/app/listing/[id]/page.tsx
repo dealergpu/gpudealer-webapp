@@ -12,6 +12,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { getListing, ListingCondition, ListingSourceType, type Listing } from "@/lib/api";
 import { ListingActions } from "@/components/listing/ListingActions";
+import { ListingGallery } from "@/components/listing/ListingGallery";
+
+function sortedImages(listing: Listing) {
+  return [...(listing.images ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+}
 
 async function loadListing(id: string): Promise<Listing | null> {
   try {
@@ -44,11 +49,23 @@ export async function generateMetadata({
     ? listing.description.slice(0, 160)
     : `${listing.manufacturer ?? ""} ${listing.model ?? listing.title} — ${listing.condition}, listed on GPUDealer.`.trim();
 
+  const coverImage = sortedImages(listing)[0]?.url;
+
   return {
     title: listing.title,
     description,
-    openGraph: { title: listing.title, description, type: "website" },
-    twitter: { card: "summary", title: listing.title, description },
+    openGraph: {
+      title: listing.title,
+      description,
+      type: "website",
+      images: coverImage ? [coverImage] : undefined,
+    },
+    twitter: {
+      card: coverImage ? "summary_large_image" : "summary",
+      title: listing.title,
+      description,
+      images: coverImage ? [coverImage] : undefined,
+    },
   };
 }
 
@@ -122,6 +139,8 @@ export default async function ListingDetail({
               </div>
             </div>
           </div>
+
+          <ListingGallery images={sortedImages(listing)} title={listing.title} />
 
           {/* Description */}
           {listing.description && (

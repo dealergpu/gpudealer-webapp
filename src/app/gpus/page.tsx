@@ -125,7 +125,7 @@ export default async function GPUSearch({
           <div className="py-20 text-center border border-border rounded-lg bg-card/50 flex flex-col items-center">
             <h3 className="text-xl font-bold font-heading mb-2">No hardware found</h3>
             <p className="text-muted-foreground max-w-md mb-6">
-              We couldn't find any listings matching your current filters. Try adjusting your search criteria or submit a hardware request.
+              We couldn&apos;t find any listings matching your current filters. Try adjusting your search criteria or submit a hardware request.
             </p>
             <div className="flex gap-4">
               <Link href="/gpus">

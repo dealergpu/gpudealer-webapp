@@ -99,6 +99,22 @@ export interface Listing {
   locationCity?: string | null;
   sourceType?: ListingSourceType;
   /** @nullable */
+  cpuModel?: string | null;
+  /** @nullable */
+  ramGb?: number | null;
+  /** @nullable */
+  storageGb?: number | null;
+  /** @nullable */
+  memoryType?: string | null;
+  /** @nullable */
+  memorySpeed?: number | null;
+  /** @nullable */
+  memoryCapacityGb?: number | null;
+  /** @nullable */
+  ecc?: boolean | null;
+  /** @nullable */
+  formFactor?: string | null;
+  /** @nullable */
   sourceUrl?: string | null;
   status: ListingStatus;
   slug: string;
@@ -135,29 +151,55 @@ export interface ListingInput {
 
 export type ListingUpdateImagesItem = {
   url: string;
-  sortOrder?: number;
   altText?: string;
 };
 
 /**
- * Same shape as ListingInput; every field is optional (partial update).
+ * Partial update — fields that are omitted are left unchanged; null clears an optional field. `images`, when sent, replaces the whole photo set (array order = display order; [] removes all photos). Image URLs must be public gpu-pics bucket URLs inside the caller's own `<supabase user id>/` folder. Owner only (403 otherwise).
  */
 export interface ListingUpdate {
   title?: string;
-  /** @maxLength 10000 */
-  description?: string;
+  /**
+   * @maxLength 10000
+   * @nullable
+   */
+  description?: string | null;
   category?: ListingCategory;
-  manufacturer?: string;
-  model?: string;
-  gpuModel?: string;
-  vramGb?: number;
+  /** @nullable */
+  manufacturer?: string | null;
+  /** @nullable */
+  model?: string | null;
+  /** @nullable */
+  gpuModel?: string | null;
+  /** @nullable */
+  vramGb?: number | null;
   quantity?: number;
   condition?: ListingCondition;
   price?: number;
   currency?: string;
-  locationCountry?: string;
-  locationRegion?: string;
-  locationCity?: string;
+  /** @nullable */
+  locationCountry?: string | null;
+  /** @nullable */
+  locationRegion?: string | null;
+  /** @nullable */
+  locationCity?: string | null;
+  /** @nullable */
+  cpuModel?: string | null;
+  /** @nullable */
+  ramGb?: number | null;
+  /** @nullable */
+  storageGb?: number | null;
+  /** @nullable */
+  memoryType?: string | null;
+  /** @nullable */
+  memorySpeed?: number | null;
+  /** @nullable */
+  memoryCapacityGb?: number | null;
+  /** @nullable */
+  ecc?: boolean | null;
+  /** @nullable */
+  formFactor?: string | null;
+  /** @maxItems 20 */
   images?: ListingUpdateImagesItem[];
 }
 
@@ -447,6 +489,10 @@ export type GetListingsParams = {
    * Defaults to PUBLISHED. A non-public value (DRAFT, PENDING_REVIEW, REJECTED, EXPIRED) requires auth and only ever returns the caller's own listings.
    */
   status?: ListingStatus;
+  /**
+   * Auth required. Returns only the caller's own listings, in every status — the "My Listings" query.
+   */
+  mine?: boolean;
   sortBy?: ListingSortBy;
   /**
    * @minimum 1

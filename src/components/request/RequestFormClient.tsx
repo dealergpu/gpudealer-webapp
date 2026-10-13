@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
@@ -43,6 +43,8 @@ export function RequestFormClient() {
       conditionPreference: ListingCondition.UNKNOWN,
     },
   });
+  const category = useWatch({ control: form.control, name: "category" });
+  const conditionPreference = useWatch({ control: form.control, name: "conditionPreference" });
 
   const onSubmit = (data: RequestFormValues) => {
     createRequest.mutate(
@@ -76,7 +78,7 @@ export function RequestFormClient() {
         <div>
           <h1 className="text-3xl font-bold text-foreground font-heading tracking-tight">Post a Hardware Request</h1>
           <p className="text-muted-foreground mt-2 max-w-xl">
-            Can't find exact specs on the marketplace? Broadcast your needs directly to our network of professional resellers and data centers.
+            Can&apos;t find exact specs on the marketplace? Broadcast your needs directly to our network of professional resellers and data centers.
           </p>
         </div>
       </div>
@@ -117,7 +119,7 @@ export function RequestFormClient() {
               <div className="space-y-2">
                 <Label htmlFor="category" className="font-semibold">Category <span className="text-destructive">*</span></Label>
                 <Select
-                  value={form.watch("category")}
+                  value={category}
                   onValueChange={(val) => form.setValue("category", val as ListingCategory)}
                 >
                   <SelectTrigger id="category">
@@ -157,7 +159,7 @@ export function RequestFormClient() {
               <div className="space-y-2">
                 <Label htmlFor="conditionPreference" className="font-semibold">Condition Preference <span className="text-destructive">*</span></Label>
                 <Select
-                  value={form.watch("conditionPreference")}
+                  value={conditionPreference}
                   onValueChange={(val) => form.setValue("conditionPreference", val as ListingCondition)}
                 >
                   <SelectTrigger id="conditionPreference">

@@ -1,9 +1,9 @@
 'use client';
 
 import Link from "next/link";
-import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  getGetListingsQueryOptions,
+  useGetListings,
   getGetListingsQueryKey,
   getGetRequestsQueryKey,
   getGetSavedListingsQueryKey,
@@ -30,39 +30,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   HardDrive, Inbox, Bookmark,
-  Plus, ExternalLink, Trash2, Send, X, MessageSquare, CheckCheck
+  Plus, ExternalLink, Pencil, Trash2, Send, X, MessageSquare, CheckCheck
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-
-// The backend only exposes "my listings" as a filter on the public search
-// endpoint (`GET /listings?status=DRAFT`, etc.). Non-public statuses are
-// scoped to the caller server-side, but PUBLISHED returns everyone's
-// listings — so results are filtered to the signed-in seller below, by the
-// backend user id from `GET /me` (it differs from the Supabase auth id).
-const MY_LISTING_STATUSES = [
-  ListingStatus.PUBLISHED,
-  ListingStatus.DRAFT,
-  ListingStatus.PENDING_REVIEW,
-  ListingStatus.REJECTED,
-  ListingStatus.EXPIRED,
-] as const;
-
-function useMyListings(userId: string | undefined) {
-  const results = useQueries({
-    queries: MY_LISTING_STATUSES.map((status) =>
-      getGetListingsQueryOptions({ status, limit: 100 }),
-    ),
-  });
-
-  const isLoading = results.some((r) => r.isLoading);
-  const listings = results
-    .flatMap((r) => r.data?.data ?? [])
-    .filter((l) => l.sellerId === userId)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-  return { listings, isLoading };
-}
 
 const formatDate = (dateString: string) =>
   new Date(dateString).toLocaleDateString("en-US", {
@@ -107,12 +78,12 @@ function getInquiryStatusBadge(status: string) {
 }
 
 export function DashboardClient() {
-  // Ownership fields (sellerId, buyerId) hold the backend user id, not the
-  // Supabase auth id — compare against the backend profile.
-  const { data: profile, isLoading: profileLoading } = useGetMyProfile();
+  // Inquiry sellerId/buyerId hold the backend user id, not the Supabase auth
+  // id — compare against the backend profile.
+  const { data: profile } = useGetMyProfile();
   const myId = profile?.data.id;
-  const { listings: myListings, isLoading: myListingsLoading } = useMyListings(myId);
-  const listingsLoading = profileLoading || myListingsLoading;
+  // `mine=true` returns only the caller's own listings, in every status.
+  const { data: myListingsData, isLoading: listingsLoading } = useGetListings({ mine: true, limit: 100 });
   const { data: myRequestsData, isLoading: requestsLoading } = useGetRequests();
   const { data: savedData, isLoading: savedLoading } = useGetSavedListings();
   const { data: inquiriesData, isLoading: inquiriesLoading } = useGetInquiries();
@@ -124,6 +95,7 @@ export function DashboardClient() {
   const unsaveListing = useUnsaveListing();
   const updateInquiryStatus = useUpdateInquiryStatus();
 
+  const myListings = myListingsData?.data ?? [];
   const myRequests = myRequestsData?.data ?? [];
   const savedListings = savedData?.data ?? [];
   const inquiries = inquiriesData?.data ?? [];
@@ -340,11 +312,16 @@ export function DashboardClient() {
                               <Send className="h-4 w-4" />
                             </Button>
                           )}
-                          <Link href={`/listing/${listing.id}`}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                          <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                            <Link href={`/listing/${listing.id}/edit`} title="Edit listing" aria-label="Edit listing">
+                              <Pencil className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                            <Link href={`/listing/${listing.id}`} title="View listing" aria-label="View listing">
                               <ExternalLink className="h-4 w-4" />
-                            </Button>
-                          </Link>
+                            </Link>
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -366,7 +343,7 @@ export function DashboardClient() {
                 <HardDrive className="h-12 w-12 text-muted-foreground/50 mb-4" />
                 <h3 className="text-lg font-bold mb-2">No listings yet</h3>
                 <p className="text-muted-foreground max-w-sm mb-6">
-                  You haven't listed any hardware for sale. Create your first listing to reach our marketplace of buyers.
+                  You haven&apos;t listed any hardware for sale. Create your first listing to reach our marketplace of buyers.
                 </p>
                 <Link href="/sell">
                   <Button>Create Listing</Button>
@@ -432,7 +409,7 @@ export function DashboardClient() {
                 <Inbox className="h-12 w-12 text-muted-foreground/50 mb-4" />
                 <h3 className="text-lg font-bold mb-2">No active requests</h3>
                 <p className="text-muted-foreground max-w-sm mb-6">
-                  Can't find what you need? Post a request and sellers will contact you with matching hardware.
+                  Can&apos;t find what you need? Post a request and sellers will contact you with matching hardware.
                 </p>
                 <Link href="/request">
                   <Button className="bg-accent text-white hover:bg-accent/90 border-0">Post Request</Button>
@@ -631,7 +608,7 @@ export function DashboardClient() {
                   </TableBody>
                 </Table>
               ) : (
-                <div className="p-8 text-center text-muted-foreground">You haven't contacted any sellers yet.</div>
+                <div className="p-8 text-center text-muted-foreground">You haven&apos;t contacted any sellers yet.</div>
               )}
             </Card>
           </div>

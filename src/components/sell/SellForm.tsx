@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
@@ -49,6 +48,8 @@ export function SellForm() {
       currency: "USD",
     },
   });
+  const currentCategory = useWatch({ control: form.control, name: "category" });
+  const condition = useWatch({ control: form.control, name: "condition" });
 
   const onSubmit = (data: ListingFormValues) => {
     const { imageUrl, ...rest } = data;
@@ -60,13 +61,16 @@ export function SellForm() {
         },
       },
       {
-        onSuccess: (response) => {
+        onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetListingsQueryKey() });
           toast({
             title: "Listing Created",
             description: "Your hardware has been saved as a draft. Submit it for review from your dashboard to publish it.",
           });
-          router.push(`/listing/${response.data.id}`);
+          // New listings start as DRAFT, which the public (unauthenticated,
+          // server-rendered) detail page can't see — send the seller to
+          // their dashboard, where drafts are listed and can be submitted.
+          router.push("/dashboard");
         },
         onError: () => {
           toast({
@@ -79,7 +83,6 @@ export function SellForm() {
     );
   };
 
-  const currentCategory = form.watch("category");
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
@@ -112,7 +115,7 @@ export function SellForm() {
               <div className="space-y-2">
                 <Label htmlFor="category" className="font-semibold">Category <span className="text-destructive">*</span></Label>
                 <Select
-                  value={form.watch("category")}
+                  value={currentCategory}
                   onValueChange={(val) => form.setValue("category", val as ListingCategory)}
                 >
                   <SelectTrigger id="category">
@@ -130,7 +133,7 @@ export function SellForm() {
               <div className="space-y-2">
                 <Label htmlFor="condition" className="font-semibold">Condition <span className="text-destructive">*</span></Label>
                 <Select
-                  value={form.watch("condition")}
+                  value={condition}
                   onValueChange={(val) => form.setValue("condition", val as ListingCondition)}
                 >
                   <SelectTrigger id="condition">

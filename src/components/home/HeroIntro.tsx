@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 const GpuHeroScene = dynamic(
   () => import("./GpuHeroScene").then((mod) => mod.GpuHeroScene),
@@ -19,22 +20,10 @@ const quickFilters = [
   "RTX 3090", "RTX 4090", "H100", "A100", "A6000", "24GB+", "48GB+", "80GB+"
 ];
 
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
-    setIsDesktop(mq.matches);
-    const onChange = () => setIsDesktop(mq.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-  return isDesktop;
-}
-
 export function HeroIntro() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const isDesktop = useIsDesktop();
+  const isDesktop = useMediaQuery("(min-width: 768px)");
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

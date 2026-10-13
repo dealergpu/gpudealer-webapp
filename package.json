@@ -13,7 +13,8 @@
     "codegen": "orval --config ./orval.config.ts",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -81,6 +82,8 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@types/three": "^0.182.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.3.1",
     "orval": "^8.23.0",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.1.14",

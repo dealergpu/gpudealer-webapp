@@ -3,7 +3,7 @@ import { Listing, ListingCondition } from "@/lib/api";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Server, Zap, Cpu } from "lucide-react";
+import { MapPin, Server, Zap, Cpu, ImageOff } from "lucide-react";
 
 interface ListingCardProps {
   listing: Listing;
@@ -23,9 +23,29 @@ export function ListingCard({ listing }: ListingCardProps) {
   }).format(Number(listing.price));
 
   const location = formatLocation(listing);
+  const coverImage = [...(listing.images ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
 
   return (
-    <Card className="flex flex-col h-full group border-border card-hover">
+    <Card className="flex flex-col h-full group border-border card-hover overflow-hidden">
+      <Link
+        href={`/listing/${listing.id}`}
+        tabIndex={-1}
+        aria-hidden="true"
+        className="block aspect-[4/3] bg-muted/40 border-b border-border/50"
+      >
+        {coverImage ? (
+          <img
+            src={coverImage.url}
+            alt={coverImage.altText || listing.title}
+            loading="lazy"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center text-muted-foreground/50">
+            <ImageOff className="h-8 w-8" />
+          </div>
+        )}
+      </Link>
       <CardHeader className="pb-3 border-b border-border/50 p-4">
         <div className="flex justify-between items-start gap-2 mb-2">
           <Badge variant="outline" className="font-mono text-[10px] uppercase bg-secondary/50">
@@ -95,7 +115,8 @@ export function ListingCard({ listing }: ListingCardProps) {
 
 export function ListingCardSkeleton() {
   return (
-    <Card className="flex flex-col h-full border-border">
+    <Card className="flex flex-col h-full border-border overflow-hidden">
+      <div className="aspect-[4/3] bg-muted animate-pulse border-b border-border/50" />
       <CardHeader className="pb-3 border-b border-border/50 p-4">
         <div className="flex justify-between items-start gap-2 mb-2">
           <div className="h-5 w-16 bg-muted rounded animate-pulse" />
