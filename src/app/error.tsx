@@ -15,10 +15,10 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-[70vh] w-full flex items-center justify-center bg-background p-6">
+    <div className="flex min-h-[70vh] w-full items-center justify-center bg-background px-6 pt-28 pb-16">
       <div className="max-w-lg w-full text-center">
-        <h1 className="text-xl font-semibold font-heading text-foreground">Something went wrong</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h1 className="font-display text-5xl leading-none text-foreground">Something went wrong.</h1>
+        <p className="mt-4 text-sm text-muted-foreground">
           This part of the app hit an error. The rest of the app is still running.
         </p>
         {process.env.NODE_ENV === 'development' ? (
@@ -26,7 +26,7 @@ export default function Error({
             {error.message || String(error)}
           </pre>
         ) : null}
-        <Button className="mt-4" onClick={reset}>
+        <Button className="mt-6" onClick={reset}>
           Try again
         </Button>
       </div>

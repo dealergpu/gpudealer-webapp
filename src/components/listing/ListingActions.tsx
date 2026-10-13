@@ -121,7 +121,8 @@ export function ListingActions({ listing }: { listing: Listing }) {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogTrigger asChild>
           <Button
-            className="w-full h-12 text-base font-bold bg-accent hover:bg-accent/90 text-white"
+            variant="accent"
+            className="w-full h-12 text-base font-bold"
             onClick={handleContactClick}
           >
             <MessageSquare className="mr-2 h-4 w-4" />
@@ -143,9 +144,10 @@ export function ListingActions({ listing }: { listing: Listing }) {
           />
           <DialogFooter>
             <Button
+              variant="accent"
               onClick={handleSendInquiry}
               disabled={!message.trim() || createInquiry.isPending}
-              className="bg-accent hover:bg-accent/90 text-white"
+              
             >
               {createInquiry.isPending ? "Sending..." : "Send Message"}
             </Button>

@@ -97,9 +97,9 @@ export default async function ListingDetail({
   const isThirdParty = listing.sourceType && listing.sourceType !== ListingSourceType.GPUDEALER;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <Link href="/gpus" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground mb-6 transition-colors">
-        <ChevronLeft className="h-4 w-4 mr-1" />
+    <div className="container mx-auto max-w-6xl px-4 pt-28 pb-20 sm:px-6">
+      <Link href="/gpus" className="group mb-8 inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground">
+        <ChevronLeft className="mr-1 h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
         Back to search
       </Link>
 
@@ -108,11 +108,11 @@ export default async function ListingDetail({
         <div className="lg:col-span-2 space-y-8">
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-3">
-              <Badge variant="outline" className="font-mono text-xs uppercase bg-secondary/50">
+              <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-[0.12em]">
                 {listing.category}
               </Badge>
               {listing.condition === ListingCondition.NEW && <Badge variant="success" className="uppercase text-xs">New</Badge>}
-              {listing.condition === ListingCondition.REFURBISHED && <Badge variant="warning" className="uppercase text-xs bg-orange-500 text-white">Refurbished</Badge>}
+              {listing.condition === ListingCondition.REFURBISHED && <Badge variant="warning" className="uppercase text-xs">Refurbished</Badge>}
               {listing.condition === ListingCondition.USED && <Badge variant="secondary" className="uppercase text-xs">Used</Badge>}
 
               {isThirdParty && (
@@ -122,7 +122,7 @@ export default async function ListingDetail({
               )}
             </div>
 
-            <h1 className="text-3xl sm:text-4xl font-bold text-foreground font-heading mb-4 leading-tight">
+            <h1 className="mb-4 font-display text-4xl leading-[1.02] tracking-[-0.01em] text-balance text-foreground sm:text-6xl">
               {listing.title}
             </h1>
 
@@ -144,8 +144,8 @@ export default async function ListingDetail({
 
           {/* Description */}
           {listing.description && (
-            <div className="bg-card border border-border rounded-lg p-6">
-              <h2 className="text-xl font-bold mb-4 font-heading border-b border-border pb-2">Description</h2>
+            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
+              <h2 className="mb-4 font-display text-3xl">Description</h2>
               <div className="prose prose-sm sm:prose-base max-w-none text-foreground whitespace-pre-wrap">
                 {listing.description}
               </div>
@@ -153,40 +153,40 @@ export default async function ListingDetail({
           )}
 
           {/* Technical Specs */}
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <div className="bg-muted/30 px-6 py-4 border-b border-border">
-              <h2 className="text-xl font-bold font-heading">Technical Specifications</h2>
+          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="border-b border-border px-6 py-5 sm:px-8">
+              <h2 className="font-display text-3xl">Specifications</h2>
             </div>
             <Table>
               <TableBody>
                 {listing.manufacturer && (
                   <TableRow>
-                    <TableCell className="w-1/3 font-medium text-muted-foreground bg-muted/10">Manufacturer</TableCell>
+                    <TableCell className="w-1/3 pl-6 text-muted-foreground sm:pl-8">Manufacturer</TableCell>
                     <TableCell className="font-medium">{listing.manufacturer}</TableCell>
                   </TableRow>
                 )}
                 {listing.model && (
                   <TableRow>
-                    <TableCell className="font-medium text-muted-foreground bg-muted/10">Model</TableCell>
+                    <TableCell className="pl-6 text-muted-foreground sm:pl-8">Model</TableCell>
                     <TableCell className="font-medium">{listing.model}</TableCell>
                   </TableRow>
                 )}
                 {listing.gpuModel && (
                   <TableRow>
-                    <TableCell className="font-medium text-muted-foreground bg-muted/10">GPU Model</TableCell>
+                    <TableCell className="pl-6 text-muted-foreground sm:pl-8">GPU Model</TableCell>
                     <TableCell className="font-medium">{listing.gpuModel}</TableCell>
                   </TableRow>
                 )}
                 {listing.vramGb != null && (
                   <TableRow>
-                    <TableCell className="font-medium text-muted-foreground bg-muted/10 flex items-center gap-2">
+                    <TableCell className="flex items-center gap-2 pl-6 text-muted-foreground sm:pl-8">
                       <Zap className="h-4 w-4" /> VRAM
                     </TableCell>
                     <TableCell className="font-mono">{listing.vramGb} GB</TableCell>
                   </TableRow>
                 )}
                 <TableRow>
-                  <TableCell className="font-medium text-muted-foreground bg-muted/10">Quantity Available</TableCell>
+                  <TableCell className="pl-6 text-muted-foreground sm:pl-8">Quantity Available</TableCell>
                   <TableCell>{listing.quantity ?? 1}</TableCell>
                 </TableRow>
               </TableBody>
@@ -196,20 +196,21 @@ export default async function ListingDetail({
 
         {/* Sidebar Panel */}
         <div className="space-y-6">
-          <Card className="border-border sticky top-24 shadow-sm overflow-hidden">
-            <div className="bg-primary p-6 text-primary-foreground text-center">
-              <p className="text-sm font-medium opacity-80 uppercase tracking-widest mb-1">Asking Price</p>
-              <h3 className="text-4xl font-bold font-mono tracking-tight">{formattedPrice}</h3>
+          <Card className="dark sticky top-28 overflow-hidden rounded-3xl border-border bg-background text-foreground shadow-[0_30px_80px_-30px_hsl(240_10%_4%/0.6)]">
+            <div className="relative p-6 sm:p-7">
+              <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-[radial-gradient(closest-side,hsl(357_90%_50%/0.35),transparent)] blur-2xl" />
+              <p className="relative mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Asking price</p>
+              <p className="relative font-display text-6xl leading-none tracking-[-0.02em] tabular-nums">{formattedPrice}</p>
               {listing.quantity != null && listing.quantity > 1 && (
-                <p className="text-sm mt-2 font-medium bg-white/10 inline-block px-3 py-1 rounded-full">
+                <p className="relative mt-4 inline-block rounded-full border border-white/10 px-3 py-1 font-mono text-xs text-muted-foreground">
                   Qty Available: {listing.quantity}
                 </p>
               )}
             </div>
 
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="space-y-3 p-6 pt-0 sm:px-7">
               {isThirdParty && listing.sourceUrl ? (
-                <Button className="w-full h-12 text-base font-bold" asChild>
+                <Button variant="accent" className="h-12 w-full text-base" asChild>
                   <a href={listing.sourceUrl} target="_blank" rel="noopener noreferrer">
                     View Original Listing
                     <ExternalLink className="ml-2 h-4 w-4" />
@@ -219,14 +220,12 @@ export default async function ListingDetail({
                 <ListingActions listing={listing} />
               )}
 
-              <Link href="/request">
-                <Button variant="outline" className="w-full h-12 text-base font-semibold border-border">
-                  Request Similar Hardware
-                </Button>
-              </Link>
+              <Button asChild variant="outline" className="h-12 w-full text-base">
+                <Link href="/request">Request Similar Hardware</Link>
+              </Button>
             </CardContent>
 
-            <div className="bg-muted/30 p-4 border-t border-border flex items-center gap-3">
+            <div className="flex items-center gap-3 border-t border-border px-6 py-4 sm:px-7">
               <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center text-primary">
                 <User className="h-5 w-5" />
               </div>
@@ -239,7 +238,7 @@ export default async function ListingDetail({
             </div>
           </Card>
 
-          <Card className="bg-secondary/30 border-transparent">
+          <Card className="rounded-2xl border-border bg-secondary/50">
             <CardContent className="p-5 flex items-start gap-3">
               <ShieldCheck className="h-6 w-6 text-accent shrink-0 mt-0.5" />
               <div>

@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 const formatDate = (dateString: string) =>
   new Date(dateString).toLocaleDateString("en-US", {
@@ -49,7 +50,7 @@ function getStatusBadge(status: string) {
       return <Badge variant="success" className="uppercase text-[10px]">Active</Badge>;
     case ListingStatus.PENDING_REVIEW:
     case HardwareRequestStatus.MATCHED:
-      return <Badge variant="warning" className="uppercase text-[10px] bg-yellow-500 text-white">Pending</Badge>;
+      return <Badge variant="warning" className="uppercase text-[10px]">Pending</Badge>;
     case ListingStatus.DRAFT:
     case HardwareRequestStatus.CANCELLED:
     case ListingStatus.EXPIRED:
@@ -67,7 +68,7 @@ function getStatusBadge(status: string) {
 function getInquiryStatusBadge(status: string) {
   switch (status) {
     case InquiryStatus.OPEN:
-      return <Badge variant="warning" className="uppercase text-[10px] bg-yellow-500 text-white">Open</Badge>;
+      return <Badge variant="warning" className="uppercase text-[10px]">Open</Badge>;
     case InquiryStatus.RESPONDED:
       return <Badge variant="success" className="uppercase text-[10px]">Responded</Badge>;
     case InquiryStatus.CLOSED:
@@ -183,9 +184,11 @@ export function DashboardClient() {
   const openInquiriesCount = receivedInquiries.filter((i) => i.status === InquiryStatus.OPEN).length;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold text-foreground font-heading">Dashboard</h1>
+    <>
+    <PageHeader eyebrow="Dashboard" title={<>Your <em>workspace.</em></>} description="Listings, requests, saved hardware and inquiries in one place." />
+    <div className="container mx-auto px-4 py-10">
+      <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <h2 className="text-lg font-semibold">Overview</h2>
         <div className="flex gap-3 w-full sm:w-auto">
           <Link href="/sell" className="flex-1 sm:flex-none">
             <Button variant="outline" className="w-full">
@@ -193,7 +196,7 @@ export function DashboardClient() {
             </Button>
           </Link>
           <Link href="/request" className="flex-1 sm:flex-none">
-            <Button className="w-full bg-accent hover:bg-accent/90 text-white">
+            <Button variant="accent" className="w-full">
               <Plus className="mr-2 h-4 w-4" /> New Request
             </Button>
           </Link>
@@ -208,7 +211,7 @@ export function DashboardClient() {
             <HardDrive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold font-mono">
+            <div className="font-display text-4xl leading-none tabular-nums">
               {listingsLoading ? "..." : draftListingsCount}
             </div>
           </CardContent>
@@ -219,7 +222,7 @@ export function DashboardClient() {
             <Send className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold font-mono text-yellow-600 dark:text-yellow-500">
+            <div className="font-display text-4xl leading-none tabular-nums text-amber-600">
               {listingsLoading ? "..." : activeListingsCount}
             </div>
           </CardContent>
@@ -230,7 +233,7 @@ export function DashboardClient() {
             <Inbox className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold font-mono">
+            <div className="font-display text-4xl leading-none tabular-nums">
               {requestsLoading ? "..." : openRequestsCount}
             </div>
           </CardContent>
@@ -241,7 +244,7 @@ export function DashboardClient() {
             <Bookmark className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold font-mono">
+            <div className="font-display text-4xl leading-none tabular-nums">
               {savedLoading ? "..." : savedListings.length}
             </div>
           </CardContent>
@@ -252,7 +255,7 @@ export function DashboardClient() {
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold font-mono">
+            <div className="font-display text-4xl leading-none tabular-nums">
               {inquiriesLoading ? "..." : openInquiriesCount}
             </div>
           </CardContent>
@@ -412,7 +415,7 @@ export function DashboardClient() {
                   Can&apos;t find what you need? Post a request and sellers will contact you with matching hardware.
                 </p>
                 <Link href="/request">
-                  <Button className="bg-accent text-white hover:bg-accent/90 border-0">Post Request</Button>
+                  <Button variant="accent">Post Request</Button>
                 </Link>
               </div>
             )}
@@ -614,6 +617,7 @@ export function DashboardClient() {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </>
   );
 }

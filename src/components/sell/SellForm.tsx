@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 const listingSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters"),
@@ -85,14 +86,15 @@ export function SellForm() {
 
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-3xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground font-heading">List Hardware for Sale</h1>
-        <p className="text-muted-foreground mt-2">Provide accurate details to reach verified buyers faster.</p>
-      </div>
-
+    <>
+      <PageHeader
+        eyebrow="Sell hardware"
+        title={<>List your <em>hardware.</em></>}
+        description="It takes about three minutes. Only a title, category, condition and price are required."
+      />
+      <div className="container mx-auto max-w-3xl px-4 py-12">
       <form onSubmit={form.handleSubmit(onSubmit)}>
-        <Card className="border-border shadow-sm mb-6">
+        <Card className="overflow-hidden border-border mb-6">
           <CardHeader className="bg-muted/30 border-b border-border pb-4">
             <CardTitle>Basic Information</CardTitle>
             <CardDescription>Essential details for your listing.</CardDescription>
@@ -177,7 +179,7 @@ export function SellForm() {
           </CardContent>
         </Card>
 
-        <Card className="border-border shadow-sm mb-8">
+        <Card className="overflow-hidden border-border mb-8">
           <CardHeader className="bg-muted/30 border-b border-border pb-4">
             <CardTitle>Technical Specs & Details</CardTitle>
             <CardDescription>Detailed specs help buyers verify compatibility.</CardDescription>
@@ -283,15 +285,17 @@ export function SellForm() {
             Cancel
           </Button>
           <Button
+            variant="accent"
             type="submit"
             size="lg"
-            className="bg-accent hover:bg-accent/90 text-white font-bold px-8"
+            className="font-bold px-8"
             disabled={createListing.isPending}
           >
             {createListing.isPending ? "Saving..." : "Save Listing"}
           </Button>
         </div>
       </form>
-    </div>
+      </div>
+    </>
   );
 }

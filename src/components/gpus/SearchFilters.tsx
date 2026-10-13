@@ -70,29 +70,32 @@ export function SearchFilters({ initialFilters }: { initialFilters: SearchFilter
 
   return (
     <>
-      <div className="md:hidden flex justify-between items-center w-full mb-4">
-        <h1 className="text-2xl font-bold text-foreground font-heading">Hardware</h1>
+      <div className="flex w-full items-center justify-between md:hidden">
+        <p className="text-sm text-muted-foreground">Refine results</p>
         <Button
           variant="outline"
           onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
-          className="font-semibold bg-card"
+          aria-expanded={mobileFiltersOpen}
+          aria-controls="search-filters"
         >
-          <Filter className="w-4 h-4 mr-2" />
+          <Filter className="h-4 w-4" />
           Filters
         </Button>
       </div>
 
-      <aside className={`
+      <aside
+        id="search-filters"
+        className={`
         ${mobileFiltersOpen ? 'flex' : 'hidden'}
-        md:flex flex-col w-full md:w-64 shrink-0 bg-card border border-border rounded-lg p-5 h-fit shadow-sm
+        md:flex flex-col w-full md:w-64 shrink-0 rounded-3xl border border-border bg-card p-6 h-fit md:sticky md:top-24
       `}>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="font-bold text-lg flex items-center gap-2">
-            <SlidersHorizontal className="w-5 h-5 text-muted-foreground" />
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
             Filters
           </h2>
           {mobileFiltersOpen && (
-            <Button variant="ghost" size="icon" onClick={() => setMobileFiltersOpen(false)} className="md:hidden">
+            <Button variant="ghost" size="icon" onClick={() => setMobileFiltersOpen(false)} className="md:hidden" aria-label="Close filters">
               <X className="w-4 h-4" />
             </Button>
           )}
@@ -193,7 +196,7 @@ export function SortSelect({ value }: { value?: ListingSortBy }) {
 
   return (
     <Select value={value || ListingSortBy.newest} onValueChange={onChange}>
-      <SelectTrigger className="w-[180px] bg-card">
+      <SelectTrigger className="w-[180px] rounded-full bg-card">
         <SelectValue placeholder="Newest First" />
       </SelectTrigger>
       <SelectContent>

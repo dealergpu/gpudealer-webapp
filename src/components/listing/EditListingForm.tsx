@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 // All inputs are held as strings and converted on save, so "cleared" is
 // simply "" and react-hook-form's dirty tracking works on raw input values.
@@ -318,7 +319,7 @@ function EditListingFields({ listing }: { listing: Listing }) {
       subtitle={listing.title}
     >
       <form onSubmit={(e) => form.handleSubmit(onSubmit)(e)} noValidate>
-        <Card className="border-border shadow-sm mb-6">
+        <Card className="overflow-hidden border-border mb-6">
           <CardHeader className="bg-muted/30 border-b border-border pb-4">
             <CardTitle>Basic Information</CardTitle>
             <CardDescription>Essential details for your listing.</CardDescription>
@@ -367,7 +368,7 @@ function EditListingFields({ listing }: { listing: Listing }) {
           </CardContent>
         </Card>
 
-        <Card className="border-border shadow-sm mb-6">
+        <Card className="overflow-hidden border-border mb-6">
           <CardHeader className="bg-muted/30 border-b border-border pb-4">
             <CardTitle>Technical Specs & Details</CardTitle>
             <CardDescription>Detailed specs help buyers verify compatibility.</CardDescription>
@@ -435,7 +436,7 @@ function EditListingFields({ listing }: { listing: Listing }) {
           </CardContent>
         </Card>
 
-        <Card className="border-border shadow-sm mb-8">
+        <Card className="overflow-hidden border-border mb-8">
           <CardHeader className="bg-muted/30 border-b border-border pb-4">
             <CardTitle>Photos</CardTitle>
             <CardDescription>Photos upload right away; the listing only changes when you save.</CardDescription>
@@ -461,9 +462,10 @@ function EditListingFields({ listing }: { listing: Listing }) {
             Cancel
           </Button>
           <Button
+            variant="accent"
             type="submit"
             size="lg"
-            className="bg-accent hover:bg-accent/90 text-white font-bold px-8"
+            className="font-bold px-8"
             disabled={updateListing.isPending || photosBusy}
           >
             {updateListing.isPending ? "Saving..." : photosBusy ? "Uploading photos..." : "Save Changes"}
@@ -476,15 +478,10 @@ function EditListingFields({ listing }: { listing: Listing }) {
 
 function PageShell({ title, subtitle, children }: { title?: string; subtitle?: string; children: ReactNode }) {
   return (
-    <div className="container mx-auto px-4 py-12 max-w-3xl">
-      {title && (
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground font-heading">{title}</h1>
-          {subtitle && <p className="text-muted-foreground mt-2 truncate">{subtitle}</p>}
-        </div>
-      )}
-      {children}
-    </div>
+    <>
+      <PageHeader eyebrow="Edit listing" title={title ?? "Listing"} description={subtitle} />
+      <div className="container mx-auto max-w-3xl px-4 py-12">{children}</div>
+    </>
   );
 }
 

@@ -1,28 +1,28 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Space_Grotesk, JetBrains_Mono } from 'next/font/google';
+import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
 import { Providers } from './providers';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
+import { SmoothScroll } from '@/components/motion/SmoothScroll';
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
-const inter = Inter({
+const geist = Geist({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
   variable: '--app-font-sans',
 });
 
-const spaceGrotesk = Space_Grotesk({
+const instrumentSerif = Instrument_Serif({
   subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  variable: '--app-font-heading',
+  weight: '400',
+  style: ['normal', 'italic'],
+  variable: '--app-font-display',
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const geistMono = Geist_Mono({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
   variable: '--app-font-mono',
 });
 
@@ -50,17 +50,18 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#1c1c1c',
+  themeColor: '#0b0b0e',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
-      className={`dark ${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}
+      className={`${geist.variable} ${instrumentSerif.variable} ${geistMono.variable}`}
     >
       <body>
         <Providers>
+          <SmoothScroll />
           <div className="min-h-screen flex flex-col bg-background font-sans text-foreground">
             <Navbar />
             <main className="flex-1 flex flex-col">{children}</main>

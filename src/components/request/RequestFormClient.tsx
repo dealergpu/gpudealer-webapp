@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Search } from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 const requestSchema = z.object({
   title: z.string().min(5, "Give your request a short title"),
@@ -70,21 +70,15 @@ export function RequestFormClient() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-3xl">
-      <div className="mb-8 flex items-start gap-4">
-        <div className="h-12 w-12 bg-accent/10 rounded-full flex items-center justify-center shrink-0">
-          <Search className="h-6 w-6 text-accent" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold text-foreground font-heading tracking-tight">Post a Hardware Request</h1>
-          <p className="text-muted-foreground mt-2 max-w-xl">
-            Can&apos;t find exact specs on the marketplace? Broadcast your needs directly to our network of professional resellers and data centers.
-          </p>
-        </div>
-      </div>
-
+    <>
+      <PageHeader
+        eyebrow="Request hardware"
+        title={<>Tell us what <em>you need.</em></>}
+        description="Can't find it on the marketplace? Share the model, quantity, budget and destination, and we'll work our supply network for you."
+      />
+      <div className="container mx-auto max-w-3xl px-4 py-12">
       <form onSubmit={form.handleSubmit(onSubmit)}>
-        <Card className="border-border shadow-sm mb-8">
+        <Card className="overflow-hidden border-border mb-8">
           <CardHeader className="bg-muted/30 border-b border-border pb-4">
             <CardTitle>Requirements</CardTitle>
             <CardDescription>Be specific to attract the right suppliers.</CardDescription>
@@ -178,7 +172,7 @@ export function RequestFormClient() {
           </CardContent>
         </Card>
 
-        <Card className="border-border shadow-sm mb-8">
+        <Card className="overflow-hidden border-border mb-8">
           <CardHeader className="bg-muted/30 border-b border-border pb-4">
             <CardTitle>Logistics & Budget</CardTitle>
           </CardHeader>
@@ -236,15 +230,17 @@ export function RequestFormClient() {
             Cancel
           </Button>
           <Button
+            variant="accent"
             type="submit"
             size="lg"
-            className="bg-accent hover:bg-accent/90 text-white font-bold px-8"
+            className="font-bold px-8"
             disabled={createRequest.isPending}
           >
             {createRequest.isPending ? "Submitting..." : "Submit Request"}
           </Button>
         </div>
       </form>
-    </div>
+      </div>
+    </>
   );
 }

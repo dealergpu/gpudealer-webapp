@@ -1,58 +1,81 @@
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+
+const columns = [
+  {
+    title: "Find",
+    links: [
+      { href: "/gpus?category=gpu", label: "GPUs" },
+      { href: "/gpus?category=server", label: "GPU servers" },
+      { href: "/gpus?category=memory", label: "Memory" },
+      { href: "/gpus", label: "All hardware" },
+    ],
+  },
+  {
+    title: "Sell & Request",
+    links: [
+      { href: "/sell", label: "Sell your hardware" },
+      { href: "/request", label: "Request hardware" },
+      { href: "/dashboard", label: "Manage listings" },
+    ],
+  },
+  {
+    title: "Account",
+    links: [
+      { href: "/sign-in", label: "Sign in" },
+      { href: "/sign-up", label: "Create account" },
+      { href: "/dashboard", label: "Dashboard" },
+    ],
+  },
+];
 
 export function Footer() {
   return (
-    <footer className="border-t border-border bg-card mt-auto">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="md:col-span-1">
-            <img src="/gpu-dealer-logo-white.svg" alt="GPUDealer" className="h-7 w-auto mb-4" />
-            <p className="text-sm text-muted-foreground mb-4 max-w-xs">
-              The premier marketplace for used AI compute hardware, data center components, and professional GPUs.
+    <footer data-nav="dark" className="dark relative mt-auto overflow-hidden bg-background text-foreground">
+      <div className="bg-noise pointer-events-none absolute inset-0" />
+      <div className="container relative mx-auto px-4 pt-20 pb-10 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-12">
+          <div className="md:col-span-5">
+            <img src="/gpu-dealer-logo-white.svg" alt="GPUDealer" className="mb-6 h-7 w-auto" />
+            <p className="max-w-sm font-display text-3xl leading-tight text-foreground">
+              Used GPUs, AI servers, memory and compute hardware.
             </p>
-            <p className="text-sm font-medium font-heading text-foreground">
-              Find. Sell. Request.
-            </p>
+            <Link
+              href="/request"
+              className="group mt-8 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Can&apos;t find it? Tell us what you need
+              <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            </Link>
           </div>
-          
-          <div>
-            <h4 className="font-semibold text-foreground mb-4">Marketplace</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/gpus?category=gpu" className="hover:text-accent transition-colors">Browse GPUs</Link></li>
-              <li><Link href="/gpus?category=server" className="hover:text-accent transition-colors">Server Racks</Link></li>
-              <li><Link href="/gpus?category=memory" className="hover:text-accent transition-colors">Memory & Storage</Link></li>
-              <li><Link href="/sell" className="hover:text-accent transition-colors">Sell Your Hardware</Link></li>
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="font-semibold text-foreground mb-4">Requests</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/request" className="hover:text-accent transition-colors">Submit Request</Link></li>
-              <li><Link href="/gpus" className="hover:text-accent transition-colors">View Active Requests</Link></li>
-              <li><Link href="/dashboard" className="hover:text-accent transition-colors">Manage Requests</Link></li>
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="font-semibold text-foreground mb-4">Account</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/sign-in" className="hover:text-accent transition-colors">Sign In</Link></li>
-              <li><Link href="/sign-up" className="hover:text-accent transition-colors">Create Account</Link></li>
-              <li><Link href="/dashboard" className="hover:text-accent transition-colors">Dashboard</Link></li>
-            </ul>
-          </div>
+
+          {columns.map((column, i) => (
+            <div key={column.title} className={i === 0 ? "md:col-span-2 md:col-start-7" : "md:col-span-2"}>
+              <h4 className="mb-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{column.title}</h4>
+              <ul className="space-y-2.5 text-sm">
+                {column.links.map((link) => (
+                  <li key={link.label}>
+                    <Link href={link.href} className="text-foreground/80 transition-colors hover:text-foreground">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-        
-        <div className="mt-12 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} GPUDealer Marketplace. All rights reserved.
-          </p>
-          <div className="flex gap-4 text-xs text-muted-foreground">
-            <span className="hover:text-foreground cursor-pointer">Terms of Service</span>
-            <span className="hover:text-foreground cursor-pointer">Privacy Policy</span>
-            <span className="hover:text-foreground cursor-pointer">Trust & Safety</span>
-          </div>
+
+        {/* Oversized wordmark — sits behind the legal row like a watermark */}
+        <p
+          aria-hidden="true"
+          className="pointer-events-none mt-16 select-none bg-linear-to-b from-foreground/[0.14] to-transparent bg-clip-text text-center font-display text-[clamp(4rem,17vw,15rem)] leading-[0.8] tracking-[-0.03em] text-transparent"
+        >
+          GPUDealer
+        </p>
+
+        <div className="mt-6 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
+          <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} GPUDealer. All rights reserved.</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Find. Sell. Request.</p>
         </div>
       </div>
     </footer>

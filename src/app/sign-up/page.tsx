@@ -9,11 +9,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/hooks/use-toast";
 import { createClientSafely } from "@/lib/supabase/client";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { AuthShell } from "@/components/auth/AuthShell";
 
 const signUpSchema = z
   .object({
@@ -71,75 +71,67 @@ export default function SignUp() {
   };
 
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4 py-12">
-      <Card className="w-[440px] max-w-full">
-        <CardHeader>
-          <CardTitle>Create your account</CardTitle>
-          <CardDescription>Join the GPUDealer marketplace</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {submitted ? (
-            <p className="text-sm text-muted-foreground">
-              Check your email to confirm your account, then sign in.
-            </p>
-          ) : !showEmailForm ? (
-            <div className="space-y-4">
-              <GoogleSignInButton supabase={supabase} />
-              <button
-                type="button"
-                className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
-                onClick={() => setShowEmailForm(true)}
-              >
-                Use email and password instead
-              </button>
+    <AuthShell title={<>Create your <em>account.</em></>} description="Join GPUDealer to sell hardware and request what you can't find.">
+      {submitted ? (
+        <p className="text-sm text-muted-foreground">
+          Check your email to confirm your account, then sign in.
+        </p>
+      ) : !showEmailForm ? (
+        <div className="space-y-4">
+          <GoogleSignInButton supabase={supabase} />
+          <button
+            type="button"
+            className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+            onClick={() => setShowEmailForm(true)}
+          >
+            Use email and password instead
+          </button>
+        </div>
+      ) : (
+        <>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" autoComplete="email" {...form.register("email")} />
+              {form.formState.errors.email && (
+                <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
+              )}
             </div>
-          ) : (
-            <>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" autoComplete="email" {...form.register("email")} />
-                  {form.formState.errors.email && (
-                    <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" autoComplete="new-password" {...form.register("password")} />
-                  {form.formState.errors.password && (
-                    <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input id="confirmPassword" type="password" autoComplete="new-password" {...form.register("confirmPassword")} />
-                  {form.formState.errors.confirmPassword && (
-                    <p className="text-sm text-destructive">{form.formState.errors.confirmPassword.message}</p>
-                  )}
-                </div>
-                <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white" disabled={isSubmitting}>
-                  {isSubmitting ? <Spinner className="mr-2" /> : null}
-                  Create Account
-                </Button>
-              </form>
-              <button
-                type="button"
-                className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-foreground"
-                onClick={() => setShowEmailForm(false)}
-              >
-                &larr; Back to Google sign up
-              </button>
-            </>
-          )}
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input id="password" type="password" autoComplete="new-password" {...form.register("password")} />
+              {form.formState.errors.password && (
+                <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input id="confirmPassword" type="password" autoComplete="new-password" {...form.register("confirmPassword")} />
+              {form.formState.errors.confirmPassword && (
+                <p className="text-sm text-destructive">{form.formState.errors.confirmPassword.message}</p>
+              )}
+            </div>
+            <Button variant="accent" type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? <Spinner className="mr-2" /> : null}
+              Create Account
+            </Button>
+          </form>
+          <button
+            type="button"
+            className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-foreground"
+            onClick={() => setShowEmailForm(false)}
+          >
+            &larr; Back to Google sign up
+          </button>
+        </>
+      )}
 
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link href="/sign-in" className="font-semibold text-accent hover:text-accent/80">
-              Sign in
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Already have an account?{" "}
+        <Link href="/sign-in" className="font-semibold text-accent hover:text-accent/80">
+          Sign in
+        </Link>
+      </p>
+    </AuthShell>
   );
 }
