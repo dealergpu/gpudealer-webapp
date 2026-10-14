@@ -14,18 +14,37 @@ import type { Metadata } from "next";
 import { ArrowRight } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 
-export const metadata: Metadata = {
-  title: "Browse Hardware",
-  description: "Search used GPUs, AI servers, and memory by model, VRAM, price, and condition.",
-};
-
-const PAGE_SIZE = 12;
-
 type SearchParams = Record<string, string | string[] | undefined>;
 
 function first(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
+
+const CATEGORY_TITLES: Record<string, string> = {
+  GPU: "Used GPUs",
+  SERVER: "Used GPU & AI Servers",
+  MEMORY: "Used Server Memory",
+  OTHER: "Other AI Hardware",
+};
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}): Promise<Metadata> {
+  const params = await searchParams;
+  const category = first(params.category);
+  const categoryTitle = category ? CATEGORY_TITLES[category] : undefined;
+  return {
+    title: categoryTitle ?? "Browse Hardware",
+    description: "Search used GPUs, AI servers, and memory by model, VRAM, price, and condition.",
+    // Category views are distinct landing pages; every other filter combo
+    // folds into its category (or the main search) to avoid duplicate URLs.
+    alternates: { canonical: categoryTitle ? `/gpus?category=${category}` : "/gpus" },
+  };
+}
+
+const PAGE_SIZE = 12;
 
 function parseFilters(searchParams: SearchParams) {
   const q = first(searchParams.q);

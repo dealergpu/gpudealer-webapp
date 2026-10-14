@@ -13,6 +13,8 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { getListing, ListingCondition, ListingSourceType, type Listing } from "@/lib/api";
 import { ListingActions } from "@/components/listing/ListingActions";
 import { ListingGallery } from "@/components/listing/ListingGallery";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { SITE_URL } from "@/lib/site";
 
 function sortedImages(listing: Listing) {
   return [...(listing.images ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
@@ -54,6 +56,7 @@ export async function generateMetadata({
   return {
     title: listing.title,
     description,
+    alternates: { canonical: `/listing/${listing.id}` },
     openGraph: {
       title: listing.title,
       description,
@@ -65,6 +68,38 @@ export async function generateMetadata({
       title: listing.title,
       description,
       images: coverImage ? [coverImage] : undefined,
+    },
+  };
+}
+
+const ITEM_CONDITION: Partial<Record<string, string>> = {
+  [ListingCondition.NEW]: "https://schema.org/NewCondition",
+  [ListingCondition.USED]: "https://schema.org/UsedCondition",
+  [ListingCondition.REFURBISHED]: "https://schema.org/RefurbishedCondition",
+};
+
+function productStructuredData(listing: Listing) {
+  const url = `${SITE_URL}/listing/${listing.id}`;
+  const vram = listing.vramGb != null ? `${listing.vramGb}GB VRAM` : null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: listing.title,
+    url,
+    description: listing.description || [listing.manufacturer, listing.model, vram].filter(Boolean).join(" "),
+    image: sortedImages(listing).map((image) => image.url),
+    ...(listing.manufacturer ? { brand: { "@type": "Brand", name: listing.manufacturer } } : {}),
+    ...(listing.model ? { model: listing.model } : {}),
+    category: listing.category,
+    ...(vram ? { additionalProperty: [{ "@type": "PropertyValue", name: "VRAM", value: listing.vramGb, unitText: "GB" }] } : {}),
+    offers: {
+      "@type": "Offer",
+      url,
+      price: Number(listing.price),
+      priceCurrency: listing.currency || "USD",
+      availability: "https://schema.org/InStock",
+      ...(ITEM_CONDITION[listing.condition] ? { itemCondition: ITEM_CONDITION[listing.condition] } : {}),
+      ...(listing.quantity != null ? { inventoryLevel: { "@type": "QuantitativeValue", value: listing.quantity } } : {}),
     },
   };
 }
@@ -98,6 +133,7 @@ export default async function ListingDetail({
 
   return (
     <div className="container mx-auto max-w-6xl px-4 pt-28 pb-20 sm:px-6">
+      <JsonLd data={productStructuredData(listing)} />
       <Link href="/gpus" className="group mb-8 inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground">
         <ChevronLeft className="mr-1 h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
         Back to search

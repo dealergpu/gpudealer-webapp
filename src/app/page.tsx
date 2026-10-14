@@ -5,12 +5,46 @@ import { ListingCard, ListingCardSkeleton } from "@/components/ListingCard";
 import { HeroIntro } from "@/components/home/HeroIntro";
 import { CountUp, Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { SpotlightCard } from "@/components/motion/SpotlightCard";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import type { Metadata } from "next";
 import { getListings, getMarketplaceStats, ListingSortBy, ListingStatus, type Listing, type MarketplaceStats } from "@/lib/api";
 
 // Render per request. `revalidate` (ISR) needs an OpenNext incremental cache
 // (R2/KV) on Cloudflare, which isn't configured — without it the page stays
 // frozen at whatever the API returned during the build.
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
+
+const STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: `${SITE_URL}/gpu-dealer-logo.png`,
+      description: SITE_DESCRIPTION,
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      description: SITE_DESCRIPTION,
+      publisher: { "@id": `${SITE_URL}/#organization` },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/gpus?q={search_term_string}` },
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ],
+};
 
 const DEFAULT_MODELS = [
   "RTX 3090", "RTX 3090 Ti", "RTX 4090", "RTX 5090", "RTX A5000", "RTX A6000",
@@ -79,6 +113,7 @@ export default async function Home() {
 
   return (
     <div className="flex w-full flex-col">
+      <JsonLd data={STRUCTURED_DATA} />
       <HeroIntro />
 
       {/* Popular searches rail */}
@@ -223,7 +258,7 @@ export default async function Home() {
           <RevealGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {VRAM_TIERS.map((tier) => (
               <RevealItem key={tier.gb}>
-                <Link href={`/gpus?category=gpu&minVramGb=${tier.gb}`} className="block">
+                <Link href={`/gpus?category=GPU&minVramGb=${tier.gb}`} className="block">
                   <SpotlightCard className="rounded-3xl border border-white/[0.08] bg-card/60 p-7 transition-colors duration-500 hover:border-white/20">
                     <div className="relative flex items-baseline gap-1">
                       <span className="font-display text-8xl leading-none tracking-[-0.03em]">{tier.gb}</span>

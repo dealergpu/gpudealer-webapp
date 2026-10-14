@@ -5,9 +5,9 @@ const columns = [
   {
     title: "Find",
     links: [
-      { href: "/gpus?category=gpu", label: "GPUs" },
-      { href: "/gpus?category=server", label: "GPU servers" },
-      { href: "/gpus?category=memory", label: "Memory" },
+      { href: "/gpus?category=GPU", label: "GPUs" },
+      { href: "/gpus?category=SERVER", label: "GPU servers" },
+      { href: "/gpus?category=MEMORY", label: "Memory" },
       { href: "/gpus", label: "All hardware" },
     ],
   },

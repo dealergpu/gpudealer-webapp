@@ -6,6 +6,7 @@ import { Providers } from './providers';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { SmoothScroll } from '@/components/motion/SmoothScroll';
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
@@ -26,21 +27,28 @@ const geistMono = Geist_Mono({
   variable: '--app-font-mono',
 });
 
-const description =
-  'GPUDealer — used GPUs, AI servers, memory and compute hardware. Find. Sell. Request.';
+const description = SITE_DESCRIPTION;
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  applicationName: SITE_NAME,
   title: {
     default: 'GPUDealer — Find. Sell. Request.',
     template: '%s | GPUDealer',
   },
   description,
-  robots: { index: true, follow: true },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 },
+  },
   icons: { icon: '/favicon.svg' },
   openGraph: {
     title: 'GPUDealer',
     description,
     type: 'website',
+    siteName: SITE_NAME,
+    url: SITE_URL,
   },
   twitter: {
     card: 'summary_large_image',
