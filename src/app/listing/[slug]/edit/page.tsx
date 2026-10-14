@@ -14,9 +14,11 @@ export const metadata: Metadata = {
 export default async function EditListingPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  // Shares the `[slug]` segment with the detail page, but edit links pass the
+  // listing id (stable even when the slug changes). The API accepts either.
+  params: Promise<{ slug: string }>;
 }) {
-  const { id } = await params;
+  const { slug: id } = await params;
   const user = await getUser();
   if (!user) {
     redirect("/sign-in");

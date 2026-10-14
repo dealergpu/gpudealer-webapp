@@ -31,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { listingPath } from "@/lib/listing-path";
 
 // All inputs are held as strings and converted on save, so "cleared" is
 // simply "" and react-hook-form's dirty tracking works on raw input values.
@@ -256,7 +257,7 @@ function EditListingFields({ listing }: { listing: Listing }) {
     updateListing.mutate(
       { id: listing.id, data: body },
       {
-        onSuccess: () => {
+        onSuccess: (response) => {
           if (supabase && photosChanged) {
             const keptUrls = new Set(photos.map((p) => p.url));
             const removedOriginals = initialPhotos
@@ -272,7 +273,9 @@ function EditListingFields({ listing }: { listing: Listing }) {
           queryClient.invalidateQueries({ queryKey: getGetListingsQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetListingQueryKey(listing.id) });
           toast({ title: "Listing updated", description: "Your changes have been saved." });
-          router.push("/dashboard");
+          // The slug can change when a draft's title is edited, so always
+          // navigate with the one the API just returned.
+          router.push(listingPath(response.data));
           router.refresh();
         },
         onError: (error) => {

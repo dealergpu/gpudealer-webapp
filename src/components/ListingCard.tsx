@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Listing, ListingCondition, ListingSourceType } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpRight, ImageOff, MapPin } from "lucide-react";
+import { listingPath } from "@/lib/listing-path";
 
 interface ListingCardProps {
   listing: Listing;
@@ -65,7 +66,7 @@ export function ListingCard({ listing }: ListingCardProps) {
       <div className="flex flex-1 flex-col p-5">
         <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug text-foreground">
           {/* Stretched link: the whole card is clickable, but only one focus stop. */}
-          <Link href={`/listing/${listing.id}`} className="after:absolute after:inset-0 focus-visible:outline-none">
+          <Link href={listingPath(listing)} className="after:absolute after:inset-0 focus-visible:outline-none">
             {listing.title}
           </Link>
         </h3>

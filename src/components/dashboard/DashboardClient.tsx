@@ -35,6 +35,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { listingPath } from "@/lib/listing-path";
 
 const formatDate = (dateString: string) =>
   new Date(dateString).toLocaleDateString("en-US", {
@@ -321,7 +322,7 @@ export function DashboardClient() {
                             </Link>
                           </Button>
                           <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                            <Link href={`/listing/${listing.id}`} title="View listing" aria-label="View listing">
+                            <Link href={listingPath(listing)} title="View listing" aria-label="View listing">
                               <ExternalLink className="h-4 w-4" />
                             </Link>
                           </Button>
@@ -458,7 +459,7 @@ export function DashboardClient() {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           {saved.listing && (
-                            <Link href={`/listing/${saved.listingId}`}>
+                            <Link href={listingPath(saved.listing)}>
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                                 <ExternalLink className="h-4 w-4" />
                               </Button>
@@ -516,7 +517,7 @@ export function DashboardClient() {
                       <TableRow key={inquiry.id}>
                         <TableCell className="font-medium">
                           {inquiry.listing ? (
-                            <Link href={`/listing/${inquiry.listingId}`} className="hover:text-accent truncate max-w-[160px] block">
+                            <Link href={listingPath(inquiry.listing)} className="hover:text-accent truncate max-w-[160px] block">
                               {inquiry.listing.title}
                             </Link>
                           ) : (
@@ -583,7 +584,7 @@ export function DashboardClient() {
                       <TableRow key={inquiry.id}>
                         <TableCell className="font-medium">
                           {inquiry.listing ? (
-                            <Link href={`/listing/${inquiry.listingId}`} className="hover:text-accent truncate max-w-[160px] block">
+                            <Link href={listingPath(inquiry.listing)} className="hover:text-accent truncate max-w-[160px] block">
                               {inquiry.listing.title}
                             </Link>
                           ) : (

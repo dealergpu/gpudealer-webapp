@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getAllPublishedListings, SITE_URL } from "@/lib/site";
+import { listingPath } from "@/lib/listing-path";
 
 // Rebuilt per request: there's no ISR cache on Cloudflare (see app/page.tsx),
 // so a cached sitemap would stay frozen at build-time inventory.
@@ -27,7 +28,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
       .map((image) => image.url);
     return {
-      url: `${SITE_URL}/listing/${listing.id}`,
+      url: `${SITE_URL}${listingPath(listing)}`,
       lastModified: new Date(listing.updatedAt ?? listing.createdAt),
       changeFrequency: "daily",
       priority: 0.7,

@@ -64,3 +64,20 @@ export async function getUser() {
     return null;
   }
 }
+
+/**
+ * The signed-in user's Supabase access token, for forwarding to the API on a
+ * single server-side request (never stored on the shared API client). Null
+ * when signed out or when Supabase isn't configured.
+ */
+export async function getAccessToken() {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    return session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}

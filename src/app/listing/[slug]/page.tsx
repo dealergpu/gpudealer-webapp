@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { cache } from "react";
+import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import {
   Zap,
@@ -10,7 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { getListing, ListingCondition, ListingSourceType, type Listing } from "@/lib/api";
+import { ApiError, getListing, ListingCondition, ListingSourceType, type Listing } from "@/lib/api";
+import { getAccessToken } from "@/lib/supabase/server";
+import { listingPath } from "@/lib/listing-path";
 import { ListingActions } from "@/components/listing/ListingActions";
 import { ListingGallery } from "@/components/listing/ListingGallery";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -20,13 +23,28 @@ function sortedImages(listing: Listing) {
   return [...(listing.images ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 }
 
-async function loadListing(id: string): Promise<Listing | null> {
+// The API resolves both slugs and ids. The viewer's token is forwarded so
+// sellers can preview their own drafts. Cached per request so metadata and
+// the page share one fetch.
+const loadListing = cache(async (slugOrId: string): Promise<Listing | null> => {
+  const token = await getAccessToken();
   try {
-    const response = await getListing(id);
+    const response = await getListing(slugOrId, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
     return response.data;
-  } catch {
-    return null;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
   }
+});
+
+function formatPrice(listing: Listing, fractionDigits?: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: listing.currency || "USD",
+    maximumFractionDigits: fractionDigits,
+  }).format(Number(listing.price));
 }
 
 function formatLocation(listing: Listing): string | null {
@@ -38,34 +56,46 @@ function formatLocation(listing: Listing): string | null {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const listing = await loadListing(id);
+  const { slug } = await params;
+  const listing = await loadListing(slug);
 
   if (!listing) {
-    return { title: "Listing" };
+    return { title: "Listing not found", robots: { index: false } };
   }
 
-  const description = listing.description
-    ? listing.description.slice(0, 160)
-    : `${listing.manufacturer ?? ""} ${listing.model ?? listing.title} — ${listing.condition}, listed on GPUDealer.`.trim();
+  const price = formatPrice(listing, 0);
+  const title = `${listing.title} — ${price}`;
+  const hardware = [listing.manufacturer, listing.model].filter(Boolean).join(" ");
+  const location = formatLocation(listing);
+  const description = [
+    `${listing.title}${hardware && !listing.title.includes(hardware) ? ` (${hardware})` : ""} for ${price}`,
+    [
+      listing.vramGb != null ? `${listing.vramGb}GB VRAM` : null,
+      listing.condition !== ListingCondition.UNKNOWN ? listing.condition.toLowerCase() : null,
+      listing.quantity != null && listing.quantity > 1 ? `${listing.quantity} available` : null,
+      location,
+    ].filter(Boolean).join(", "),
+  ].filter(Boolean).join(". ") + " — on GPUDealer.";
 
-  const coverImage = sortedImages(listing)[0]?.url;
+  const coverImage = listing.images?.[0]?.url;
+  const canonical = `${SITE_URL}${listingPath(listing)}`;
 
   return {
-    title: listing.title,
+    title,
     description,
-    alternates: { canonical: `/listing/${listing.id}` },
+    alternates: { canonical },
     openGraph: {
-      title: listing.title,
+      title,
       description,
+      url: canonical,
       type: "website",
-      images: coverImage ? [coverImage] : undefined,
+      images: coverImage ? [{ url: coverImage, alt: listing.images?.[0]?.altText || listing.title }] : undefined,
     },
     twitter: {
       card: coverImage ? "summary_large_image" : "summary",
-      title: listing.title,
+      title,
       description,
       images: coverImage ? [coverImage] : undefined,
     },
@@ -79,7 +109,7 @@ const ITEM_CONDITION: Partial<Record<string, string>> = {
 };
 
 function productStructuredData(listing: Listing) {
-  const url = `${SITE_URL}/listing/${listing.id}`;
+  const url = `${SITE_URL}${listingPath(listing)}`;
   const vram = listing.vramGb != null ? `${listing.vramGb}GB VRAM` : null;
   return {
     "@context": "https://schema.org",
@@ -114,19 +144,22 @@ const formatDate = (dateString: string) =>
 export default async function ListingDetail({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { id } = await params;
-  const listing = await loadListing(id);
+  const { slug } = await params;
+  const listing = await loadListing(slug);
 
   if (!listing) {
     notFound();
   }
 
-  const formattedPrice = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: listing.currency || "USD",
-  }).format(Number(listing.price));
+  // Old /listing/<uuid> links (and any other non-canonical param) land on
+  // the slug URL with a permanent redirect so search engines update.
+  if (decodeURIComponent(slug) !== listing.slug) {
+    permanentRedirect(listingPath(listing));
+  }
+
+  const formattedPrice = formatPrice(listing);
 
   const location = formatLocation(listing);
   const isThirdParty = listing.sourceType && listing.sourceType !== ListingSourceType.GPUDEALER;

@@ -1,5 +1,6 @@
 import { getAllPublishedListings, SITE_URL } from "@/lib/site";
 import type { Listing } from "@/lib/api";
+import { listingPath } from "@/lib/listing-path";
 
 // llms.txt (https://llmstxt.org): a plain-Markdown map of the site for LLM
 // crawlers and assistants. Rendered per request so inventory stays current.
@@ -18,7 +19,7 @@ function describe(listing: Listing): string {
     `${price}${listing.quantity && listing.quantity > 1 ? ` each, ${listing.quantity} available` : ""}`,
     location || null,
   ].filter(Boolean);
-  return `- [${listing.title}](${SITE_URL}/listing/${listing.id}): ${details.join(" · ")}`;
+  return `- [${listing.title}](${SITE_URL}${listingPath(listing)}): ${details.join(" · ")}`;
 }
 
 export async function GET() {
