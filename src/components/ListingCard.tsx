@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { Listing, ListingCondition, ListingSourceType } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpRight, ImageOff, MapPin } from "lucide-react";
+import { ArrowUpRight, MapPin } from "lucide-react";
 import { listingPath } from "@/lib/listing-path";
+
+// Shown on cards when a listing has no photos. Not used on the detail page.
+const DEFAULT_LISTING_IMAGE = "/gpu-default-listing-image.png";
 
 interface ListingCardProps {
   listing: Listing;
@@ -28,7 +31,7 @@ export function ListingCard({ listing }: ListingCardProps) {
   }).format(Number(listing.price));
 
   const location = formatLocation(listing);
-  const coverImage = [...(listing.images ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
+  const coverImage = [...(listing.images ?? [])].filter((image) => image.url).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
   const condition = listing.condition ? CONDITION_BADGE[listing.condition] : undefined;
   const isThirdParty = listing.sourceType && listing.sourceType !== ListingSourceType.GPUDEALER;
   const specs = [
@@ -47,9 +50,13 @@ export function ListingCard({ listing }: ListingCardProps) {
             className="h-full w-full object-cover transition-transform duration-[1.2s] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06]"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_30%_20%,hsl(var(--foreground)/0.05),transparent_60%)] text-muted-foreground/40">
-            <ImageOff className="h-8 w-8" strokeWidth={1.25} />
-          </div>
+          // Square artwork on white — contained (not cropped) so the whole card shows.
+          <img
+            src={DEFAULT_LISTING_IMAGE}
+            alt=""
+            loading="lazy"
+            className="h-full w-full bg-white object-contain px-4 pt-8 pb-2 transition-transform duration-[1.2s] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+          />
         )}
         <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
           <span className="rounded-full bg-background/85 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-foreground backdrop-blur">
