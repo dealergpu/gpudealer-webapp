@@ -22,6 +22,8 @@ tags:
     description: Statistics and dashboard operations
   - name: users
     description: User profile operations
+  - name: apiKeys
+    description: Personal API key management (session auth only)
 
 paths:
   /healthz:
@@ -774,6 +776,143 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
+  /api-keys:
+    get:
+      operationId: getApiKeys
+      tags: [apiKeys]
+      summary: List the authenticated user's active API keys
+      description: >-
+        Active (non-revoked) keys only, newest first. Never includes the
+        secret. Session auth only — requests authenticated with an API key
+        get 403.
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 24 }
+      responses:
+        "200":
+          description: Active API keys
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiKeysResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "403":
+          description: Called with an API key instead of a session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+    post:
+      operationId: createApiKey
+      tags: [apiKeys]
+      summary: Create an API key
+      description: >-
+        The response is the only time the full secret (`key`) is returned.
+        409 when the user already has 10 active keys.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ApiKeyInput" }
+      responses:
+        "201":
+          description: Created — includes the secret, shown once
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiKeyWithSecretResponse" }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "403":
+          description: Called with an API key instead of a session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "409":
+          description: Active key limit (10) reached
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /api-keys/{id}/rotate:
+    post:
+      operationId: rotateApiKey
+      tags: [apiKeys]
+      summary: Rotate an API key
+      description: >-
+        No body. Revokes the key immediately and returns a NEW key (new id,
+        same name) including its secret, shown once.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Replacement key — includes the secret, shown once
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiKeyWithSecretResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "403":
+          description: Called with an API key instead of a session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "404":
+          description: Key not found or already revoked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /api-keys/{id}:
+    delete:
+      operationId: revokeApiKey
+      tags: [apiKeys]
+      summary: Revoke an API key
+      description: Takes effect immediately and can't be undone.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Revoked
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "403":
+          description: Called with an API key instead of a session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "404":
+          description: Key not found or already revoked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
 components:
   schemas:
     HealthStatus:
@@ -1222,3 +1361,46 @@ components:
         company: { type: string }
         location: { type: string }
         bio: { type: string }
+
+    ApiKey:
+      type: object
+      required: [id, name, keyPrefix, lastUsedAt, revokedAt, createdAt, userId]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        # Non-secret leading characters of the key, e.g. "gpd_ab12".
+        keyPrefix: { type: string }
+        lastUsedAt: { type: ["string", "null"], format: date-time }
+        revokedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+        userId: { type: string }
+
+    ApiKeyWithSecret:
+      allOf:
+        - $ref: "#/components/schemas/ApiKey"
+        - type: object
+          required: [key]
+          properties:
+            # The full secret ("gpd_..."). Only returned on create/rotate.
+            key: { type: string }
+
+    ApiKeyInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+
+    ApiKeysResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/ApiKey" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+
+    ApiKeyWithSecretResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: "#/components/schemas/ApiKeyWithSecret" }

@@ -30,7 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   HardDrive, Inbox, Bookmark,
-  Plus, ExternalLink, Pencil, Trash2, Send, X, MessageSquare, CheckCheck
+  Plus, ExternalLink, Pencil, Trash2, Send, X, MessageSquare, CheckCheck, KeyRound
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -191,6 +191,11 @@ export function DashboardClient() {
       <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <h2 className="text-lg font-semibold">Overview</h2>
         <div className="flex gap-3 w-full sm:w-auto">
+          <Link href="/account/api-keys" className="flex-1 sm:flex-none">
+            <Button variant="ghost" className="w-full">
+              <KeyRound className="mr-2 h-4 w-4" /> API Keys
+            </Button>
+          </Link>
           <Link href="/sell" className="flex-1 sm:flex-none">
             <Button variant="outline" className="w-full">
               <Plus className="mr-2 h-4 w-4" /> List Hardware

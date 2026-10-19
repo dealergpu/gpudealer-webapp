@@ -23,7 +23,11 @@ import type {
 
 import type {
   ApiErrorResponse,
+  ApiKeyInput,
+  ApiKeyWithSecretResponse,
+  ApiKeysResponse,
   DashboardStats,
+  GetApiKeysParams,
   GetInquiriesParams,
   GetListingsParams,
   GetRequestsParams,
@@ -2773,4 +2777,426 @@ export const useUpdateProfile = <
   TContext
 > => {
   return useMutation(getUpdateProfileMutationOptions(options), queryClient);
+};
+
+export const getGetApiKeysUrl = (params?: GetApiKeysParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/api-keys?${stringifiedParams}`
+    : `/api/v1/api-keys`;
+};
+
+/**
+ * Active (non-revoked) keys only, newest first. Never includes the secret. Session auth only — requests authenticated with an API key get 403.
+ * @summary List the authenticated user's active API keys
+ */
+export const getApiKeys = async (
+  params?: GetApiKeysParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ApiKeysResponse> => {
+  return customFetch<ApiKeysResponse>(getGetApiKeysUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetApiKeysQueryKey = (params?: GetApiKeysParams) => {
+  return [`/api/v1/api-keys`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetApiKeysQueryOptions = <
+  TData = Awaited<ReturnType<typeof getApiKeys>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetApiKeysParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getApiKeys>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetApiKeysQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiKeys>>> = ({
+    signal,
+  }) => getApiKeys(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getApiKeys>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetApiKeysQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getApiKeys>>
+>;
+export type GetApiKeysQueryError = ErrorType<ApiErrorResponse>;
+
+export function useGetApiKeys<
+  TData = Awaited<ReturnType<typeof getApiKeys>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: undefined | GetApiKeysParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getApiKeys>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiKeys>>,
+          TError,
+          Awaited<ReturnType<typeof getApiKeys>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetApiKeys<
+  TData = Awaited<ReturnType<typeof getApiKeys>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetApiKeysParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getApiKeys>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiKeys>>,
+          TError,
+          Awaited<ReturnType<typeof getApiKeys>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetApiKeys<
+  TData = Awaited<ReturnType<typeof getApiKeys>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetApiKeysParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getApiKeys>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary List the authenticated user's active API keys
+ */
+
+export function useGetApiKeys<
+  TData = Awaited<ReturnType<typeof getApiKeys>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetApiKeysParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getApiKeys>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetApiKeysQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getCreateApiKeyUrl = () => {
+  return `/api/v1/api-keys`;
+};
+
+/**
+ * The response is the only time the full secret (`key`) is returned. 409 when the user already has 10 active keys.
+ * @summary Create an API key
+ */
+export const createApiKey = async (
+  apiKeyInput: ApiKeyInput,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ApiKeyWithSecretResponse> => {
+  return customFetch<ApiKeyWithSecretResponse>(getCreateApiKeyUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(apiKeyInput),
+  });
+};
+
+export const getCreateApiKeyMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createApiKey>>,
+    TError,
+    { data: BodyType<ApiKeyInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createApiKey>>,
+  TError,
+  { data: BodyType<ApiKeyInput> },
+  TContext
+> => {
+  const mutationKey = ["createApiKey"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createApiKey>>,
+    { data: BodyType<ApiKeyInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createApiKey(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateApiKeyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createApiKey>>
+>;
+export type CreateApiKeyMutationBody = BodyType<ApiKeyInput>;
+export type CreateApiKeyMutationError = ErrorType<ApiErrorResponse>;
+
+/**
+ * @summary Create an API key
+ */
+export const useCreateApiKey = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createApiKey>>,
+      TError,
+      { data: BodyType<ApiKeyInput> },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createApiKey>>,
+  TError,
+  { data: BodyType<ApiKeyInput> },
+  TContext
+> => {
+  return useMutation(getCreateApiKeyMutationOptions(options), queryClient);
+};
+
+export const getRotateApiKeyUrl = (id: string) => {
+  return `/api/v1/api-keys/${id}/rotate`;
+};
+
+/**
+ * No body. Revokes the key immediately and returns a NEW key (new id, same name) including its secret, shown once.
+ * @summary Rotate an API key
+ */
+export const rotateApiKey = async (
+  id: string,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ApiKeyWithSecretResponse> => {
+  return customFetch<ApiKeyWithSecretResponse>(getRotateApiKeyUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRotateApiKeyMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rotateApiKey>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rotateApiKey>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["rotateApiKey"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rotateApiKey>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return rotateApiKey(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RotateApiKeyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rotateApiKey>>
+>;
+
+export type RotateApiKeyMutationError = ErrorType<ApiErrorResponse>;
+
+/**
+ * @summary Rotate an API key
+ */
+export const useRotateApiKey = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof rotateApiKey>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof rotateApiKey>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getRotateApiKeyMutationOptions(options), queryClient);
+};
+
+export const getRevokeApiKeyUrl = (id: string) => {
+  return `/api/v1/api-keys/${id}`;
+};
+
+/**
+ * Takes effect immediately and can't be undone.
+ * @summary Revoke an API key
+ */
+export const revokeApiKey = async (
+  id: string,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<void> => {
+  return customFetch<void>(getRevokeApiKeyUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRevokeApiKeyMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof revokeApiKey>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof revokeApiKey>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["revokeApiKey"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof revokeApiKey>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return revokeApiKey(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RevokeApiKeyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof revokeApiKey>>
+>;
+
+export type RevokeApiKeyMutationError = ErrorType<ApiErrorResponse>;
+
+/**
+ * @summary Revoke an API key
+ */
+export const useRevokeApiKey = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof revokeApiKey>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof revokeApiKey>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getRevokeApiKeyMutationOptions(options), queryClient);
 };

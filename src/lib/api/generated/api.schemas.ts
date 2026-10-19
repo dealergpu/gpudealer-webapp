@@ -464,6 +464,39 @@ export interface UserProfileUpdate {
   bio?: string;
 }
 
+export interface ApiKey {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  /** @nullable */
+  lastUsedAt: string | null;
+  /** @nullable */
+  revokedAt: string | null;
+  createdAt: string;
+  userId: string;
+}
+
+export type ApiKeyWithSecret = ApiKey & {
+  key: string;
+};
+
+export interface ApiKeyInput {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+}
+
+export interface ApiKeysResponse {
+  data: ApiKey[];
+  pagination: Pagination;
+}
+
+export interface ApiKeyWithSecretResponse {
+  data: ApiKeyWithSecret;
+}
+
 export type GetListingsParams = {
   /**
    * Free-text search over title/description/normalized model
@@ -519,6 +552,11 @@ export type GetRequestsParams = {
 };
 
 export type GetSavedListingsParams = {
+  page?: number;
+  limit?: number;
+};
+
+export type GetApiKeysParams = {
   page?: number;
   limit?: number;
 };
