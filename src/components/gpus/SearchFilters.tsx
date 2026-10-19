@@ -16,6 +16,10 @@ export type SearchFilterValues = {
   minVramGb?: number;
   maxPrice?: number;
   sortBy?: ListingSortBy;
+  // Set by "browse by city" links; there's no UI control for them, they're
+  // just carried through so changing another filter keeps the location.
+  city?: string;
+  country?: string;
 };
 
 function buildQuery(filters: SearchFilterValues): string {
@@ -26,6 +30,8 @@ function buildQuery(filters: SearchFilterValues): string {
   if (filters.minVramGb) params.set("minVramGb", String(filters.minVramGb));
   if (filters.maxPrice) params.set("maxPrice", String(filters.maxPrice));
   if (filters.sortBy) params.set("sortBy", filters.sortBy);
+  if (filters.city) params.set("city", filters.city);
+  if (filters.country) params.set("country", filters.country);
   return params.toString();
 }
 

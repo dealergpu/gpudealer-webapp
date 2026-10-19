@@ -54,8 +54,10 @@ function parseFilters(searchParams: SearchParams) {
   const minVramGb = first(searchParams.minVramGb) ? Number(first(searchParams.minVramGb)) : undefined;
   const maxPrice = first(searchParams.maxPrice) ? Number(first(searchParams.maxPrice)) : undefined;
   const page = first(searchParams.page) ? Number(first(searchParams.page)) : 1;
+  const city = first(searchParams.city);
+  const country = first(searchParams.country);
 
-  return { q, category, condition, sortBy, minVramGb, maxPrice, page };
+  return { q, category, condition, sortBy, minVramGb, maxPrice, page, city, country };
 }
 
 async function loadListings(filters: ReturnType<typeof parseFilters>): Promise<ListingsResponse | null> {
@@ -82,6 +84,8 @@ export default async function GPUSearch({
     sortBy: filters.sortBy,
     minVramGb: filters.minVramGb,
     maxPrice: filters.maxPrice,
+    city: filters.city,
+    country: filters.country,
   };
 
   const pageQuery = (page: number) => {
@@ -92,6 +96,8 @@ export default async function GPUSearch({
     if (filters.sortBy) params.set("sortBy", filters.sortBy);
     if (filters.minVramGb) params.set("minVramGb", String(filters.minVramGb));
     if (filters.maxPrice) params.set("maxPrice", String(filters.maxPrice));
+    if (filters.city) params.set("city", filters.city);
+    if (filters.country) params.set("country", filters.country);
     if (page > 1) params.set("page", String(page));
     const query = params.toString();
     return query ? `/gpus?${query}` : "/gpus";
@@ -103,7 +109,11 @@ export default async function GPUSearch({
     <>
       <PageHeader
         eyebrow="Find hardware"
-        title={filters.q ? <>Results for <em>&ldquo;{filters.q}&rdquo;</em></> : <>Used GPUs &amp; <em>AI hardware</em></>}
+        title={
+          filters.q ? <>Results for <em>&ldquo;{filters.q}&rdquo;</em></>
+          : filters.city ? <>Hardware in <em>{filters.city}</em></>
+          : <>Used GPUs &amp; <em>AI hardware</em></>
+        }
         description="Filter by model, VRAM, price and condition. Every listing shows where it came from."
       />
 

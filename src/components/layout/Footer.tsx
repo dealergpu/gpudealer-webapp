@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
+import { CITY_PAGES } from "@/lib/cities";
 
 const columns = [
   {
@@ -9,6 +10,13 @@ const columns = [
       { href: "/gpus?category=SERVER", label: "GPU servers" },
       { href: "/gpus?category=MEMORY", label: "Memory" },
       { href: "/gpus", label: "All hardware" },
+    ],
+  },
+  {
+    title: "By city",
+    links: [
+      ...CITY_PAGES.map((city) => ({ href: `/${city.slug}`, label: city.name })),
+      { href: "/gpus-by-city", label: "All cities" },
     ],
   },
   {
@@ -35,7 +43,7 @@ export function Footer() {
       <div className="bg-noise pointer-events-none absolute inset-0" />
       <div className="container relative mx-auto px-4 pt-20 pb-10 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-12 md:grid-cols-12">
-          <div className="md:col-span-5">
+          <div className="md:col-span-4">
             <img src="/gpu-dealer-logo-white.svg" alt="GPUDealer" className="mb-6 h-7 w-auto" />
             <p className="max-w-sm font-display text-3xl leading-tight text-foreground">
               Used GPUs, AI servers, memory and compute hardware.
@@ -50,7 +58,7 @@ export function Footer() {
           </div>
 
           {columns.map((column, i) => (
-            <div key={column.title} className={i === 0 ? "md:col-span-2 md:col-start-7" : "md:col-span-2"}>
+            <div key={column.title} className={i === 0 ? "md:col-span-2 md:col-start-5" : "md:col-span-2"}>
               <h4 className="mb-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{column.title}</h4>
               <ul className="space-y-2.5 text-sm">
                 {column.links.map((link) => (
