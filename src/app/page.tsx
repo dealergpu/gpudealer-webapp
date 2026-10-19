@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { ArrowRight, ArrowUpRight, BadgeCheck, ExternalLink, Search, Tag, UserRound, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ListingCard, ListingCardSkeleton } from "@/components/ListingCard";
@@ -8,7 +9,7 @@ import { SpotlightCard } from "@/components/motion/SpotlightCard";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import type { Metadata } from "next";
-import { getListings, getMarketplaceStats, ListingSortBy, ListingStatus, type Listing, type MarketplaceStats } from "@/lib/api";
+import { getListings, getMarketplaceStats, ListingSortBy, type MarketplaceStats } from "@/lib/api";
 
 // Render per request. `revalidate` (ISR) needs an OpenNext incremental cache
 // (R2/KV) on Cloudflare, which isn't configured — without it the page stays
@@ -85,28 +86,89 @@ const ACTIONS = [
   },
 ];
 
-async function loadHomeData(): Promise<{
-  featured: Listing[] | null;
-  stats: MarketplaceStats | null;
-}> {
-  // Settled independently so one failing endpoint (e.g. stats not deployed
-  // yet) doesn't blank out the other — degrade gracefully per section.
-  const [listings, stats] = await Promise.allSettled([
-    getListings({ status: ListingStatus.PUBLISHED, sortBy: ListingSortBy.newest, limit: 8 }),
-    getMarketplaceStats(),
-  ]);
-  return {
-    featured: listings.status === "fulfilled" ? listings.value.data : null,
-    stats: stats.status === "fulfilled" ? stats.value : null,
-  };
+const LATEST_LISTINGS_LIMIT = 12;
+const LISTING_GRID = "grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4";
+
+// A failing stats endpoint (e.g. not deployed yet) just hides the stats rows.
+async function loadStats(): Promise<MarketplaceStats | null> {
+  try {
+    return await getMarketplaceStats();
+  } catch {
+    return null;
+  }
 }
 
 function SectionEyebrow({ children }: { children: React.ReactNode }) {
   return <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{children}</p>;
 }
 
+function LatestListingsShell({ children }: { children: React.ReactNode }) {
+  return (
+    <section className="border-t border-border bg-secondary/40 py-24 md:py-28">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-12 flex items-end justify-between gap-6">
+          <Reveal>
+            <SectionEyebrow>Fresh inventory</SectionEyebrow>
+            <h2 className="font-display text-5xl leading-[0.95] tracking-[-0.02em] md:text-6xl">Latest listings</h2>
+          </Reveal>
+          {/* "View all" goes to the unfiltered browse page — photo-less listings included. */}
+          <Button asChild variant="outline" className="hidden sm:inline-flex">
+            <Link href="/gpus">
+              View all hardware
+              <ArrowRight className="h-4 w-4 transition-transform group-hover/button:translate-x-0.5" />
+            </Link>
+          </Button>
+        </div>
+
+        {children}
+
+        <Button asChild variant="outline" className="mt-8 w-full sm:hidden">
+          <Link href="/gpus">View all hardware</Link>
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function LatestListingsSkeleton() {
+  return (
+    <LatestListingsShell>
+      <div className={LISTING_GRID}>
+        {Array.from({ length: 4 }).map((_, i) => <ListingCardSkeleton key={i} />)}
+      </div>
+    </LatestListingsShell>
+  );
+}
+
+// The home page only showcases listings with photos. Filtered by the API
+// (`hasImages`), never client-side, so counts and pagination stay correct.
+// Browse (/gpus) and My Listings deliberately leave the filter off.
+async function LatestListings() {
+  let listings;
+  try {
+    const response = await getListings({ hasImages: true, sortBy: ListingSortBy.newest, limit: LATEST_LISTINGS_LIMIT });
+    listings = response.data;
+  } catch {
+    // Never break the home page over one section.
+    return null;
+  }
+  if (listings.length === 0) return null;
+
+  return (
+    <LatestListingsShell>
+      <RevealGroup className={LISTING_GRID} stagger={0.06}>
+        {listings.map((listing) => (
+          <RevealItem key={listing.id}>
+            <ListingCard listing={listing} />
+          </RevealItem>
+        ))}
+      </RevealGroup>
+    </LatestListingsShell>
+  );
+}
+
 export default async function Home() {
-  const { featured, stats } = await loadHomeData();
+  const stats = await loadStats();
   const models = stats?.popularModels?.length
     ? [...new Set([...stats.popularModels.map((m) => m.model), ...DEFAULT_MODELS])].slice(0, 14)
     : DEFAULT_MODELS;
@@ -199,49 +261,9 @@ export default async function Home() {
       </section>
 
       {/* Latest listings */}
-      <section className="border-t border-border bg-secondary/40 py-24 md:py-28">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-12 flex items-end justify-between gap-6">
-            <Reveal>
-              <SectionEyebrow>Fresh inventory</SectionEyebrow>
-              <h2 className="font-display text-5xl leading-[0.95] tracking-[-0.02em] md:text-6xl">Latest listings</h2>
-            </Reveal>
-            <Button asChild variant="outline" className="hidden sm:inline-flex">
-              <Link href="/gpus">
-                View all hardware
-                <ArrowRight className="h-4 w-4 transition-transform group-hover/button:translate-x-0.5" />
-              </Link>
-            </Button>
-          </div>
-
-          {featured === null ? (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, i) => <ListingCardSkeleton key={i} />)}
-            </div>
-          ) : featured.length > 0 ? (
-            <RevealGroup className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4" stagger={0.06}>
-              {featured.map((listing) => (
-                <RevealItem key={listing.id}>
-                  <ListingCard listing={listing} />
-                </RevealItem>
-              ))}
-            </RevealGroup>
-          ) : (
-            <div className="rounded-3xl border border-dashed border-border px-6 py-16 text-center">
-              <p className="font-display text-3xl">No listings yet.</p>
-              <p className="mt-2 text-muted-foreground">Be the first — or tell us what you&apos;re looking for.</p>
-              <div className="mt-6 flex justify-center gap-3">
-                <Button asChild variant="outline"><Link href="/sell">Sell hardware</Link></Button>
-                <Button asChild variant="accent"><Link href="/request">Request hardware</Link></Button>
-              </div>
-            </div>
-          )}
-
-          <Button asChild variant="outline" className="mt-8 w-full sm:hidden">
-            <Link href="/gpus">View all hardware</Link>
-          </Button>
-        </div>
-      </section>
+      <Suspense fallback={<LatestListingsSkeleton />}>
+        <LatestListings />
+      </Suspense>
 
       {/* Shop by VRAM */}
       <section data-nav="dark" className="dark relative overflow-hidden bg-background py-24 text-foreground md:py-32">

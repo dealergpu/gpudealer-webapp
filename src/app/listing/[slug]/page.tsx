@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { ApiError, getListing, ListingCondition, ListingSourceType, type Listing } from "@/lib/api";
 import { getAccessToken } from "@/lib/supabase/server";
 import { listingPath } from "@/lib/listing-path";
+import { formatListingPrice, hasListingPrice } from "@/lib/listing-price";
 import { ListingActions } from "@/components/listing/ListingActions";
 import { ListingGallery } from "@/components/listing/ListingGallery";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -39,14 +40,6 @@ const loadListing = cache(async (slugOrId: string): Promise<Listing | null> => {
   }
 });
 
-function formatPrice(listing: Listing, fractionDigits?: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: listing.currency || "USD",
-    maximumFractionDigits: fractionDigits,
-  }).format(Number(listing.price));
-}
-
 function formatLocation(listing: Listing): string | null {
   return [listing.locationCity, listing.locationRegion, listing.locationCountry]
     .filter(Boolean)
@@ -65,12 +58,12 @@ export async function generateMetadata({
     return { title: "Listing not found", robots: { index: false } };
   }
 
-  const price = formatPrice(listing, 0);
+  const price = formatListingPrice(listing, 0);
   const title = `${listing.title} — ${price}`;
   const hardware = [listing.manufacturer, listing.model].filter(Boolean).join(" ");
   const location = formatLocation(listing);
   const description = [
-    `${listing.title}${hardware && !listing.title.includes(hardware) ? ` (${hardware})` : ""} for ${price}`,
+    `${listing.title}${hardware && !listing.title.includes(hardware) ? ` (${hardware})` : ""}${hasListingPrice(listing) ? ` for ${price}` : ""}`,
     [
       listing.vramGb != null ? `${listing.vramGb}GB VRAM` : null,
       listing.condition !== ListingCondition.UNKNOWN ? listing.condition.toLowerCase() : null,
@@ -125,8 +118,7 @@ function productStructuredData(listing: Listing) {
     offers: {
       "@type": "Offer",
       url,
-      price: Number(listing.price),
-      priceCurrency: listing.currency || "USD",
+      ...(hasListingPrice(listing) ? { price: Number(listing.price), priceCurrency: listing.currency || "USD" } : {}),
       availability: "https://schema.org/InStock",
       ...(ITEM_CONDITION[listing.condition] ? { itemCondition: ITEM_CONDITION[listing.condition] } : {}),
       ...(listing.quantity != null ? { inventoryLevel: { "@type": "QuantitativeValue", value: listing.quantity } } : {}),
@@ -159,7 +151,7 @@ export default async function ListingDetail({
     permanentRedirect(listingPath(listing));
   }
 
-  const formattedPrice = formatPrice(listing);
+  const formattedPrice = formatListingPrice(listing);
 
   const location = formatLocation(listing);
   const isThirdParty = listing.sourceType && listing.sourceType !== ListingSourceType.GPUDEALER;

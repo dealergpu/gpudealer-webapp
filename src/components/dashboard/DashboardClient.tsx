@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { listingPath } from "@/lib/listing-path";
+import { formatListingPrice } from "@/lib/listing-price";
 
 const formatDate = (dateString: string) =>
   new Date(dateString).toLocaleDateString("en-US", {
@@ -301,7 +302,7 @@ export function DashboardClient() {
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-sm">
-                        ${Number(listing.price).toLocaleString()}
+                        {formatListingPrice(listing, 0)}
                       </TableCell>
                       <TableCell>{getStatusBadge(listing.status)}</TableCell>
                       <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
@@ -456,7 +457,7 @@ export function DashboardClient() {
                         )}
                       </TableCell>
                       <TableCell className="font-mono text-sm">
-                        {saved.listing ? `$${Number(saved.listing.price).toLocaleString()}` : '—'}
+                        {saved.listing ? formatListingPrice(saved.listing, 0) : '—'}
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                         {formatDate(saved.createdAt)}

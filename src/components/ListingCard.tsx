@@ -3,6 +3,7 @@ import { Listing, ListingCondition, ListingSourceType } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpRight, MapPin } from "lucide-react";
 import { listingPath } from "@/lib/listing-path";
+import { formatListingPrice } from "@/lib/listing-price";
 
 // Shown on cards when a listing has no photos. Not used on the detail page.
 const DEFAULT_LISTING_IMAGE = "/gpu-default-listing-image.png";
@@ -24,11 +25,7 @@ const CONDITION_BADGE: Record<string, { label: string; variant: "success" | "war
 };
 
 export function ListingCard({ listing }: ListingCardProps) {
-  const formattedPrice = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: listing.currency || "USD",
-    maximumFractionDigits: 0,
-  }).format(Number(listing.price));
+  const formattedPrice = formatListingPrice(listing, 0);
 
   const location = formatLocation(listing);
   const coverImage = [...(listing.images ?? [])].filter((image) => image.url).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];

@@ -88,8 +88,11 @@ export interface Listing {
   vramGb?: number | null;
   quantity?: number;
   condition: ListingCondition;
-  /** Decimal amount serialized as a string, e.g. "1299.99" */
-  price: string;
+  /**
+   * Decimal amount serialized as a string, e.g. "1299.99". Null means "price on request".
+   * @nullable
+   */
+  price: string | null;
   currency: string;
   /** @nullable */
   locationCountry?: string | null;
@@ -526,6 +529,10 @@ export type GetListingsParams = {
    * Auth required. Returns only the caller's own listings, in every status — the "My Listings" query.
    */
   mine?: boolean;
+  /**
+   * When true, returns only listings with at least one photo. Used by the home page grids; leave off on browse/search and My Listings so photo-less listings stay findable.
+   */
+  hasImages?: boolean;
   sortBy?: ListingSortBy;
   /**
    * @minimum 1

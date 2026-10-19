@@ -109,6 +109,13 @@ paths:
           description: >-
             Auth required. Returns only the caller's own listings, in every
             status — the "My Listings" query.
+        - name: hasImages
+          in: query
+          schema: { type: boolean }
+          description: >-
+            When true, returns only listings with at least one photo. Used by
+            the home page grids; leave off on browse/search and My Listings so
+            photo-less listings stay findable.
         - name: sortBy
           in: query
           schema: { $ref: "#/components/schemas/ListingSortBy" }
@@ -969,8 +976,10 @@ components:
         quantity: { type: integer, default: 1 }
         condition: { $ref: "#/components/schemas/ListingCondition" }
         price:
-          type: string
-          description: Decimal amount serialized as a string, e.g. "1299.99"
+          type: ["string", "null"]
+          description: >-
+            Decimal amount serialized as a string, e.g. "1299.99". Null means
+            "price on request".
         currency: { type: string, default: "USD" }
         locationCountry: { type: ["string", "null"] }
         locationRegion: { type: ["string", "null"] }

@@ -1,22 +1,19 @@
 import { getAllPublishedListings, SITE_URL } from "@/lib/site";
 import type { Listing } from "@/lib/api";
 import { listingPath } from "@/lib/listing-path";
+import { formatListingPrice, hasListingPrice } from "@/lib/listing-price";
 
 // llms.txt (https://llmstxt.org): a plain-Markdown map of the site for LLM
 // crawlers and assistants. Rendered per request so inventory stays current.
 export const dynamic = "force-dynamic";
 
 function describe(listing: Listing): string {
-  const price = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: listing.currency || "USD",
-    maximumFractionDigits: 0,
-  }).format(Number(listing.price));
+  const price = formatListingPrice(listing, 0);
   const location = [listing.locationCity, listing.locationRegion, listing.locationCountry].filter(Boolean).join(", ");
   const details = [
     listing.vramGb != null ? `${listing.vramGb}GB VRAM` : null,
     listing.condition?.toLowerCase(),
-    `${price}${listing.quantity && listing.quantity > 1 ? ` each, ${listing.quantity} available` : ""}`,
+    `${price}${listing.quantity && listing.quantity > 1 ? `${hasListingPrice(listing) ? " each" : ""}, ${listing.quantity} available` : ""}`,
     location || null,
   ].filter(Boolean);
   return `- [${listing.title}](${SITE_URL}${listingPath(listing)}): ${details.join(" · ")}`;
