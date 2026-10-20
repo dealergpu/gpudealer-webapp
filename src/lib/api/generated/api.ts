@@ -26,6 +26,8 @@ import type {
   ApiKeyInput,
   ApiKeyWithSecretResponse,
   ApiKeysResponse,
+  ContactMessageInput,
+  ContactMessageResponse,
   DashboardStats,
   GetApiKeysParams,
   GetInquiriesParams,
@@ -3199,4 +3201,97 @@ export const useRevokeApiKey = <
   TContext
 > => {
   return useMutation(getRevokeApiKeyMutationOptions(options), queryClient);
+};
+
+export const getCreateContactMessageUrl = () => {
+  return `/api/v1/contact-messages`;
+};
+
+/**
+ * Public. A bearer token is optional — when present the message is linked to the signed-in user (a `userId` in the body is ignored). Text fields are trimmed; blank optional fields are stored as null. Rate-limited to 3 messages per minute.
+ * @summary Send a contact message
+ */
+export const createContactMessage = async (
+  contactMessageInput: ContactMessageInput,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ContactMessageResponse> => {
+  return customFetch<ContactMessageResponse>(getCreateContactMessageUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(contactMessageInput),
+  });
+};
+
+export const getCreateContactMessageMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createContactMessage>>,
+    TError,
+    { data: BodyType<ContactMessageInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createContactMessage>>,
+  TError,
+  { data: BodyType<ContactMessageInput> },
+  TContext
+> => {
+  const mutationKey = ["createContactMessage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createContactMessage>>,
+    { data: BodyType<ContactMessageInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createContactMessage(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateContactMessageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createContactMessage>>
+>;
+export type CreateContactMessageMutationBody = BodyType<ContactMessageInput>;
+export type CreateContactMessageMutationError = ErrorType<ApiErrorResponse>;
+
+/**
+ * @summary Send a contact message
+ */
+export const useCreateContactMessage = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createContactMessage>>,
+      TError,
+      { data: BodyType<ContactMessageInput> },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createContactMessage>>,
+  TError,
+  { data: BodyType<ContactMessageInput> },
+  TContext
+> => {
+  return useMutation(
+    getCreateContactMessageMutationOptions(options),
+    queryClient,
+  );
 };

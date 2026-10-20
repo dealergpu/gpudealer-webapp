@@ -7,6 +7,7 @@ import { HeroIntro } from "@/components/home/HeroIntro";
 import { CountUp, Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { SpotlightCard } from "@/components/motion/SpotlightCard";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { ContactForm } from "@/components/contact/ContactForm";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import type { Metadata } from "next";
 import { getListings, getMarketplaceStats, ListingSortBy, type MarketplaceStats } from "@/lib/api";
@@ -374,6 +375,27 @@ export default async function Home() {
                   </div>
                 ))}
               </dl>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Contact */}
+      <section id="contact" aria-labelledby="contact-heading" className="scroll-mt-24 bg-background py-24 md:py-32">
+        <div className="container mx-auto grid gap-14 px-4 sm:px-6 lg:grid-cols-12 lg:px-8">
+          <Reveal className="lg:col-span-5">
+            <SectionEyebrow>Contact us</SectionEyebrow>
+            <h2 id="contact-heading" className="font-display text-5xl leading-[0.95] tracking-[-0.02em] md:text-6xl">
+              Talk to <em className="text-accent">GPUDealer.</em>
+            </h2>
+            <p className="mt-6 max-w-md text-muted-foreground">
+              Partnerships, bulk inventory, sourcing for your team, or something that isn&apos;t working — send us a
+              note and we&apos;ll get back to you by email.
+            </p>
+          </Reveal>
+          <Reveal delay={0.1} className="lg:col-span-7">
+            <div className="rounded-3xl border border-border bg-card p-6 md:p-8">
+              <ContactForm />
             </div>
           </Reveal>
         </div>

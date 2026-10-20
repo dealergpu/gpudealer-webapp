@@ -22,6 +22,8 @@ tags:
     description: Statistics and dashboard operations
   - name: users
     description: User profile operations
+  - name: contact
+    description: Contact form messages
   - name: apiKeys
     description: Personal API key management (session auth only)
 
@@ -920,6 +922,38 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
+  /contact-messages:
+    post:
+      operationId: createContactMessage
+      tags: [contact]
+      summary: Send a contact message
+      description: >-
+        Public. A bearer token is optional — when present the message is
+        linked to the signed-in user (a `userId` in the body is ignored).
+        Text fields are trimmed; blank optional fields are stored as null.
+        Rate-limited to 3 messages per minute.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContactMessageInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContactMessageResponse" }
+        "400":
+          description: Validation error — `error.fields` maps each bad field to its message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "429":
+          description: Rate limited (more than 3 messages a minute)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
 components:
   schemas:
     HealthStatus:
@@ -1413,3 +1447,32 @@ components:
       required: [data]
       properties:
         data: { $ref: "#/components/schemas/ApiKeyWithSecret" }
+
+    ContactSubject:
+      type: string
+      enum: [PARTNERSHIP, BUSINESS, REPORT_BUG, FEEDBACK, OTHER]
+
+    ContactMessageInput:
+      type: object
+      required: [email, subject, message]
+      properties:
+        email: { type: string, format: email, maxLength: 255 }
+        subject: { $ref: "#/components/schemas/ContactSubject" }
+        message: { type: string, minLength: 10, maxLength: 5000 }
+        name: { type: string, maxLength: 100 }
+        phone: { type: string, maxLength: 50 }
+        location: { type: string, maxLength: 255 }
+
+    ContactMessage:
+      type: object
+      required: [id, subject, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        subject: { $ref: "#/components/schemas/ContactSubject" }
+        createdAt: { type: string, format: date-time }
+
+    ContactMessageResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: "#/components/schemas/ContactMessage" }

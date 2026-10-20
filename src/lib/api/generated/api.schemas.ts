@@ -500,6 +500,44 @@ export interface ApiKeyWithSecretResponse {
   data: ApiKeyWithSecret;
 }
 
+export type ContactSubject =
+  (typeof ContactSubject)[keyof typeof ContactSubject];
+
+export const ContactSubject = {
+  PARTNERSHIP: "PARTNERSHIP",
+  BUSINESS: "BUSINESS",
+  REPORT_BUG: "REPORT_BUG",
+  FEEDBACK: "FEEDBACK",
+  OTHER: "OTHER",
+} as const;
+
+export interface ContactMessageInput {
+  /** @maxLength 255 */
+  email: string;
+  subject: ContactSubject;
+  /**
+   * @minLength 10
+   * @maxLength 5000
+   */
+  message: string;
+  /** @maxLength 100 */
+  name?: string;
+  /** @maxLength 50 */
+  phone?: string;
+  /** @maxLength 255 */
+  location?: string;
+}
+
+export interface ContactMessage {
+  id: string;
+  subject: ContactSubject;
+  createdAt: string;
+}
+
+export interface ContactMessageResponse {
+  data: ContactMessage;
+}
+
 export type GetListingsParams = {
   /**
    * Free-text search over title/description/normalized model

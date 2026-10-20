@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { CITY_PAGES } from "@/lib/cities";
+import { ContactDialog } from "@/components/contact/ContactDialog";
 
 const columns = [
   {
@@ -55,6 +56,15 @@ export function Footer() {
               Can&apos;t find it? Tell us what you need
               <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </Link>
+            <ContactDialog>
+              <button
+                type="button"
+                className="group mt-3 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Contact us
+                <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              </button>
+            </ContactDialog>
           </div>
 
           {columns.map((column, i) => (
