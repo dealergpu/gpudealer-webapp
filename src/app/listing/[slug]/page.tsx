@@ -17,6 +17,7 @@ import { listingPath } from "@/lib/listing-path";
 import { formatListingPrice, hasListingPrice } from "@/lib/listing-price";
 import { ListingActions } from "@/components/listing/ListingActions";
 import { ListingGallery } from "@/components/listing/ListingGallery";
+import { ShareListing } from "@/components/listing/ShareListing";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/lib/site";
 
@@ -74,6 +75,10 @@ export async function generateMetadata({
 
   const coverImage = listing.images?.[0]?.url;
   const canonical = `${SITE_URL}${listingPath(listing)}`;
+  // Listings without photos fall back to the site-wide preview from app/opengraph-image.tsx.
+  const shareImage = coverImage
+    ? { url: coverImage, alt: listing.images?.[0]?.altText || listing.title }
+    : { url: "/opengraph-image", width: 1200, height: 630, alt: "GPUDealer — Find. Sell. Request." };
 
   return {
     title,
@@ -84,13 +89,13 @@ export async function generateMetadata({
       description,
       url: canonical,
       type: "website",
-      images: coverImage ? [{ url: coverImage, alt: listing.images?.[0]?.altText || listing.title }] : undefined,
+      images: [shareImage],
     },
     twitter: {
-      card: coverImage ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title,
       description,
-      images: coverImage ? [coverImage] : undefined,
+      images: [shareImage],
     },
   };
 }
@@ -197,6 +202,9 @@ export default async function ListingDetail({
               <div className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
                 <span>Listed {formatDate(listing.createdAt)}</span>
+              </div>
+              <div className="ml-auto">
+                <ShareListing url={`${SITE_URL}${listingPath(listing)}`} title={listing.title} />
               </div>
             </div>
           </div>
