@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { ApiError, getListing, ListingCondition, ListingSourceType, type Listing } from "@/lib/api";
+import { ApiError, getListing, ListingCondition, ListingSourceType, ListingStatus, type Listing } from "@/lib/api";
 import { getAccessToken } from "@/lib/supabase/server";
 import { listingPath } from "@/lib/listing-path";
 import { formatListingPrice, hasListingPrice } from "@/lib/listing-price";
@@ -124,7 +124,7 @@ function productStructuredData(listing: Listing) {
       "@type": "Offer",
       url,
       ...(hasListingPrice(listing) ? { price: Number(listing.price), priceCurrency: listing.currency || "USD" } : {}),
-      availability: "https://schema.org/InStock",
+      availability: listing.status === ListingStatus.SOLD ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
       ...(ITEM_CONDITION[listing.condition] ? { itemCondition: ITEM_CONDITION[listing.condition] } : {}),
       ...(listing.quantity != null ? { inventoryLevel: { "@type": "QuantitativeValue", value: listing.quantity } } : {}),
     },
