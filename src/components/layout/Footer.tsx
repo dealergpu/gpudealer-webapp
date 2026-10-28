@@ -92,7 +92,12 @@ export function Footer() {
         </p>
 
         <div className="mt-6 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
-          <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} GPUDealer. All rights reserved.</p>
+          <div className="flex flex-col items-center gap-3 md:flex-row md:gap-6">
+            <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} GPUDealer. All rights reserved.</p>
+            <Link href="/return-policy" className="text-xs text-muted-foreground transition-colors hover:text-foreground">
+              Return policy
+            </Link>
+          </div>
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Find. Sell. Request.</p>
         </div>
       </div>
