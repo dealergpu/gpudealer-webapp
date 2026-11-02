@@ -704,6 +704,13 @@ Show:
 - specifications
 - verification status
 - date
+- seller (avatar, name, link to their `/user/{username}` profile)
+
+The seller comes from `listing.seller` (`id`, `username`, `name`,
+`profilePic`), which only the single-listing endpoint returns — search/list
+results don't include it. Label it "Seller" / "Sold by" for GPUDealer
+listings, but "Shared by" for third-party listings: there it's whoever
+added the listing to GPUDealer, not the owner of the hardware (section 27).
 
 CTA for external listings:
 
@@ -827,6 +834,10 @@ Authentication is required for:
 - contacting sellers
 - saving listings
 
+Signed-in users get an account dropdown in the Navbar: their email
+(read-only), Edit profile, API keys, Log out. The mobile menu carries the
+same links.
+
 ---
 
 # 23. Dashboard
@@ -869,6 +880,50 @@ Request statuses:
 
 ---
 
+# 23a. User Profiles
+
+Every user has a public profile at `/user/{username}`.
+
+Usernames: lowercase letters, numbers and underscores, 3–30 characters,
+unique, a few reserved (admin, api, gpudealer, support, …). The backend
+generates one at signup and is the authority on the rules;
+`USERNAME_PATTERN` in `src/lib/profile.ts` mirrors it for form feedback and
+for rejecting junk route params before they reach the API.
+
+Public profile (`src/app/user/[username]/page.tsx`):
+
+- Server Component, `GET /users/{username}` — public fields only (never
+  email, phone or role) plus the user's published and sold listings,
+  paginated with `?page=`.
+- Cover picture, profile picture (initials fallback), name, @username,
+  headline (`shortBio`), company, location, member since, social links, bio.
+- Per-profile metadata and `ProfilePage` JSON-LD. Profiles with no listings
+  and no bio are `noindex` (no thin pages — section 11).
+- Mixed-case URLs redirect to the lowercase canonical URL.
+- `OwnProfileActions` (client) shows "Edit profile" only to the owner.
+
+Edit profile (`/account/profile`, `ProfileEditForm`):
+
+- Auth-gated; saves through `PATCH /me`, which only ever edits the caller's
+  own account — there is no way to edit someone else's profile.
+- Username availability is checked as the user types
+  (`GET /users/check-username`, rate limited); a 409 on save means taken.
+- `name`, `companyName`, `city`, `country` can be changed but not cleared
+  (the API requires ≥1 char). `bio`, `shortBio` and the links clear to null.
+- Links: `x`, `instagram`, `facebook`, `tiktok` must point at that site;
+  `website` is any http(s) link.
+
+Profile and cover pictures (`src/lib/supabase/profile-photos.ts`):
+
+- Uploaded by the browser to the `gpu-pics` bucket under
+  `<supabase user id>/profile/` — the API rejects any picture URL outside
+  the user's own folder, so external image links can't be used.
+- JPEG, PNG, WebP or GIF, max 2 MB (client-side check only).
+- Uploaded on pick, saved with the form; replaced/discarded files are
+  deleted after a successful save.
+
+---
+
 # 24. API Integration
 
 The API client is generated, not hand-written, from an OpenAPI spec:
@@ -876,7 +931,9 @@ The API client is generated, not hand-written, from an OpenAPI spec:
 - `openapi.yaml` (repo root) — the API contract. The backend repo is the
   actual source of truth for this contract; this copy should be kept in
   sync with it (copy it over when the backend's contract changes — there's
-  no automated sync between the two repos yet).
+  no automated sync between the two repos yet). If the backend has no spec
+  file for a change, update this one by hand from the backend's routes and
+  zod schemas, then run codegen.
 - `orval.config.ts` (repo root) — generates a typed React Query client from
   `openapi.yaml` into `src/lib/api/generated/` via `pnpm run codegen`.
 - `src/lib/api/custom-fetch.ts` — the fetch mutator all generated calls go

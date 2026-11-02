@@ -69,6 +69,18 @@ export interface ListingImage {
   altText?: string | null;
 }
 
+export interface ListingSeller {
+  id: string;
+  username: string;
+  /**
+   * Display name ?? username
+   * @nullable
+   */
+  name?: string | null;
+  /** @nullable */
+  profilePic?: string | null;
+}
+
 export interface Listing {
   id: string;
   sellerId: string;
@@ -125,6 +137,8 @@ export interface Listing {
   createdAt: string;
   /** @nullable */
   updatedAt?: string | null;
+  /** Public seller details. Only returned by the single-listing endpoint (GET /listings/{id}), not by list/search endpoints. */
+  seller?: ListingSeller;
 }
 
 export type ListingInputImagesItem = {

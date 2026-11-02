@@ -5,13 +5,13 @@ import type { Metadata } from "next";
 import {
   Zap,
   MapPin, Clock, ExternalLink, ShieldCheck, User,
-  ChevronLeft,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { ApiError, getListing, ListingCondition, ListingSourceType, ListingStatus, type Listing } from "@/lib/api";
+import { ApiError, getListing, ListingCondition, ListingSourceType, ListingStatus, type Listing, type ListingSeller } from "@/lib/api";
 import { getAccessToken } from "@/lib/supabase/server";
 import { listingPath } from "@/lib/listing-path";
 import { formatListingPrice, hasListingPrice } from "@/lib/listing-price";
@@ -20,9 +20,23 @@ import { ListingGallery } from "@/components/listing/ListingGallery";
 import { ShareListing } from "@/components/listing/ShareListing";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/lib/site";
+import { profileDisplayName, profileInitials, profilePath } from "@/lib/profile";
+import { cn } from "@/lib/utils";
 
 function sortedImages(listing: Listing) {
   return [...(listing.images ?? [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+}
+
+function SellerAvatar({ seller, className }: { seller: ListingSeller; className?: string }) {
+  return (
+    <span className={cn("flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-muted-foreground", className)}>
+      {seller.profilePic ? (
+        <img src={seller.profilePic} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <span aria-hidden className="text-[0.7em] font-semibold">{profileInitials(seller)}</span>
+      )}
+    </span>
+  );
 }
 
 // The API resolves both slugs and ids. The viewer's token is forwarded so
@@ -123,6 +137,15 @@ function productStructuredData(listing: Listing) {
     offers: {
       "@type": "Offer",
       url,
+      ...(listing.seller && listing.sourceType === ListingSourceType.GPUDEALER
+        ? {
+            seller: {
+              "@type": "Person",
+              name: listing.seller.name || listing.seller.username,
+              url: `${SITE_URL}${profilePath(listing.seller.username)}`,
+            },
+          }
+        : {}),
       ...(hasListingPrice(listing) ? { price: Number(listing.price), priceCurrency: listing.currency || "USD" } : {}),
       availability: listing.status === ListingStatus.SOLD ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
       ...(ITEM_CONDITION[listing.condition] ? { itemCondition: ITEM_CONDITION[listing.condition] } : {}),
@@ -160,6 +183,10 @@ export default async function ListingDetail({
 
   const location = formatLocation(listing);
   const isThirdParty = listing.sourceType && listing.sourceType !== ListingSourceType.GPUDEALER;
+  // For third-party listings this is whoever shared it on GPUDealer, not the
+  // owner of the hardware — label it accordingly.
+  const seller = listing.seller;
+  const sellerName = seller ? profileDisplayName(seller) : null;
 
   return (
     <div className="container mx-auto max-w-6xl px-4 pt-28 pb-20 sm:px-6">
@@ -203,6 +230,18 @@ export default async function ListingDetail({
                 <Clock className="h-4 w-4" />
                 <span>Listed {formatDate(listing.createdAt)}</span>
               </div>
+              {seller && (
+                <Link
+                  href={profilePath(seller.username)}
+                  className="flex items-center gap-1.5 transition-colors hover:text-foreground"
+                >
+                  <SellerAvatar seller={seller} className="h-5 w-5 text-[10px]" />
+                  <span>
+                    {isThirdParty ? "Shared by" : "Sold by"}{" "}
+                    <span className="font-medium text-foreground underline-offset-4 hover:underline">{sellerName}</span>
+                  </span>
+                </Link>
+              )}
               <div className="ml-auto">
                 <ShareListing url={`${SITE_URL}${listingPath(listing)}`} title={listing.title} />
               </div>
@@ -294,17 +333,45 @@ export default async function ListingDetail({
               </Button>
             </CardContent>
 
-            <div className="flex items-center gap-3 border-t border-border px-6 py-4 sm:px-7">
-              <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-                <User className="h-5 w-5" />
+            {seller ? (
+              <div className="border-t border-border">
+                <Link
+                  href={profilePath(seller.username)}
+                  className="group flex items-center gap-3 px-6 py-4 transition-colors hover:bg-foreground/[0.04] sm:px-7"
+                >
+                  <SellerAvatar seller={seller} className="h-11 w-11 text-base" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      {isThirdParty ? "Shared by" : "Seller"}
+                    </p>
+                    <p className="truncate text-sm font-semibold">{sellerName}</p>
+                    {seller.name && <p className="truncate font-mono text-xs text-muted-foreground">@{seller.username}</p>}
+                  </div>
+                  <span className="flex shrink-0 items-center text-xs text-muted-foreground transition-colors group-hover:text-foreground">
+                    View profile
+                    <ChevronRight className="ml-0.5 h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </Link>
+                {isThirdParty && (
+                  <p className="px-6 pb-4 text-xs text-muted-foreground sm:px-7">
+                    Originally listed on <span className="font-medium text-foreground">{listing.sourceType}</span> — GPUDealer
+                    doesn&apos;t hold this inventory.
+                  </p>
+                )}
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Listed via</p>
-                <p className="font-semibold text-sm truncate">
-                  {isThirdParty ? listing.sourceType : "GPUDealer Seller"}
-                </p>
+            ) : (
+              <div className="flex items-center gap-3 border-t border-border px-6 py-4 sm:px-7">
+                <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                  <User className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Listed via</p>
+                  <p className="font-semibold text-sm truncate">
+                    {isThirdParty ? listing.sourceType : "GPUDealer Seller"}
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </Card>
 
           <Card className="rounded-2xl border-border bg-secondary/50">

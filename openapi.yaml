@@ -1122,6 +1122,20 @@ components:
           items: { $ref: "#/components/schemas/ListingImage" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: ["string", "null"], format: date-time }
+        seller:
+          description: >-
+            Public seller details. Only returned by the single-listing
+            endpoint (GET /listings/{id}), not by list/search endpoints.
+          $ref: "#/components/schemas/ListingSeller"
+
+    ListingSeller:
+      type: object
+      required: [id, username]
+      properties:
+        id: { type: string }
+        username: { type: string }
+        name: { type: ["string", "null"], description: "Display name ?? username" }
+        profilePic: { type: ["string", "null"] }
 
     ListingInput:
       type: object
