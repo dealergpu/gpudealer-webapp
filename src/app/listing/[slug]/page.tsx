@@ -17,6 +17,7 @@ import { listingPath } from "@/lib/listing-path";
 import { formatListingPrice, hasListingPrice } from "@/lib/listing-price";
 import { ListingActions } from "@/components/listing/ListingActions";
 import { ListingGallery } from "@/components/listing/ListingGallery";
+import { ReportListingButton } from "@/components/listing/ReportListingButton";
 import { ListingComments } from "@/components/listing/comments/ListingComments";
 import { COMMENTS_PAGE_SIZE } from "@/lib/comments";
 import { ShareListing } from "@/components/listing/ShareListing";
@@ -403,6 +404,11 @@ export default async function ListingDetail({
               </div>
             </CardContent>
           </Card>
+
+          {/* The API only accepts reports on public listings. */}
+          {(listing.status === ListingStatus.PUBLISHED || listing.status === ListingStatus.SOLD) && (
+            <ReportListingButton listingId={listing.id} listingPath={listingPath(listing)} sellerId={listing.sellerId} />
+          )}
         </div>
 
         {/* After the sidebar in source order, so on mobile the price and

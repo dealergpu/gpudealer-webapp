@@ -40,6 +40,9 @@ export const ListingSourceType = {
   OTHER: "OTHER",
 } as const;
 
+/**
+ * DELISTED = taken down by an admin after a verified report. Hidden from public pages like a draft; only an admin can republish it.
+ */
 export type ListingStatus = (typeof ListingStatus)[keyof typeof ListingStatus];
 
 export const ListingStatus = {
@@ -49,6 +52,7 @@ export const ListingStatus = {
   REJECTED: "REJECTED",
   SOLD: "SOLD",
   EXPIRED: "EXPIRED",
+  DELISTED: "DELISTED",
 } as const;
 
 export type ListingSortBy = (typeof ListingSortBy)[keyof typeof ListingSortBy];
@@ -196,6 +200,40 @@ export interface ListingCommentsResponse {
 export interface ListingCommentRepliesResponse {
   data: ListingComment[];
   pagination: Pagination;
+}
+
+export type ListingReportReason =
+  (typeof ListingReportReason)[keyof typeof ListingReportReason];
+
+export const ListingReportReason = {
+  WRONG_SPECS: "WRONG_SPECS",
+  MISLEADING_CLAIMS: "MISLEADING_CLAIMS",
+  LISTING_NOT_AVAILABLE: "LISTING_NOT_AVAILABLE",
+  WRONG_IMAGES: "WRONG_IMAGES",
+  WRONG_PRICE: "WRONG_PRICE",
+  SUSPECTED_SCAM: "SUSPECTED_SCAM",
+  DUPLICATE_LISTING: "DUPLICATE_LISTING",
+  PROHIBITED_ITEM: "PROHIBITED_ITEM",
+  OTHER: "OTHER",
+} as const;
+
+export interface ListingReportInput {
+  reason: ListingReportReason;
+  /**
+   * Required when reason is OTHER.
+   * @maxLength 2000
+   */
+  additionalComments?: string;
+}
+
+export interface ListingReport {
+  id: string;
+  reason: ListingReportReason;
+  createdAt: string;
+}
+
+export interface ListingReportResponse {
+  data: ListingReport;
 }
 
 export type ListingInputImagesItem = {

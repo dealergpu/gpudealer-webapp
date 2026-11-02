@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { createClientSafely } from "@/lib/supabase/client";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { AuthShell } from "@/components/auth/AuthShell";
+import { currentNextPath, keepNextParam } from "@/lib/auth-redirect";
 
 const signUpSchema = z
   .object({
@@ -50,7 +51,7 @@ export default function SignUp() {
     const { data, error } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,
-      options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+      options: { emailRedirectTo: `${window.location.origin}${currentNextPath()}` },
     });
     setIsSubmitting(false);
 
@@ -62,7 +63,7 @@ export default function SignUp() {
     // A session is returned immediately when email confirmation is disabled;
     // otherwise the user needs to confirm their email before signing in.
     if (data.session) {
-      router.push("/dashboard");
+      router.push(currentNextPath());
       router.refresh();
       return;
     }
@@ -128,7 +129,7 @@ export default function SignUp() {
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/sign-in" className="font-semibold text-accent hover:text-accent/80">
+        <Link href="/sign-in" onClick={keepNextParam(router, "/sign-in")} className="font-semibold text-accent hover:text-accent/80">
           Sign in
         </Link>
       </p>

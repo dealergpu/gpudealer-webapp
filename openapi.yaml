@@ -24,6 +24,8 @@ tags:
     description: User profile operations
   - name: comments
     description: Listing comments (one level of replies)
+  - name: reports
+    description: Listing reports
   - name: contact
     description: Contact form messages
   - name: apiKeys
@@ -470,6 +472,63 @@ paths:
               schema: { $ref: "#/components/schemas/ListingCommentRepliesResponse" }
         "404":
           description: Listing or comment not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /listings/{listingId}/reports:
+    post:
+      operationId: reportListing
+      tags: [reports]
+      summary: Report a listing
+      description: >-
+        Sign-in required; the reporter comes from the token. Only PUBLISHED
+        or SOLD listings can be reported, never your own. One open report
+        per user per listing. Rate limited to 5/minute.
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          description: The listing's id or slug.
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListingReportInput" }
+      responses:
+        "201":
+          description: Report received
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListingReportResponse" }
+        "400":
+          description: Validation error (additionalComments required for OTHER)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "403":
+          description: Own listing, or listing not reportable
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "404":
+          description: Listing not visible
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "409":
+          description: Already reported by this user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "429":
+          description: Rate limited
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ApiErrorResponse" }
@@ -1214,7 +1273,10 @@ components:
 
     ListingStatus:
       type: string
-      enum: [DRAFT, PENDING_REVIEW, PUBLISHED, REJECTED, SOLD, EXPIRED]
+      description: >-
+        DELISTED = taken down by an admin after a verified report. Hidden from
+        public pages like a draft; only an admin can republish it.
+      enum: [DRAFT, PENDING_REVIEW, PUBLISHED, REJECTED, SOLD, EXPIRED, DELISTED]
 
     ListingSortBy:
       type: string
@@ -1353,6 +1415,43 @@ components:
           type: array
           items: { $ref: "#/components/schemas/ListingComment" }
         pagination: { $ref: "#/components/schemas/Pagination" }
+
+    ListingReportReason:
+      type: string
+      enum:
+        - WRONG_SPECS
+        - MISLEADING_CLAIMS
+        - LISTING_NOT_AVAILABLE
+        - WRONG_IMAGES
+        - WRONG_PRICE
+        - SUSPECTED_SCAM
+        - DUPLICATE_LISTING
+        - PROHIBITED_ITEM
+        - OTHER
+
+    ListingReportInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { $ref: "#/components/schemas/ListingReportReason" }
+        additionalComments:
+          type: string
+          maxLength: 2000
+          description: Required when reason is OTHER.
+
+    ListingReport:
+      type: object
+      required: [id, reason, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        reason: { $ref: "#/components/schemas/ListingReportReason" }
+        createdAt: { type: string, format: date-time }
+
+    ListingReportResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: "#/components/schemas/ListingReport" }
 
     ListingInput:
       type: object

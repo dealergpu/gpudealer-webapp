@@ -6,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/hooks/use-toast";
-import { safeNextPath } from "@/lib/auth-redirect";
+import { currentNextPath } from "@/lib/auth-redirect";
 
 export function GoogleSignInButton({
   supabase,
@@ -25,7 +25,7 @@ export function GoogleSignInButton({
       return;
     }
     setIsRedirecting(true);
-    const target = next ?? safeNextPath(new URLSearchParams(window.location.search).get("next"));
+    const target = next ?? currentNextPath();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {

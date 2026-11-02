@@ -760,6 +760,25 @@ by `/listings/{listingId}/comments` (`listingId` accepts id or slug).
   back, 403 → toast `error.message`, 404 → toast and drop the missing
   comment/thread, 429 → "You're commenting too fast…", else a generic toast.
 
+## Reporting a listing
+
+`ReportListingButton` (sidebar, under Trust & Safety) →
+`POST /listings/{listingId}/reports` with a `reason` and optional
+`additionalComments` (required for `OTHER`, max 2000).
+
+- Shown to everyone on PUBLISHED and SOLD listings (the only reportable
+  statuses), hidden from the listing's own seller (compare `sellerId` with
+  the backend `/me` id).
+- Signed-out click → `/sign-in?next=<listing>#report`; on return the
+  `#report` hash reopens the dialog.
+- Reasons are fixed options (radio list with a one-line hint each); the
+  labels live in the component, the enum comes from the spec.
+- 409 (already has an open report) is shown as success — same outcome for
+  the user. 403/404/429 and other failures show inline in the dialog.
+- The reporter never sees review details. Admin review
+  (`/admin/reports`) and the `DELISTED` decision are backend/admin-only and
+  not part of this frontend yet.
+
 ---
 
 # 20. Sell Form
@@ -870,7 +889,9 @@ Authentication is required for:
 
 `/sign-in` accepts `?next=<path>` (use `signInPath()` from
 `src/lib/auth-redirect.ts`) and returns there after password, magic-link or
-Google sign-in. `safeNextPath()` only allows same-site paths — always run
+Google sign-in. The links between `/sign-in` and `/sign-up` carry `next`
+across (`keepNextParam`), and sign-up honours it too, so "log in or
+register, then come back" works for new users. `safeNextPath()` only allows same-site paths — always run
 redirect targets through it (the `/auth/callback` route does), so `next`
 can't be used as an open redirect.
 
@@ -910,6 +931,8 @@ Listing statuses:
 - Rejected
 - Sold
 - Expired
+- Delisted (taken down by an admin after a verified report; hidden from
+  public pages, the seller can't republish it — only an admin can)
 
 Request statuses:
 

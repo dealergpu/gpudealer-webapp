@@ -53,6 +53,8 @@ import type {
   ListingCommentResponse,
   ListingCommentsResponse,
   ListingInput,
+  ListingReportInput,
+  ListingReportResponse,
   ListingResponse,
   ListingStatusUpdate,
   ListingUpdate,
@@ -1510,6 +1512,97 @@ export function useGetListingCommentReplies<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export const getReportListingUrl = (listingId: string) => {
+  return `/api/v1/listings/${listingId}/reports`;
+};
+
+/**
+ * Sign-in required; the reporter comes from the token. Only PUBLISHED or SOLD listings can be reported, never your own. One open report per user per listing. Rate limited to 5/minute.
+ * @summary Report a listing
+ */
+export const reportListing = async (
+  listingId: string,
+  listingReportInput: ListingReportInput,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ListingReportResponse> => {
+  return customFetch<ListingReportResponse>(getReportListingUrl(listingId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(listingReportInput),
+  });
+};
+
+export const getReportListingMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reportListing>>,
+    TError,
+    { listingId: string; data: BodyType<ListingReportInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reportListing>>,
+  TError,
+  { listingId: string; data: BodyType<ListingReportInput> },
+  TContext
+> => {
+  const mutationKey = ["reportListing"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reportListing>>,
+    { listingId: string; data: BodyType<ListingReportInput> }
+  > = (props) => {
+    const { listingId, data } = props ?? {};
+
+    return reportListing(listingId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReportListingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reportListing>>
+>;
+export type ReportListingMutationBody = BodyType<ListingReportInput>;
+export type ReportListingMutationError = ErrorType<ApiErrorResponse>;
+
+/**
+ * @summary Report a listing
+ */
+export const useReportListing = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof reportListing>>,
+      TError,
+      { listingId: string; data: BodyType<ListingReportInput> },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof reportListing>>,
+  TError,
+  { listingId: string; data: BodyType<ListingReportInput> },
+  TContext
+> => {
+  return useMutation(getReportListingMutationOptions(options), queryClient);
+};
 
 export const getCreateInquiryUrl = (listingId: string) => {
   return `/api/v1/listings/${listingId}/inquiries`;

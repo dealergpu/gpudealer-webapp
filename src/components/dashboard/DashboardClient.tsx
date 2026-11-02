@@ -63,6 +63,8 @@ function getStatusBadge(status: string) {
       return <Badge variant="default" className="uppercase text-[10px]">Completed</Badge>;
     case ListingStatus.REJECTED:
       return <Badge variant="destructive" className="uppercase text-[10px]">Rejected</Badge>;
+    case ListingStatus.DELISTED:
+      return <Badge variant="destructive" className="uppercase text-[10px]">Delisted</Badge>;
     default:
       return <Badge variant="outline" className="uppercase text-[10px]">{status}</Badge>;
   }
