@@ -215,9 +215,11 @@ export default async function ListingDetail({
         Back to search
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-8">
+      {/* Mobile order: title & photos → price/actions → details → comments.
+          On desktop the sidebar sits in the right column across both rows. */}
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-3 lg:grid-rows-[auto_1fr]">
+        {/* Title & photos */}
+        <div className="space-y-8 lg:col-span-2">
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-[0.12em]">
@@ -268,61 +270,10 @@ export default async function ListingDetail({
           </div>
 
           <ListingGallery images={sortedImages(listing)} title={listing.title} />
-
-          {/* Description */}
-          {listing.description && (
-            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
-              <h2 className="mb-4 font-display text-3xl">Description</h2>
-              <div className="prose prose-sm sm:prose-base max-w-none text-foreground whitespace-pre-wrap">
-                {listing.description}
-              </div>
-            </div>
-          )}
-
-          {/* Technical Specs */}
-          <div className="overflow-hidden rounded-2xl border border-border bg-card">
-            <div className="border-b border-border px-6 py-5 sm:px-8">
-              <h2 className="font-display text-3xl">Specifications</h2>
-            </div>
-            <Table>
-              <TableBody>
-                {listing.manufacturer && (
-                  <TableRow>
-                    <TableCell className="w-1/3 pl-6 text-muted-foreground sm:pl-8">Manufacturer</TableCell>
-                    <TableCell className="font-medium">{listing.manufacturer}</TableCell>
-                  </TableRow>
-                )}
-                {listing.model && (
-                  <TableRow>
-                    <TableCell className="pl-6 text-muted-foreground sm:pl-8">Model</TableCell>
-                    <TableCell className="font-medium">{listing.model}</TableCell>
-                  </TableRow>
-                )}
-                {listing.gpuModel && (
-                  <TableRow>
-                    <TableCell className="pl-6 text-muted-foreground sm:pl-8">GPU Model</TableCell>
-                    <TableCell className="font-medium">{listing.gpuModel}</TableCell>
-                  </TableRow>
-                )}
-                {listing.vramGb != null && (
-                  <TableRow>
-                    <TableCell className="flex items-center gap-2 pl-6 text-muted-foreground sm:pl-8">
-                      <Zap className="h-4 w-4" /> VRAM
-                    </TableCell>
-                    <TableCell className="font-mono">{listing.vramGb} GB</TableCell>
-                  </TableRow>
-                )}
-                <TableRow>
-                  <TableCell className="pl-6 text-muted-foreground sm:pl-8">Quantity Available</TableCell>
-                  <TableCell>{listing.quantity ?? 1}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
         </div>
 
         {/* Sidebar Panel — sticks below the floating nav as one unit on desktop. */}
-        <div className="space-y-6 lg:sticky lg:top-24">
+        <div className="space-y-6 lg:sticky lg:top-24 lg:col-start-3 lg:row-span-2 lg:row-start-1">
           <Card className="dark overflow-hidden rounded-3xl border-border bg-background text-foreground shadow-[0_30px_80px_-30px_hsl(240_10%_4%/0.6)]">
             <div className="relative p-6 sm:p-7">
               <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-[radial-gradient(closest-side,hsl(357_90%_50%/0.35),transparent)] blur-2xl" />
@@ -411,8 +362,61 @@ export default async function ListingDetail({
           )}
         </div>
 
-        {/* After the sidebar in source order, so on mobile the price and
-            contact actions come before the discussion. */}
+        {/* Description & specs */}
+        <div className="space-y-8 lg:col-span-2">
+
+          {/* Description */}
+          {listing.description && (
+            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
+              <h2 className="mb-4 font-display text-3xl">Description</h2>
+              <div className="prose prose-sm sm:prose-base max-w-none text-foreground whitespace-pre-wrap">
+                {listing.description}
+              </div>
+            </div>
+          )}
+
+          {/* Technical Specs */}
+          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="border-b border-border px-6 py-5 sm:px-8">
+              <h2 className="font-display text-3xl">Specifications</h2>
+            </div>
+            <Table>
+              <TableBody>
+                {listing.manufacturer && (
+                  <TableRow>
+                    <TableCell className="w-1/3 pl-6 text-muted-foreground sm:pl-8">Manufacturer</TableCell>
+                    <TableCell className="font-medium">{listing.manufacturer}</TableCell>
+                  </TableRow>
+                )}
+                {listing.model && (
+                  <TableRow>
+                    <TableCell className="pl-6 text-muted-foreground sm:pl-8">Model</TableCell>
+                    <TableCell className="font-medium">{listing.model}</TableCell>
+                  </TableRow>
+                )}
+                {listing.gpuModel && (
+                  <TableRow>
+                    <TableCell className="pl-6 text-muted-foreground sm:pl-8">GPU Model</TableCell>
+                    <TableCell className="font-medium">{listing.gpuModel}</TableCell>
+                  </TableRow>
+                )}
+                {listing.vramGb != null && (
+                  <TableRow>
+                    <TableCell className="flex items-center gap-2 pl-6 text-muted-foreground sm:pl-8">
+                      <Zap className="h-4 w-4" /> VRAM
+                    </TableCell>
+                    <TableCell className="font-mono">{listing.vramGb} GB</TableCell>
+                  </TableRow>
+                )}
+                <TableRow>
+                  <TableCell className="pl-6 text-muted-foreground sm:pl-8">Quantity Available</TableCell>
+                  <TableCell>{listing.quantity ?? 1}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
         <div className="lg:col-span-2">
           <ListingComments
             listingId={listing.id}
