@@ -766,6 +766,11 @@ paths:
       operationId: updateProfile
       tags: [users]
       summary: Update the authenticated user's own profile
+      description: >-
+        Only ever edits the token's own user; any id/userId in the body is
+        ignored. For the clearable fields, null or "" clears the value and a
+        missing field is left unchanged. profilePic/coverPic must be public
+        URLs in the user's own folder of the gpu-pics Storage bucket.
       requestBody:
         required: true
         content:
@@ -778,9 +783,86 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserProfile"
+                $ref: "#/components/schemas/UserProfileResponse"
+        "400":
+          description: Validation error (field errors in error.fields)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "409":
+          description: Username is already taken
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /users/check-username:
+    get:
+      operationId: checkUsername
+      tags: [users]
+      summary: Check whether a username is free
+      description: >-
+        Rate limited to 30/minute. The caller's own current username counts
+        as available. Badly formatted or reserved names return 400 with the
+        error on the username field.
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Availability
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UsernameCheckResponse" }
+        "400":
+          description: Invalid or reserved username
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /users/{username}:
+    get:
+      operationId: getPublicProfile
+      tags: [users]
+      summary: Public profile and the user's published/sold listings
+      description: >-
+        Public, no auth. Never includes email, phone or role. `pagination`
+        applies to `data.listings`.
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 24 }
+      responses:
+        "200":
+          description: Public profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicProfileResponse" }
+        "404":
+          description: User not found
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ApiErrorResponse" }
@@ -1375,7 +1457,7 @@ components:
 
     UserProfile:
       type: object
-      required: [id, email, createdAt]
+      required: [id, email, username, createdAt]
       properties:
         # Backend user id — the value used in sellerId/buyerId. Not the
         # Supabase auth id (that's supabaseUserId).
@@ -1388,6 +1470,16 @@ components:
         country: { type: ["string", "null"] }
         city: { type: ["string", "null"] }
         role: { type: string }
+        username: { type: string }
+        bio: { type: ["string", "null"] }
+        shortBio: { type: ["string", "null"] }
+        profilePic: { type: ["string", "null"] }
+        coverPic: { type: ["string", "null"] }
+        x: { type: ["string", "null"] }
+        instagram: { type: ["string", "null"] }
+        facebook: { type: ["string", "null"] }
+        tiktok: { type: ["string", "null"] }
+        website: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
@@ -1400,10 +1492,74 @@ components:
     UserProfileUpdate:
       type: object
       properties:
-        displayName: { type: string }
-        company: { type: string }
-        location: { type: string }
-        bio: { type: string }
+        username:
+          type: string
+          description: 3-30 chars, lowercase letters, numbers and underscores. Unique.
+        name: { type: string, minLength: 1, maxLength: 255 }
+        phone: { type: string, minLength: 1, maxLength: 50 }
+        companyName: { type: string, minLength: 1, maxLength: 255 }
+        country: { type: string, minLength: 1, maxLength: 100 }
+        city: { type: string, minLength: 1, maxLength: 100 }
+        bio: { type: ["string", "null"], maxLength: 2000 }
+        shortBio: { type: ["string", "null"], maxLength: 160 }
+        profilePic: { type: ["string", "null"] }
+        coverPic: { type: ["string", "null"] }
+        x: { type: ["string", "null"], description: "Full link to x.com or twitter.com" }
+        instagram: { type: ["string", "null"], description: "Full link to instagram.com" }
+        facebook: { type: ["string", "null"], description: "Full link to facebook.com or fb.com" }
+        tiktok: { type: ["string", "null"], description: "Full link to tiktok.com" }
+        website: { type: ["string", "null"], description: "Any http(s) link" }
+
+    UsernameCheck:
+      type: object
+      required: [username, available]
+      properties:
+        username: { type: string }
+        available: { type: boolean }
+
+    UsernameCheckResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: "#/components/schemas/UsernameCheck" }
+
+    PublicUser:
+      type: object
+      required: [id, username, createdAt]
+      properties:
+        id: { type: string }
+        username: { type: string }
+        name: { type: ["string", "null"] }
+        companyName: { type: ["string", "null"] }
+        country: { type: ["string", "null"] }
+        city: { type: ["string", "null"] }
+        bio: { type: ["string", "null"] }
+        shortBio: { type: ["string", "null"] }
+        profilePic: { type: ["string", "null"] }
+        coverPic: { type: ["string", "null"] }
+        x: { type: ["string", "null"] }
+        instagram: { type: ["string", "null"] }
+        facebook: { type: ["string", "null"] }
+        tiktok: { type: ["string", "null"] }
+        website: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    PublicProfile:
+      type: object
+      required: [user, listings]
+      properties:
+        user: { $ref: "#/components/schemas/PublicUser" }
+        listings:
+          type: array
+          description: Published and sold listings, newest first, with at most the cover image.
+          items: { $ref: "#/components/schemas/Listing" }
+
+    PublicProfileResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data: { $ref: "#/components/schemas/PublicProfile" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
 
     ApiKey:
       type: object

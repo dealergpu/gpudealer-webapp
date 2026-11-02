@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Listing, ListingCondition, ListingSourceType } from "@/lib/api";
+import { Listing, ListingCondition, ListingSourceType, ListingStatus } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpRight, MapPin } from "lucide-react";
 import { listingPath } from "@/lib/listing-path";
@@ -56,9 +56,16 @@ export function ListingCard({ listing }: ListingCardProps) {
           />
         )}
         <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
-          <span className="rounded-full bg-background/85 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-foreground backdrop-blur">
-            {listing.category}
-          </span>
+          <div className="flex flex-wrap gap-1.5">
+            <span className="rounded-full bg-background/85 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-foreground backdrop-blur">
+              {listing.category}
+            </span>
+            {listing.status === ListingStatus.SOLD && (
+              <span className="rounded-full bg-foreground/85 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-background backdrop-blur">
+                Sold
+              </span>
+            )}
+          </div>
           {condition && (
             <Badge variant={condition.variant} className="bg-background/85 backdrop-blur">
               {condition.label}

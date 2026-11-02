@@ -452,6 +452,25 @@ export interface UserProfile {
   /** @nullable */
   city?: string | null;
   role?: string;
+  username: string;
+  /** @nullable */
+  bio?: string | null;
+  /** @nullable */
+  shortBio?: string | null;
+  /** @nullable */
+  profilePic?: string | null;
+  /** @nullable */
+  coverPic?: string | null;
+  /** @nullable */
+  x?: string | null;
+  /** @nullable */
+  instagram?: string | null;
+  /** @nullable */
+  facebook?: string | null;
+  /** @nullable */
+  tiktok?: string | null;
+  /** @nullable */
+  website?: string | null;
   createdAt: string;
   updatedAt?: string;
 }
@@ -461,10 +480,124 @@ export interface UserProfileResponse {
 }
 
 export interface UserProfileUpdate {
-  displayName?: string;
-  company?: string;
-  location?: string;
-  bio?: string;
+  /** 3-30 chars, lowercase letters, numbers and underscores. Unique. */
+  username?: string;
+  /**
+   * @minLength 1
+   * @maxLength 255
+   */
+  name?: string;
+  /**
+   * @minLength 1
+   * @maxLength 50
+   */
+  phone?: string;
+  /**
+   * @minLength 1
+   * @maxLength 255
+   */
+  companyName?: string;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  country?: string;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  city?: string;
+  /**
+   * @maxLength 2000
+   * @nullable
+   */
+  bio?: string | null;
+  /**
+   * @maxLength 160
+   * @nullable
+   */
+  shortBio?: string | null;
+  /** @nullable */
+  profilePic?: string | null;
+  /** @nullable */
+  coverPic?: string | null;
+  /**
+   * Full link to x.com or twitter.com
+   * @nullable
+   */
+  x?: string | null;
+  /**
+   * Full link to instagram.com
+   * @nullable
+   */
+  instagram?: string | null;
+  /**
+   * Full link to facebook.com or fb.com
+   * @nullable
+   */
+  facebook?: string | null;
+  /**
+   * Full link to tiktok.com
+   * @nullable
+   */
+  tiktok?: string | null;
+  /**
+   * Any http(s) link
+   * @nullable
+   */
+  website?: string | null;
+}
+
+export interface UsernameCheck {
+  username: string;
+  available: boolean;
+}
+
+export interface UsernameCheckResponse {
+  data: UsernameCheck;
+}
+
+export interface PublicUser {
+  id: string;
+  username: string;
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  companyName?: string | null;
+  /** @nullable */
+  country?: string | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  bio?: string | null;
+  /** @nullable */
+  shortBio?: string | null;
+  /** @nullable */
+  profilePic?: string | null;
+  /** @nullable */
+  coverPic?: string | null;
+  /** @nullable */
+  x?: string | null;
+  /** @nullable */
+  instagram?: string | null;
+  /** @nullable */
+  facebook?: string | null;
+  /** @nullable */
+  tiktok?: string | null;
+  /** @nullable */
+  website?: string | null;
+  createdAt: string;
+}
+
+export interface PublicProfile {
+  user: PublicUser;
+  /** Published and sold listings, newest first, with at most the cover image. */
+  listings: Listing[];
+}
+
+export interface PublicProfileResponse {
+  data: PublicProfile;
+  pagination: Pagination;
 }
 
 export interface ApiKey {
@@ -597,6 +730,15 @@ export type GetRequestsParams = {
 };
 
 export type GetSavedListingsParams = {
+  page?: number;
+  limit?: number;
+};
+
+export type CheckUsernameParams = {
+  username: string;
+};
+
+export type GetPublicProfileParams = {
   page?: number;
   limit?: number;
 };

@@ -26,12 +26,14 @@ import type {
   ApiKeyInput,
   ApiKeyWithSecretResponse,
   ApiKeysResponse,
+  CheckUsernameParams,
   ContactMessageInput,
   ContactMessageResponse,
   DashboardStats,
   GetApiKeysParams,
   GetInquiriesParams,
   GetListingsParams,
+  GetPublicProfileParams,
   GetRequestsParams,
   GetSavedListingsParams,
   HardwareRequestInput,
@@ -50,11 +52,12 @@ import type {
   ListingUpdate,
   ListingsResponse,
   MarketplaceStats,
+  PublicProfileResponse,
   SavedListingResponse,
   SavedListingsResponse,
-  UserProfile,
   UserProfileResponse,
   UserProfileUpdate,
+  UsernameCheckResponse,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -2697,13 +2700,14 @@ export const getUpdateProfileUrl = () => {
 };
 
 /**
+ * Only ever edits the token's own user; any id/userId in the body is ignored. For the clearable fields, null or "" clears the value and a missing field is left unchanged. profilePic/coverPic must be public URLs in the user's own folder of the gpu-pics Storage bucket.
  * @summary Update the authenticated user's own profile
  */
 export const updateProfile = async (
   userProfileUpdate: UserProfileUpdate,
   options?: Parameters<typeof customFetch>[1],
-): Promise<UserProfile> => {
-  return customFetch<UserProfile>(getUpdateProfileUrl(), {
+): Promise<UserProfileResponse> => {
+  return customFetch<UserProfileResponse>(getUpdateProfileUrl(), {
     ...options,
     method: "PATCH",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -2780,6 +2784,364 @@ export const useUpdateProfile = <
 > => {
   return useMutation(getUpdateProfileMutationOptions(options), queryClient);
 };
+
+export const getCheckUsernameUrl = (params: CheckUsernameParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/users/check-username?${stringifiedParams}`
+    : `/api/v1/users/check-username`;
+};
+
+/**
+ * Rate limited to 30/minute. The caller's own current username counts as available. Badly formatted or reserved names return 400 with the error on the username field.
+ * @summary Check whether a username is free
+ */
+export const checkUsername = async (
+  params: CheckUsernameParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<UsernameCheckResponse> => {
+  return customFetch<UsernameCheckResponse>(getCheckUsernameUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getCheckUsernameQueryKey = (params?: CheckUsernameParams) => {
+  return [`/api/v1/users/check-username`, ...(params ? [params] : [])] as const;
+};
+
+export const getCheckUsernameQueryOptions = <
+  TData = Awaited<ReturnType<typeof checkUsername>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: CheckUsernameParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof checkUsername>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getCheckUsernameQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof checkUsername>>> = ({
+    signal,
+  }) => checkUsername(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof checkUsername>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type CheckUsernameQueryResult = NonNullable<
+  Awaited<ReturnType<typeof checkUsername>>
+>;
+export type CheckUsernameQueryError = ErrorType<ApiErrorResponse>;
+
+export function useCheckUsername<
+  TData = Awaited<ReturnType<typeof checkUsername>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: CheckUsernameParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof checkUsername>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof checkUsername>>,
+          TError,
+          Awaited<ReturnType<typeof checkUsername>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useCheckUsername<
+  TData = Awaited<ReturnType<typeof checkUsername>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: CheckUsernameParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof checkUsername>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof checkUsername>>,
+          TError,
+          Awaited<ReturnType<typeof checkUsername>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useCheckUsername<
+  TData = Awaited<ReturnType<typeof checkUsername>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: CheckUsernameParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof checkUsername>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Check whether a username is free
+ */
+
+export function useCheckUsername<
+  TData = Awaited<ReturnType<typeof checkUsername>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: CheckUsernameParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof checkUsername>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getCheckUsernameQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetPublicProfileUrl = (
+  username: string,
+  params?: GetPublicProfileParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/users/${username}?${stringifiedParams}`
+    : `/api/v1/users/${username}`;
+};
+
+/**
+ * Public, no auth. Never includes email, phone or role. `pagination` applies to `data.listings`.
+ * @summary Public profile and the user's published/sold listings
+ */
+export const getPublicProfile = async (
+  username: string,
+  params?: GetPublicProfileParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<PublicProfileResponse> => {
+  return customFetch<PublicProfileResponse>(
+    getGetPublicProfileUrl(username, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetPublicProfileQueryKey = (
+  username: string,
+  params?: GetPublicProfileParams,
+) => {
+  return [`/api/v1/users/${username}`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetPublicProfileQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublicProfile>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  username: string,
+  params?: GetPublicProfileParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPublicProfile>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPublicProfileQueryKey(username, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPublicProfile>>
+  > = ({ signal }) =>
+    getPublicProfile(username, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: username !== null && username !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicProfile>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetPublicProfileQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublicProfile>>
+>;
+export type GetPublicProfileQueryError = ErrorType<ApiErrorResponse>;
+
+export function useGetPublicProfile<
+  TData = Awaited<ReturnType<typeof getPublicProfile>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  username: string,
+  params: undefined | GetPublicProfileParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPublicProfile>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPublicProfile>>,
+          TError,
+          Awaited<ReturnType<typeof getPublicProfile>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetPublicProfile<
+  TData = Awaited<ReturnType<typeof getPublicProfile>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  username: string,
+  params?: GetPublicProfileParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPublicProfile>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPublicProfile>>,
+          TError,
+          Awaited<ReturnType<typeof getPublicProfile>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetPublicProfile<
+  TData = Awaited<ReturnType<typeof getPublicProfile>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  username: string,
+  params?: GetPublicProfileParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPublicProfile>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Public profile and the user's published/sold listings
+ */
+
+export function useGetPublicProfile<
+  TData = Awaited<ReturnType<typeof getPublicProfile>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  username: string,
+  params?: GetPublicProfileParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPublicProfile>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetPublicProfileQueryOptions(
+    username,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export const getGetApiKeysUrl = (params?: GetApiKeysParams) => {
   const normalizedParams = new URLSearchParams();

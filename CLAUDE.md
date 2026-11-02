@@ -422,10 +422,11 @@ Current split, as a concrete reference:
 - **Server Components with real server-side data fetching**: `/` (home),
   `/gpus` (search — reads `searchParams`, refetches on the server whenever a
   filter changes the URL), `/listing/[id]` (with `generateMetadata` for
-  per-listing SEO title/description/OG tags). These call only public,
+  per-listing SEO title/description/OG tags), `/user/[username]` (public
+  profile + that user's published/sold listings). These call only public,
   unauthenticated endpoints.
 - **Server Components doing an auth check only**: `/sell`, `/request`,
-  `/dashboard` — read the session via `src/lib/supabase/server.ts` and
+  `/dashboard`, `/account/profile`, `/account/api-keys` — read the session via `src/lib/supabase/server.ts` and
   `redirect()` to `/sign-in` before rendering anything if there's no user.
   The actual form/interactive body is a Client Component they render.
 - **Client Components**: the interactive body of `/sell`, `/request`,

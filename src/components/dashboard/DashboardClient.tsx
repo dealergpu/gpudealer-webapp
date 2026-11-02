@@ -30,13 +30,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   HardDrive, Inbox, Bookmark,
-  Plus, ExternalLink, Pencil, Trash2, Send, X, MessageSquare, CheckCheck, KeyRound
+  Plus, ExternalLink, Pencil, Trash2, Send, X, MessageSquare, CheckCheck, KeyRound, UserRound
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { listingPath } from "@/lib/listing-path";
 import { formatListingPrice } from "@/lib/listing-price";
+import { profilePath } from "@/lib/profile";
 
 const formatDate = (dateString: string) =>
   new Date(dateString).toLocaleDateString("en-US", {
@@ -191,7 +192,17 @@ export function DashboardClient() {
     <div className="container mx-auto px-4 py-10">
       <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <h2 className="text-lg font-semibold">Overview</h2>
-        <div className="flex gap-3 w-full sm:w-auto">
+        <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+          <Link href={profile ? profilePath(profile.data.username) : "/account/profile"} className="flex-1 sm:flex-none">
+            <Button variant="ghost" className="w-full">
+              <UserRound className="mr-2 h-4 w-4" /> My Profile
+            </Button>
+          </Link>
+          <Link href="/account/profile" className="flex-1 sm:flex-none">
+            <Button variant="ghost" className="w-full">
+              <Pencil className="mr-2 h-4 w-4" /> Edit Profile
+            </Button>
+          </Link>
           <Link href="/account/api-keys" className="flex-1 sm:flex-none">
             <Button variant="ghost" className="w-full">
               <KeyRound className="mr-2 h-4 w-4" /> API Keys
