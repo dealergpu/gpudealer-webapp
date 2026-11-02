@@ -4,9 +4,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { LayoutDashboard, LogOut, Menu, X } from "lucide-react";
+import { ChevronDown, KeyRound, LayoutDashboard, LogOut, Menu, Pencil, UserRound, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -140,13 +148,38 @@ export function Navbar() {
                   <LayoutDashboard className="h-4 w-4" />
                   Dashboard
                 </Link>
-                <span className="hidden max-w-40 truncate text-sm text-muted-foreground lg:block" title={user.email ?? undefined}>
-                  {user.email || "Account"}
-                </span>
-                <Button variant="outline" size="sm" onClick={handleSignOut} className="hidden sm:inline-flex">
-                  <LogOut className="h-4 w-4" />
-                  Logout
-                </Button>
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="hidden sm:inline-flex" aria-label="Account menu">
+                      <UserRound className="h-4 w-4" />
+                      <span className="hidden max-w-40 truncate lg:inline">{user.email || "Account"}</span>
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-60">
+                    <DropdownMenuLabel className="font-normal">
+                      <p className="text-xs text-muted-foreground">Signed in as</p>
+                      <p className="truncate text-sm font-medium" title={user.email ?? undefined}>
+                        {user.email || "Account"}
+                      </p>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/account/profile">
+                        <Pencil className="mr-2 h-4 w-4" /> Edit profile
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/account/api-keys">
+                        <KeyRound className="mr-2 h-4 w-4" /> API keys
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={handleSignOut}>
+                      <LogOut className="mr-2 h-4 w-4" /> Log out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             )}
 
@@ -180,7 +213,16 @@ export function Navbar() {
                 animate="show"
                 variants={{ show: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } } }}
               >
-                {[...links, ...(user ? [{ href: "/dashboard", label: "Dashboard" }] : [{ href: "/sign-in", label: "Sign in" }])].map((link) => (
+                {[
+                  ...links,
+                  ...(user
+                    ? [
+                        { href: "/dashboard", label: "Dashboard" },
+                        { href: "/account/profile", label: "Edit profile" },
+                        { href: "/account/api-keys", label: "API keys" },
+                      ]
+                    : [{ href: "/sign-in", label: "Sign in" }]),
+                ].map((link) => (
                   <motion.li
                     key={link.href}
                     variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}
@@ -199,10 +241,15 @@ export function Navbar() {
                 ))}
                 <motion.li variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }} className="mt-2">
                   {user ? (
-                    <Button variant="outline" className="w-full" onClick={handleSignOut}>
-                      <LogOut className="h-4 w-4" />
-                      Logout
-                    </Button>
+                    <>
+                      {user.email && (
+                        <p className="mb-2 truncate px-4 text-sm text-muted-foreground">Signed in as {user.email}</p>
+                      )}
+                      <Button variant="outline" className="w-full" onClick={handleSignOut}>
+                        <LogOut className="h-4 w-4" />
+                        Log out
+                      </Button>
+                    </>
                   ) : (
                     <Button asChild className="w-full">
                       <Link href="/sell" onClick={() => setMenuOpen(false)}>List hardware</Link>
