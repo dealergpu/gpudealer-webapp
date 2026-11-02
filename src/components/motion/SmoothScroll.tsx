@@ -20,7 +20,19 @@ export function SmoothScroll() {
       frame = requestAnimationFrame(raf);
     });
 
+    // Radix dialogs, sheets and menus lock page scroll by marking <body>;
+    // Lenis drives the scroll itself, so it has to pause too or the page
+    // keeps moving behind an open modal. Modal content opts back in to
+    // native scrolling with `data-lenis-prevent`.
+    const syncWithScrollLock = () => {
+      if (document.body.hasAttribute('data-scroll-locked')) lenis.stop();
+      else lenis.start();
+    };
+    const observer = new MutationObserver(syncWithScrollLock);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['data-scroll-locked'] });
+
     return () => {
+      observer.disconnect();
       cancelAnimationFrame(frame);
       lenis.destroy();
     };

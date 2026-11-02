@@ -153,9 +153,10 @@ export function ReportListingButton({ listingId, listingPath, sellerId }: {
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        {/* Header and footer stay put; only the reason list scrolls. */}
+        <DialogContent className="flex max-h-[90dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
           {reported ? (
-            <div className="py-4 text-center">
+            <div className="p-6 py-10 text-center">
               <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-emerald-600" aria-hidden />
               <DialogTitle className="mb-2">Thanks — we&apos;ve got your report</DialogTitle>
               <DialogDescription>
@@ -170,15 +171,16 @@ export function ReportListingButton({ listingId, listingPath, sellerId }: {
                 submit();
               }}
               noValidate
+              className="flex min-h-0 flex-1 flex-col"
             >
-              <DialogHeader>
+              <DialogHeader className="border-b border-border px-6 pb-4 pt-6 pr-12">
                 <DialogTitle>Report this listing</DialogTitle>
                 <DialogDescription>
                   What&apos;s wrong with it? Reports are private — the seller won&apos;t see who sent them.
                 </DialogDescription>
               </DialogHeader>
 
-              <fieldset className="mt-5">
+              <fieldset className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
                 <legend className="sr-only">Reason</legend>
                 <RadioGroup
                   value={reason}
@@ -209,13 +211,13 @@ export function ReportListingButton({ listingId, listingPath, sellerId }: {
                 {errors.reason && <p className="mt-2 text-sm text-destructive" role="alert">{errors.reason}</p>}
               </fieldset>
 
-              <div className="mt-5 space-y-2">
+              <div className="space-y-2 border-t border-border px-6 pb-6 pt-4">
                 <Label htmlFor="report-comments">
                   Details {commentsRequired ? <span className="text-destructive">*</span> : <span className="font-normal text-muted-foreground">(optional)</span>}
                 </Label>
                 <Textarea
                   id="report-comments"
-                  rows={3}
+                  rows={2}
                   value={comments}
                   onChange={(e) => {
                     setComments(e.target.value);
@@ -230,21 +232,21 @@ export function ReportListingButton({ listingId, listingPath, sellerId }: {
                     {trimmed.length}/{COMMENTS_MAX}
                   </span>
                 </div>
+
+                {errors.form && (
+                  <p className="mt-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{errors.form}</p>
+                )}
+
+                <DialogFooter className="mt-4 gap-2">
+                  <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={reportListing.isPending}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="destructive" disabled={reportListing.isPending}>
+                    {reportListing.isPending && <Spinner className="mr-1.5" />}
+                    Submit report
+                  </Button>
+                </DialogFooter>
               </div>
-
-              {errors.form && (
-                <p className="mt-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{errors.form}</p>
-              )}
-
-              <DialogFooter className="mt-6 gap-2">
-                <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={reportListing.isPending}>
-                  Cancel
-                </Button>
-                <Button type="submit" variant="destructive" disabled={reportListing.isPending}>
-                  {reportListing.isPending && <Spinner className="mr-1.5" />}
-                  Submit report
-                </Button>
-              </DialogFooter>
             </form>
           )}
         </DialogContent>

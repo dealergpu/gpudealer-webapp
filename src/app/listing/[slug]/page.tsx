@@ -321,9 +321,9 @@ export default async function ListingDetail({
           </div>
         </div>
 
-        {/* Sidebar Panel */}
-        <div className="space-y-6">
-          <Card className="dark sticky top-28 overflow-hidden rounded-3xl border-border bg-background text-foreground shadow-[0_30px_80px_-30px_hsl(240_10%_4%/0.6)]">
+        {/* Sidebar Panel — sticks below the floating nav as one unit on desktop. */}
+        <div className="space-y-6 lg:sticky lg:top-24">
+          <Card className="dark overflow-hidden rounded-3xl border-border bg-background text-foreground shadow-[0_30px_80px_-30px_hsl(240_10%_4%/0.6)]">
             <div className="relative p-6 sm:p-7">
               <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-[radial-gradient(closest-side,hsl(357_90%_50%/0.35),transparent)] blur-2xl" />
               <p className="relative mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Asking price</p>

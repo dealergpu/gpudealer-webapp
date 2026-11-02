@@ -60,6 +60,8 @@ const SheetContent = React.forwardRef<
     <SheetOverlay />
     <SheetPrimitive.Content
       ref={ref}
+      // Scrolls natively even while the page's smooth scroll is paused.
+      data-lenis-prevent
       className={cn(sheetVariants({ side }), className)}
       {...props}
     >
