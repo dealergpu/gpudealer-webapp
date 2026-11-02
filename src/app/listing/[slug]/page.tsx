@@ -18,6 +18,7 @@ import { formatListingPrice, hasListingPrice } from "@/lib/listing-price";
 import { ListingActions } from "@/components/listing/ListingActions";
 import { ListingGallery } from "@/components/listing/ListingGallery";
 import { ReportListingButton } from "@/components/listing/ReportListingButton";
+import { SaveListingButton } from "@/components/listing/SaveListingButton";
 import { ListingComments } from "@/components/listing/comments/ListingComments";
 import { COMMENTS_PAGE_SIZE } from "@/lib/comments";
 import { ShareListing } from "@/components/listing/ShareListing";
@@ -288,12 +289,15 @@ export default async function ListingDetail({
 
             <CardContent className="space-y-3 p-6 pt-0 sm:px-7">
               {isThirdParty && listing.sourceUrl ? (
-                <Button variant="accent" className="h-12 w-full text-base" asChild>
-                  <a href={listing.sourceUrl} target="_blank" rel="noopener noreferrer">
-                    View Original Listing
-                    <ExternalLink className="ml-2 h-4 w-4" />
-                  </a>
-                </Button>
+                <>
+                  <Button variant="accent" className="h-12 w-full text-base" asChild>
+                    <a href={listing.sourceUrl} target="_blank" rel="noopener noreferrer">
+                      View Original Listing
+                      <ExternalLink className="ml-2 h-4 w-4" />
+                    </a>
+                  </Button>
+                  <SaveListingButton listingId={listing.id} variant="full" />
+                </>
               ) : (
                 <ListingActions listing={listing} />
               )}

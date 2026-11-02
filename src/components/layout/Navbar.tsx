@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, KeyRound, LayoutDashboard, LogOut, Menu, Pencil, UserRound, X } from "lucide-react";
+import { Bookmark, ChevronDown, KeyRound, LayoutDashboard, LogOut, Menu, Pencil, UserRound, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import {
@@ -165,6 +165,11 @@ export function Navbar() {
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
+                      <Link href="/saved">
+                        <Bookmark className="mr-2 h-4 w-4" /> Saved listings
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
                       <Link href="/account/profile">
                         <Pencil className="mr-2 h-4 w-4" /> Edit profile
                       </Link>
@@ -218,6 +223,7 @@ export function Navbar() {
                   ...(user
                     ? [
                         { href: "/dashboard", label: "Dashboard" },
+                        { href: "/saved", label: "Saved listings" },
                         { href: "/account/profile", label: "Edit profile" },
                         { href: "/account/api-keys", label: "API keys" },
                       ]

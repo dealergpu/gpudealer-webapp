@@ -443,6 +443,11 @@ export function DashboardClient() {
         </TabsContent>
 
         <TabsContent value="saved" className="m-0">
+          <div className="mb-3 flex justify-end">
+            <Button asChild variant="link" size="sm" className="h-auto p-0">
+              <Link href="/saved">View all saved listings &rarr;</Link>
+            </Button>
+          </div>
           <Card className="border-border shadow-sm">
             {savedLoading ? (
               <div className="p-8 text-center text-muted-foreground">Loading saved listings...</div>

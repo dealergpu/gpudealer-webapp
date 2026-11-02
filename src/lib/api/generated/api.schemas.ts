@@ -849,6 +849,9 @@ export type GetRequestsParams = {
 
 export type GetSavedListingsParams = {
   page?: number;
+  /**
+   * @maximum 100
+   */
   limit?: number;
 };
 

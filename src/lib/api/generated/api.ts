@@ -2630,6 +2630,7 @@ export const getGetSavedListingsUrl = (params?: GetSavedListingsParams) => {
 };
 
 /**
+ * Most recently saved first.
  * @summary Get the authenticated user's saved listings
  */
 export const getSavedListings = async (

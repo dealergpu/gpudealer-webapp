@@ -855,13 +855,14 @@ paths:
       operationId: getSavedListings
       tags: [saved]
       summary: Get the authenticated user's saved listings
+      description: Most recently saved first.
       parameters:
         - name: page
           in: query
           schema: { type: integer, default: 1 }
         - name: limit
           in: query
-          schema: { type: integer, default: 24 }
+          schema: { type: integer, default: 24, maximum: 100 }
       responses:
         "200":
           description: Saved listings
@@ -1574,10 +1575,10 @@ components:
         userId: { type: string, format: uuid }
         listingId: { type: string, format: uuid }
         createdAt: { type: string, format: date-time }
-        # Only populated on GET /saved-listings — a snapshot of the
-        # listing as it was when saved. It is NOT re-checked for
-        # visibility on read, so it can keep showing a listing the
-        # seller has since reverted to DRAFT.
+        # Only populated on GET /saved-listings — the listing as it is now
+        # (with at most the cover image), whatever its status. It is not
+        # filtered by visibility, so the UI must treat anything other than
+        # PUBLISHED as unavailable.
         listing:
           allOf:
             - $ref: "#/components/schemas/Listing"

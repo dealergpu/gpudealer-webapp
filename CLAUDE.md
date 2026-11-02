@@ -427,7 +427,7 @@ Current split, as a concrete reference:
   that user's published/sold listings). These call only public,
   unauthenticated endpoints.
 - **Server Components doing an auth check only**: `/sell`, `/request`,
-  `/dashboard`, `/account/profile`, `/account/api-keys` — read the session via `src/lib/supabase/server.ts` and
+  `/dashboard`, `/account/profile`, `/account/api-keys`, `/saved` — read the session via `src/lib/supabase/server.ts` and
   `redirect()` to `/sign-in` before rendering anything if there's no user.
   The actual form/interactive body is a Client Component they render.
 - **Client Components**: the interactive body of `/sell`, `/request`,
@@ -684,6 +684,14 @@ Source: eBay
 
 Cards should be information-dense but clean.
 
+`ListingCard` (a Server-Component-safe component) also carries:
+
+- a bookmark save toggle (`SaveListingButton`, client) in the photo's
+  bottom-right corner, layered above the card's stretched link;
+- an `unavailable` mode for saved listings that are no longer published:
+  photo greyed out, a "Sold" / "No longer available" badge, no link to the
+  details page, save toggle still working.
+
 ---
 
 # 19. Listing Detail
@@ -896,7 +904,7 @@ redirect targets through it (the `/auth/callback` route does), so `next`
 can't be used as an open redirect.
 
 Signed-in users get an account dropdown in the Navbar: their email
-(read-only), Edit profile, API keys, Log out. The mobile menu carries the
+(read-only), Saved listings, Edit profile, API keys, Log out. The mobile menu carries the
 same links.
 
 ---
@@ -943,7 +951,51 @@ Request statuses:
 
 ---
 
-# 23a. User Profiles
+# 23a. Saved Listings
+
+Signed-in users can save listings ("favourites"). The API has no "is saved"
+flag on listings, so the frontend keeps its own state — all of it lives in
+`src/lib/saved-listings.tsx`:
+
+- `useSavedListingIds()` — every saved `listingId`, loaded once by paging
+  `GET /saved-listings?limit=100` until `page >= totalPages`, cached as a
+  `Set` under `[...getGetSavedListingsQueryKey(), "ids", userId]`. Being
+  under the saved-listings prefix means any invalidation of
+  `getGetSavedListingsQueryKey()` refreshes it too; the user id in the key,
+  plus AuthProvider's `resetQueries()` on user change, mean it never leaks
+  across accounts and is cleared on logout.
+- `useSaveToggle(listingId)` — optimistic toggle: flips the Set immediately,
+  reverts just that id on failure (404 → "This listing is no longer
+  available", else a generic toast), and disables only its own button while
+  in flight. It resyncs with the server only when the last concurrent toggle
+  settles, so rapid toggles on different cards don't fight.
+- Always send the listing **id**, never the slug — these endpoints don't
+  accept slugs. Save is idempotent (201 even if already saved); unsave
+  returns 204 either way.
+- Signed out (or a 401): the intended action is stored in localStorage
+  (expires after 30 minutes; survives a magic link opening a new tab), the
+  user goes to `/sign-in?next=<current page>`, and `PendingSaveResumer`
+  (mounted in `Providers`) completes it once they're signed in.
+
+UI:
+
+- `SaveListingButton` — `icon` variant on every `ListingCard`, `full`
+  variant on the listing details page (inside `ListingActions` for
+  GPUDealer listings, next to "View Original Listing" for third-party ones;
+  owners see "Edit your listing" instead). Label switches between "Save
+  listing" and "Remove from saved"; filled bookmark when saved.
+- `/saved` (auth-gated; linked from the Navbar account menu and the
+  dashboard's Saved tab) — 24 per page, most recently saved first. Cards
+  disappear the moment they're unsaved (filtered by the id Set); if that
+  empties the last page it steps back a page. Non-`PUBLISHED` listings are
+  shown as `unavailable` cards. Empty state: "No saved listings yet" with a
+  link to browse.
+- `GET /saved-listings` returns each listing in its **current** state
+  whatever its status — never assume a saved listing is still public.
+
+---
+
+# 23b. User Profiles
 
 Every user has a public profile at `/user/{username}`.
 

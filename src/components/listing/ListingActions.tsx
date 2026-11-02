@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
-import { Bookmark, BookmarkCheck, MessageSquare, Pencil } from "lucide-react";
+import { MessageSquare, Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { SaveListingButton } from "@/components/listing/SaveListingButton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -20,11 +20,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   useCreateInquiry,
-  useGetSavedListings,
   useGetMyProfile,
-  useSaveListing,
-  useUnsaveListing,
-  getGetSavedListingsQueryKey,
   type Listing,
 } from "@/lib/api";
 
@@ -32,7 +28,6 @@ export function ListingActions({ listing }: { listing: Listing }) {
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -40,46 +35,7 @@ export function ListingActions({ listing }: { listing: Listing }) {
   const { data: profile } = useGetMyProfile({ query: { enabled: !!user } });
   const isOwner = !!profile && profile.data.id === listing.sellerId;
 
-  const savedListings = useGetSavedListings(undefined, { query: { enabled: !!user } });
-  const isSaved = savedListings.data?.data.some((s) => s.listingId === listing.id) ?? false;
-  const saveListing = useSaveListing();
-  const unsaveListing = useUnsaveListing();
   const createInquiry = useCreateInquiry();
-
-  const refreshSaved = () => {
-    queryClient.invalidateQueries({ queryKey: getGetSavedListingsQueryKey() });
-  };
-
-  const handleToggleSave = () => {
-    if (!user) {
-      router.push("/sign-in");
-      return;
-    }
-    if (isSaved) {
-      unsaveListing.mutate(
-        { listingId: listing.id },
-        {
-          onSuccess: () => {
-            refreshSaved();
-            toast({ title: "Removed from saved listings" });
-          },
-        },
-      );
-    } else {
-      saveListing.mutate(
-        { listingId: listing.id },
-        {
-          onSuccess: () => {
-            refreshSaved();
-            toast({ title: "Saved", description: "Find it later from your dashboard." });
-          },
-          onError: () => {
-            toast({ title: "Error", description: "Couldn't save this listing.", variant: "destructive" });
-          },
-        },
-      );
-    }
-  };
 
   const handleContactClick = () => {
     if (!user) {
@@ -155,24 +111,7 @@ export function ListingActions({ listing }: { listing: Listing }) {
         </DialogContent>
       </Dialog>
 
-      <Button
-        variant="outline"
-        className="w-full h-12 text-base font-semibold border-border"
-        onClick={handleToggleSave}
-        disabled={saveListing.isPending || unsaveListing.isPending}
-      >
-        {isSaved ? (
-          <>
-            <BookmarkCheck className="mr-2 h-4 w-4" />
-            Saved
-          </>
-        ) : (
-          <>
-            <Bookmark className="mr-2 h-4 w-4" />
-            Save Listing
-          </>
-        )}
-      </Button>
+      <SaveListingButton listingId={listing.id} variant="full" />
     </>
   );
 }
