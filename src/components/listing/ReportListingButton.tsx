@@ -173,16 +173,18 @@ export function ReportListingButton({ listingId, listingPath, sellerId }: {
               noValidate
               className="flex min-h-0 flex-1 flex-col"
             >
-              <DialogHeader className="border-b border-border px-6 pb-4 pt-6 pr-12">
+              <DialogHeader className="shrink-0 border-b border-border px-6 pb-4 pt-6 pr-12">
                 <DialogTitle>Report this listing</DialogTitle>
                 <DialogDescription>
                   What&apos;s wrong with it? Reports are private — the seller won&apos;t see who sent them.
                 </DialogDescription>
               </DialogHeader>
 
-              <fieldset className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
-                <legend className="sr-only">Reason</legend>
+              {/* A div, not a fieldset: fieldsets have a min-content minimum
+                  size, so they can't shrink inside the flex column and scroll. */}
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
                 <RadioGroup
+                  aria-label="Reason"
                   value={reason}
                   onValueChange={(value) => {
                     setReason(value as ListingReportReason);
@@ -209,9 +211,9 @@ export function ReportListingButton({ listingId, listingPath, sellerId }: {
                   ))}
                 </RadioGroup>
                 {errors.reason && <p className="mt-2 text-sm text-destructive" role="alert">{errors.reason}</p>}
-              </fieldset>
+              </div>
 
-              <div className="space-y-2 border-t border-border px-6 pb-6 pt-4">
+              <div className="shrink-0 space-y-2 border-t border-border bg-background px-6 pb-6 pt-4">
                 <Label htmlFor="report-comments">
                   Details {commentsRequired ? <span className="text-destructive">*</span> : <span className="font-normal text-muted-foreground">(optional)</span>}
                 </Label>
