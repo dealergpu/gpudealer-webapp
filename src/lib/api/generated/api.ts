@@ -32,6 +32,8 @@ import type {
   DashboardStats,
   GetApiKeysParams,
   GetInquiriesParams,
+  GetListingCommentRepliesParams,
+  GetListingCommentsParams,
   GetListingsParams,
   GetPublicProfileParams,
   GetRequestsParams,
@@ -46,6 +48,10 @@ import type {
   InquiryInput,
   InquiryResponse,
   InquiryStatusUpdate,
+  ListingCommentInput,
+  ListingCommentRepliesResponse,
+  ListingCommentResponse,
+  ListingCommentsResponse,
   ListingInput,
   ListingResponse,
   ListingStatusUpdate,
@@ -885,6 +891,625 @@ export const useUpdateListingStatus = <
     queryClient,
   );
 };
+
+export const getGetListingCommentsUrl = (
+  listingId: string,
+  params?: GetListingCommentsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/listings/${listingId}/comments?${stringifiedParams}`
+    : `/api/v1/listings/${listingId}/comments`;
+};
+
+/**
+ * Public (optional auth). Newest first. Each top-level comment includes its first 5 replies (oldest first) and replyCount.
+ * @summary List top-level comments on a listing
+ */
+export const getListingComments = async (
+  listingId: string,
+  params?: GetListingCommentsParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ListingCommentsResponse> => {
+  return customFetch<ListingCommentsResponse>(
+    getGetListingCommentsUrl(listingId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetListingCommentsQueryKey = (
+  listingId: string,
+  params?: GetListingCommentsParams,
+) => {
+  return [
+    `/api/v1/listings/${listingId}/comments`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetListingCommentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getListingComments>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  listingId: string,
+  params?: GetListingCommentsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getListingComments>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetListingCommentsQueryKey(listingId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getListingComments>>
+  > = ({ signal }) =>
+    getListingComments(listingId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: listingId !== null && listingId !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getListingComments>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetListingCommentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getListingComments>>
+>;
+export type GetListingCommentsQueryError = ErrorType<ApiErrorResponse>;
+
+export function useGetListingComments<
+  TData = Awaited<ReturnType<typeof getListingComments>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  listingId: string,
+  params: undefined | GetListingCommentsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getListingComments>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getListingComments>>,
+          TError,
+          Awaited<ReturnType<typeof getListingComments>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetListingComments<
+  TData = Awaited<ReturnType<typeof getListingComments>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  listingId: string,
+  params?: GetListingCommentsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getListingComments>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getListingComments>>,
+          TError,
+          Awaited<ReturnType<typeof getListingComments>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetListingComments<
+  TData = Awaited<ReturnType<typeof getListingComments>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  listingId: string,
+  params?: GetListingCommentsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getListingComments>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary List top-level comments on a listing
+ */
+
+export function useGetListingComments<
+  TData = Awaited<ReturnType<typeof getListingComments>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  listingId: string,
+  params?: GetListingCommentsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getListingComments>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetListingCommentsQueryOptions(
+    listingId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getCreateListingCommentUrl = (listingId: string) => {
+  return `/api/v1/listings/${listingId}/comments`;
+};
+
+/**
+ * The author comes from the token. Only PUBLISHED listings accept comments (403 otherwise). Rate limited to 10/minute. A reply to a reply is attached to that reply's top-level comment.
+ * @summary Post a comment or reply
+ */
+export const createListingComment = async (
+  listingId: string,
+  listingCommentInput: ListingCommentInput,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ListingCommentResponse> => {
+  return customFetch<ListingCommentResponse>(
+    getCreateListingCommentUrl(listingId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(listingCommentInput),
+    },
+  );
+};
+
+export const getCreateListingCommentMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createListingComment>>,
+    TError,
+    { listingId: string; data: BodyType<ListingCommentInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createListingComment>>,
+  TError,
+  { listingId: string; data: BodyType<ListingCommentInput> },
+  TContext
+> => {
+  const mutationKey = ["createListingComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createListingComment>>,
+    { listingId: string; data: BodyType<ListingCommentInput> }
+  > = (props) => {
+    const { listingId, data } = props ?? {};
+
+    return createListingComment(listingId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateListingCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createListingComment>>
+>;
+export type CreateListingCommentMutationBody = BodyType<ListingCommentInput>;
+export type CreateListingCommentMutationError = ErrorType<ApiErrorResponse>;
+
+/**
+ * @summary Post a comment or reply
+ */
+export const useCreateListingComment = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createListingComment>>,
+      TError,
+      { listingId: string; data: BodyType<ListingCommentInput> },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createListingComment>>,
+  TError,
+  { listingId: string; data: BodyType<ListingCommentInput> },
+  TContext
+> => {
+  return useMutation(
+    getCreateListingCommentMutationOptions(options),
+    queryClient,
+  );
+};
+
+export const getDeleteListingCommentUrl = (
+  listingId: string,
+  commentId: string,
+) => {
+  return `/api/v1/listings/${listingId}/comments/${commentId}`;
+};
+
+/**
+ * Deleting a top-level comment also deletes its replies.
+ * @summary Delete a comment (author only)
+ */
+export const deleteListingComment = async (
+  listingId: string,
+  commentId: string,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<void> => {
+  return customFetch<void>(getDeleteListingCommentUrl(listingId, commentId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteListingCommentMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteListingComment>>,
+    TError,
+    { listingId: string; commentId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteListingComment>>,
+  TError,
+  { listingId: string; commentId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteListingComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteListingComment>>,
+    { listingId: string; commentId: string }
+  > = (props) => {
+    const { listingId, commentId } = props ?? {};
+
+    return deleteListingComment(listingId, commentId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteListingCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteListingComment>>
+>;
+
+export type DeleteListingCommentMutationError = ErrorType<ApiErrorResponse>;
+
+/**
+ * @summary Delete a comment (author only)
+ */
+export const useDeleteListingComment = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteListingComment>>,
+      TError,
+      { listingId: string; commentId: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof deleteListingComment>>,
+  TError,
+  { listingId: string; commentId: string },
+  TContext
+> => {
+  return useMutation(
+    getDeleteListingCommentMutationOptions(options),
+    queryClient,
+  );
+};
+
+export const getGetListingCommentRepliesUrl = (
+  listingId: string,
+  commentId: string,
+  params?: GetListingCommentRepliesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/listings/${listingId}/comments/${commentId}/replies?${stringifiedParams}`
+    : `/api/v1/listings/${listingId}/comments/${commentId}/replies`;
+};
+
+/**
+ * Public (optional auth). Oldest first.
+ * @summary List replies to a top-level comment
+ */
+export const getListingCommentReplies = async (
+  listingId: string,
+  commentId: string,
+  params?: GetListingCommentRepliesParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ListingCommentRepliesResponse> => {
+  return customFetch<ListingCommentRepliesResponse>(
+    getGetListingCommentRepliesUrl(listingId, commentId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetListingCommentRepliesQueryKey = (
+  listingId: string,
+  commentId: string,
+  params?: GetListingCommentRepliesParams,
+) => {
+  return [
+    `/api/v1/listings/${listingId}/comments/${commentId}/replies`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetListingCommentRepliesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getListingCommentReplies>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  listingId: string,
+  commentId: string,
+  params?: GetListingCommentRepliesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getListingCommentReplies>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetListingCommentRepliesQueryKey(listingId, commentId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getListingCommentReplies>>
+  > = ({ signal }) =>
+    getListingCommentReplies(listingId, commentId, params, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled:
+      listingId !== null &&
+      listingId !== undefined &&
+      commentId !== null &&
+      commentId !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getListingCommentReplies>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetListingCommentRepliesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getListingCommentReplies>>
+>;
+export type GetListingCommentRepliesQueryError = ErrorType<ApiErrorResponse>;
+
+export function useGetListingCommentReplies<
+  TData = Awaited<ReturnType<typeof getListingCommentReplies>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  listingId: string,
+  commentId: string,
+  params: undefined | GetListingCommentRepliesParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getListingCommentReplies>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getListingCommentReplies>>,
+          TError,
+          Awaited<ReturnType<typeof getListingCommentReplies>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetListingCommentReplies<
+  TData = Awaited<ReturnType<typeof getListingCommentReplies>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  listingId: string,
+  commentId: string,
+  params?: GetListingCommentRepliesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getListingCommentReplies>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getListingCommentReplies>>,
+          TError,
+          Awaited<ReturnType<typeof getListingCommentReplies>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetListingCommentReplies<
+  TData = Awaited<ReturnType<typeof getListingCommentReplies>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  listingId: string,
+  commentId: string,
+  params?: GetListingCommentRepliesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getListingCommentReplies>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary List replies to a top-level comment
+ */
+
+export function useGetListingCommentReplies<
+  TData = Awaited<ReturnType<typeof getListingCommentReplies>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  listingId: string,
+  commentId: string,
+  params?: GetListingCommentRepliesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getListingCommentReplies>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetListingCommentRepliesQueryOptions(
+    listingId,
+    commentId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export const getCreateInquiryUrl = (listingId: string) => {
   return `/api/v1/listings/${listingId}/inquiries`;

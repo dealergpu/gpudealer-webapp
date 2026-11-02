@@ -422,8 +422,9 @@ Current split, as a concrete reference:
 - **Server Components with real server-side data fetching**: `/` (home),
   `/gpus` (search — reads `searchParams`, refetches on the server whenever a
   filter changes the URL), `/listing/[id]` (with `generateMetadata` for
-  per-listing SEO title/description/OG tags), `/user/[username]` (public
-  profile + that user's published/sold listings). These call only public,
+  per-listing SEO title/description/OG tags, plus the first page of
+  comments so the Q&A is indexable), `/user/[username]` (public profile +
+  that user's published/sold listings). These call only public,
   unauthenticated endpoints.
 - **Server Components doing an auth check only**: `/sell`, `/request`,
   `/dashboard`, `/account/profile`, `/account/api-keys` — read the session via `src/lib/supabase/server.ts` and
@@ -726,6 +727,39 @@ Secondary CTA:
 
 This secondary CTA is strategically important.
 
+## Comments
+
+Public Q&A under each listing (`src/components/listing/comments/`), backed
+by `/listings/{listingId}/comments` (`listingId` accepts id or slug).
+
+- Anyone can read; only signed-in users can post, reply or delete.
+  Logged-out visitors get "Log in to comment" (sign-in with `?next=` back to
+  `#comments`).
+- Posting is only allowed while `listing.status === PUBLISHED`; other
+  statuses render the thread read-only (no reply/delete buttons).
+- Threads are one level deep. Replying to a reply sends the **top-level**
+  comment's id as `parentCommentId`, so it lands in the same thread
+  (prefilled with `@username`).
+- Paging: 10 top-level comments per page, newest first, each embedding its
+  first 5 replies (oldest first) + `replyCount`. "See more comments" appends
+  the next page; "See more replies" starts at **page 2** of
+  `/comments/{id}/replies` (page 1 is the embedded 5). Always dedupe by
+  `id` when appending — new posts shift offsets. Page sizes live in
+  `src/lib/comments.ts` (not in the `'use client'` module, so the server
+  page can import them).
+- New top-level comments go to the top; new replies go to the end of their
+  thread and bump `replyCount`.
+- Delete only on the viewer's own comments: compare `author.id` with the
+  backend `/me` id, never the Supabase user id. Deleting a top-level comment
+  removes its whole thread. Confirm before deleting.
+- `body` is plain text: render as a React text node with
+  `whitespace-pre-wrap` — never HTML or markdown.
+- Author shows as `username` + `profilePic` (first-letter fallback), linked
+  to `/user/{username}`; a "Seller" badge when `author.id === listing.seller.id`.
+- Errors: 400 inline under the box (typed text kept), 401 → sign-in and
+  back, 403 → toast `error.message`, 404 → toast and drop the missing
+  comment/thread, 429 → "You're commenting too fast…", else a generic toast.
+
 ---
 
 # 20. Sell Form
@@ -833,6 +867,12 @@ Authentication is required for:
 - requesting hardware
 - contacting sellers
 - saving listings
+
+`/sign-in` accepts `?next=<path>` (use `signInPath()` from
+`src/lib/auth-redirect.ts`) and returns there after password, magic-link or
+Google sign-in. `safeNextPath()` only allows same-site paths — always run
+redirect targets through it (the `/auth/callback` route does), so `next`
+can't be used as an open redirect.
 
 Signed-in users get an account dropdown in the Navbar: their email
 (read-only), Edit profile, API keys, Log out. The mobile menu carries the

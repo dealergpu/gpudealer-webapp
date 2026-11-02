@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { createClientSafely } from "@/lib/supabase/client";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { AuthShell } from "@/components/auth/AuthShell";
+import { safeNextPath } from "@/lib/auth-redirect";
 
 const passwordSchema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -26,6 +27,12 @@ const magicLinkSchema = z.object({
 
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 type MagicLinkFormValues = z.infer<typeof magicLinkSchema>;
+
+// Read from the URL directly rather than useSearchParams, which would need a
+// Suspense boundary around this page. Only used in event handlers.
+function nextPath() {
+  return safeNextPath(new URLSearchParams(window.location.search).get("next"));
+}
 
 export default function SignIn() {
   const router = useRouter();
@@ -57,7 +64,7 @@ export default function SignIn() {
       toast({ title: "Sign in failed", description: error.message, variant: "destructive" });
       return;
     }
-    router.push("/dashboard");
+    router.push(nextPath());
     router.refresh();
   };
 
@@ -69,7 +76,7 @@ export default function SignIn() {
     setIsSubmitting(true);
     const { error } = await supabase.auth.signInWithOtp({
       email: values.email,
-      options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+      options: { emailRedirectTo: `${window.location.origin}${nextPath()}` },
     });
     setIsSubmitting(false);
     if (error) {

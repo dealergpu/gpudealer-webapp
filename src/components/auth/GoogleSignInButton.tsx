@@ -6,12 +6,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/hooks/use-toast";
+import { safeNextPath } from "@/lib/auth-redirect";
 
 export function GoogleSignInButton({
   supabase,
-  next = "/dashboard",
+  next,
 }: {
   supabase: SupabaseClient | null;
+  /** Where to land after sign-in. Defaults to the page's own `?next=` param, else the dashboard. */
   next?: string;
 }) {
   const { toast } = useToast();
@@ -23,10 +25,11 @@ export function GoogleSignInButton({
       return;
     }
     setIsRedirecting(true);
+    const target = next ?? safeNextPath(new URLSearchParams(window.location.search).get("next"));
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(target)}`,
       },
     });
     if (error) {

@@ -11,12 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { ApiError, getListing, ListingCondition, ListingSourceType, ListingStatus, type Listing, type ListingSeller } from "@/lib/api";
+import { ApiError, getListing, getListingComments, ListingCondition, ListingSourceType, ListingStatus, type Listing, type ListingCommentsResponse, type ListingSeller } from "@/lib/api";
 import { getAccessToken } from "@/lib/supabase/server";
 import { listingPath } from "@/lib/listing-path";
 import { formatListingPrice, hasListingPrice } from "@/lib/listing-price";
 import { ListingActions } from "@/components/listing/ListingActions";
 import { ListingGallery } from "@/components/listing/ListingGallery";
+import { ListingComments } from "@/components/listing/comments/ListingComments";
+import { COMMENTS_PAGE_SIZE } from "@/lib/comments";
 import { ShareListing } from "@/components/listing/ShareListing";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/lib/site";
@@ -54,6 +56,21 @@ const loadListing = cache(async (slugOrId: string): Promise<Listing | null> => {
     throw error;
   }
 });
+
+// First page of comments, rendered on the server so the Q&A is indexable.
+// Null on failure — the section then offers a client-side retry.
+async function loadComments(listingId: string): Promise<ListingCommentsResponse | null> {
+  const token = await getAccessToken();
+  try {
+    return await getListingComments(
+      listingId,
+      { page: 1, limit: COMMENTS_PAGE_SIZE },
+      { headers: token ? { Authorization: `Bearer ${token}` } : undefined },
+    );
+  } catch {
+    return null;
+  }
+}
 
 function formatLocation(listing: Listing): string | null {
   return [listing.locationCity, listing.locationRegion, listing.locationCountry]
@@ -180,6 +197,7 @@ export default async function ListingDetail({
   }
 
   const formattedPrice = formatListingPrice(listing);
+  const comments = await loadComments(listing.id);
 
   const location = formatLocation(listing);
   const isThirdParty = listing.sourceType && listing.sourceType !== ListingSourceType.GPUDEALER;
@@ -385,6 +403,18 @@ export default async function ListingDetail({
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* After the sidebar in source order, so on mobile the price and
+            contact actions come before the discussion. */}
+        <div className="lg:col-span-2">
+          <ListingComments
+            listingId={listing.id}
+            listingPath={listingPath(listing)}
+            listingStatus={listing.status}
+            sellerId={listing.seller?.id}
+            initial={comments}
+          />
         </div>
       </div>
     </div>

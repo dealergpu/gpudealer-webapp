@@ -141,6 +141,63 @@ export interface Listing {
   seller?: ListingSeller;
 }
 
+export interface ListingCommentAuthor {
+  id: string;
+  username: string;
+  /** @nullable */
+  profilePic: string | null;
+}
+
+export interface ListingComment {
+  id: string;
+  listingId: string;
+  /** @nullable */
+  parentCommentId: string | null;
+  /** Plain text — never render as HTML or markdown. */
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+  author: ListingCommentAuthor;
+}
+
+/**
+ * A top-level comment with its first replies.
+ */
+export type ListingCommentThread = ListingComment & {
+  replyCount: number;
+  replies: ListingComment[];
+};
+
+export interface ListingCommentInput {
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  body: string;
+  parentCommentId?: string;
+}
+
+export interface ListingCommentResponse {
+  data: ListingComment;
+}
+
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface ListingCommentsResponse {
+  data: ListingCommentThread[];
+  pagination: Pagination;
+}
+
+export interface ListingCommentRepliesResponse {
+  data: ListingComment[];
+  pagination: Pagination;
+}
+
 export type ListingInputImagesItem = {
   url: string;
   sortOrder?: number;
@@ -222,13 +279,6 @@ export interface ListingUpdate {
 
 export interface ListingStatusUpdate {
   status: ListingStatus;
-}
-
-export interface Pagination {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
 }
 
 export interface ListingResponse {
@@ -726,6 +776,22 @@ export type GetListingsParams = {
   /**
    * @minimum 1
    * @maximum 100
+   */
+  limit?: number;
+};
+
+export type GetListingCommentsParams = {
+  page?: number;
+  /**
+   * @maximum 50
+   */
+  limit?: number;
+};
+
+export type GetListingCommentRepliesParams = {
+  page?: number;
+  /**
+   * @maximum 50
    */
   limit?: number;
 };

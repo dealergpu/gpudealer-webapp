@@ -22,6 +22,8 @@ tags:
     description: Statistics and dashboard operations
   - name: users
     description: User profile operations
+  - name: comments
+    description: Listing comments (one level of replies)
   - name: contact
     description: Contact form messages
   - name: apiKeys
@@ -316,6 +318,158 @@ paths:
               schema: { $ref: "#/components/schemas/ApiErrorResponse" }
         "409":
           description: Disallowed transition for this role
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /listings/{listingId}/comments:
+    get:
+      operationId: getListingComments
+      tags: [comments]
+      summary: List top-level comments on a listing
+      description: >-
+        Public (optional auth). Newest first. Each top-level comment includes
+        its first 5 replies (oldest first) and replyCount.
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          description: The listing's id or slug.
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10, maximum: 50 }
+      responses:
+        "200":
+          description: Top-level comments
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListingCommentsResponse" }
+        "404":
+          description: Listing not visible
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+    post:
+      operationId: createListingComment
+      tags: [comments]
+      summary: Post a comment or reply
+      description: >-
+        The author comes from the token. Only PUBLISHED listings accept
+        comments (403 otherwise). Rate limited to 10/minute. A reply to a
+        reply is attached to that reply's top-level comment.
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          description: The listing's id or slug.
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ListingCommentInput" }
+      responses:
+        "201":
+          description: Created comment (no replyCount/replies)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListingCommentResponse" }
+        "400":
+          description: Validation error (fields.body)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "403":
+          description: Listing isn't published
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "404":
+          description: Listing or parent comment not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /listings/{listingId}/comments/{commentId}:
+    delete:
+      operationId: deleteListingComment
+      tags: [comments]
+      summary: Delete a comment (author only)
+      description: Deleting a top-level comment also deletes its replies.
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          description: The listing's id or slug.
+          schema: { type: string }
+        - name: commentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "403":
+          description: Not the author
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "404":
+          description: Comment not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /listings/{listingId}/comments/{commentId}/replies:
+    get:
+      operationId: getListingCommentReplies
+      tags: [comments]
+      summary: List replies to a top-level comment
+      description: Public (optional auth). Oldest first.
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          description: The listing's id or slug.
+          schema: { type: string }
+        - name: commentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 5, maximum: 50 }
+      responses:
+        "200":
+          description: Replies
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListingCommentRepliesResponse" }
+        "404":
+          description: Listing or comment not found
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ApiErrorResponse" }
@@ -1136,6 +1290,69 @@ components:
         username: { type: string }
         name: { type: ["string", "null"], description: "Display name ?? username" }
         profilePic: { type: ["string", "null"] }
+
+    ListingCommentAuthor:
+      type: object
+      required: [id, username, profilePic]
+      properties:
+        id: { type: string }
+        username: { type: string }
+        profilePic: { type: ["string", "null"] }
+
+    ListingComment:
+      type: object
+      required: [id, listingId, parentCommentId, body, createdAt, updatedAt, author]
+      properties:
+        id: { type: string, format: uuid }
+        listingId: { type: string, format: uuid }
+        parentCommentId: { type: ["string", "null"], format: uuid }
+        body: { type: string, description: "Plain text — never render as HTML or markdown." }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        author: { $ref: "#/components/schemas/ListingCommentAuthor" }
+
+    ListingCommentThread:
+      description: A top-level comment with its first replies.
+      allOf:
+        - $ref: "#/components/schemas/ListingComment"
+        - type: object
+          required: [replyCount, replies]
+          properties:
+            replyCount: { type: integer }
+            replies:
+              type: array
+              items: { $ref: "#/components/schemas/ListingComment" }
+
+    ListingCommentInput:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 2000 }
+        parentCommentId: { type: string, format: uuid }
+
+    ListingCommentResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: "#/components/schemas/ListingComment" }
+
+    ListingCommentsResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/ListingCommentThread" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+
+    ListingCommentRepliesResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/ListingComment" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
 
     ListingInput:
       type: object
