@@ -1039,6 +1039,41 @@ Profile and cover pictures (`src/lib/supabase/profile-photos.ts`):
 
 ---
 
+# 23c. Compute Comparison
+
+GPU cloud / inference provider comparison under `/compute` (backend
+`/compute/*`, public). GPUDealer only compares and links out — copy says
+"Visit provider" / "Compare", never "Rent" or "Deploy".
+
+Routes (all Server Components fetching public data): `/compute` (landing +
+provider directory, `?type=`), `/compute/gpu-cloud` and
+`/compute/gpu-cloud/{gpu}` (price rows from `/compute/pricing`; per-model
+pages only for `GPU_PAGES` in `src/lib/compute.ts`, noindexed while they
+have no prices), `/compute/inference` (offerings), `/compute/compare?ids=`
+(noindex), `/compute/providers/{slug}`, `/compute/request` (sign-in
+optional; the token is sent when present).
+
+Rules:
+
+- Outbound links always go through `providerVisitUrl()` (the API's tracked
+  `/compute/go/{slug}` redirect) as a plain `<a rel="noopener sponsored">` —
+  never `websiteUrl`/`productUrl`, never fetched or prefetched.
+  `pricingUrl`/`sourceUrl` may be plain "source" links.
+- Never rank prices across units: per-GPU vs per-instance, input vs output
+  tokens. Ranking across offerings comes from `/compute/compare` groups.
+- `CUSTOM_QUOTE` / `amount: null` → "Contact for pricing", never `$0`,
+  never sorted as a number. Booleans `null` → "—".
+- Every price shows confidence + "checked {date}" + a stale marker
+  (`PricingStatus`). Prices are decimal strings; calculator maths uses the
+  bigint fixed-point helpers in `src/lib/compute.ts`, not floats.
+- No partner/affiliate badges; `AffiliateDisclosure` sits next to
+  provider links.
+- Compare selection (max 10) lives in localStorage
+  (`src/lib/compute-compare.ts`); the tray is mounted by
+  `src/app/compute/layout.tsx`.
+
+---
+
 # 24. API Integration
 
 The API client is generated, not hand-written, from an OpenAPI spec:

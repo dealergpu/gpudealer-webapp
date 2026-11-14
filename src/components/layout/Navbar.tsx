@@ -21,6 +21,7 @@ const links = [
   { href: "/gpus", label: "Find Hardware" },
   { href: "/sell", label: "Sell Hardware" },
   { href: "/request", label: "Request Hardware" },
+  { href: "/compute", label: "Compare Compute" },
 ];
 
 const EASE = [0.16, 1, 0.3, 1] as const;

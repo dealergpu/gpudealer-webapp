@@ -27,10 +27,24 @@ import type {
   ApiKeyWithSecretResponse,
   ApiKeysResponse,
   CheckUsernameParams,
+  CompareComputeOfferingsParams,
+  ComputeComparisonResponse,
+  ComputeModelsResponse,
+  ComputeOfferingResponse,
+  ComputeOfferingsResponse,
+  ComputePriceRowsResponse,
+  ComputeProviderResponse,
+  ComputeProvidersResponse,
+  ComputeRequestInput,
+  ComputeRequestResponse,
   ContactMessageInput,
   ContactMessageResponse,
   DashboardStats,
   GetApiKeysParams,
+  GetComputeModelsParams,
+  GetComputeOfferingsParams,
+  GetComputePricingParams,
+  GetComputeProvidersParams,
   GetInquiriesParams,
   GetListingCommentRepliesParams,
   GetListingCommentsParams,
@@ -66,6 +80,7 @@ import type {
   UserProfileResponse,
   UserProfileUpdate,
   UsernameCheckResponse,
+  VisitComputeProviderParams,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -4373,6 +4388,1560 @@ export const useCreateContactMessage = <
 > => {
   return useMutation(
     getCreateContactMessageMutationOptions(options),
+    queryClient,
+  );
+};
+
+export const getGetComputeProvidersUrl = (
+  params?: GetComputeProvidersParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/compute/providers?${stringifiedParams}`
+    : `/api/v1/compute/providers`;
+};
+
+/**
+ * Public. Active providers only, sorted by name (A–Z).
+ * @summary Compute provider directory
+ */
+export const getComputeProviders = async (
+  params?: GetComputeProvidersParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ComputeProvidersResponse> => {
+  return customFetch<ComputeProvidersResponse>(
+    getGetComputeProvidersUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetComputeProvidersQueryKey = (
+  params?: GetComputeProvidersParams,
+) => {
+  return [`/api/v1/compute/providers`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetComputeProvidersQueryOptions = <
+  TData = Awaited<ReturnType<typeof getComputeProviders>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetComputeProvidersParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeProviders>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetComputeProvidersQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getComputeProviders>>
+  > = ({ signal }) =>
+    getComputeProviders(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getComputeProviders>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetComputeProvidersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getComputeProviders>>
+>;
+export type GetComputeProvidersQueryError = ErrorType<ApiErrorResponse>;
+
+export function useGetComputeProviders<
+  TData = Awaited<ReturnType<typeof getComputeProviders>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: undefined | GetComputeProvidersParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeProviders>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getComputeProviders>>,
+          TError,
+          Awaited<ReturnType<typeof getComputeProviders>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetComputeProviders<
+  TData = Awaited<ReturnType<typeof getComputeProviders>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetComputeProvidersParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeProviders>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getComputeProviders>>,
+          TError,
+          Awaited<ReturnType<typeof getComputeProviders>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetComputeProviders<
+  TData = Awaited<ReturnType<typeof getComputeProviders>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetComputeProvidersParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeProviders>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Compute provider directory
+ */
+
+export function useGetComputeProviders<
+  TData = Awaited<ReturnType<typeof getComputeProviders>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetComputeProvidersParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeProviders>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetComputeProvidersQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetComputeProviderUrl = (slug: string) => {
+  return `/api/v1/compute/providers/${slug}`;
+};
+
+/**
+ * Public. Unknown, inactive or pending providers return 404. Offerings are not embedded — load them with `GET /compute/offerings?provider=`.
+ * @summary Compute provider detail
+ */
+export const getComputeProvider = async (
+  slug: string,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ComputeProviderResponse> => {
+  return customFetch<ComputeProviderResponse>(getGetComputeProviderUrl(slug), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetComputeProviderQueryKey = (slug: string) => {
+  return [`/api/v1/compute/providers/${slug}`] as const;
+};
+
+export const getGetComputeProviderQueryOptions = <
+  TData = Awaited<ReturnType<typeof getComputeProvider>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  slug: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeProvider>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetComputeProviderQueryKey(slug);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getComputeProvider>>
+  > = ({ signal }) => getComputeProvider(slug, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: slug !== null && slug !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getComputeProvider>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetComputeProviderQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getComputeProvider>>
+>;
+export type GetComputeProviderQueryError = ErrorType<ApiErrorResponse>;
+
+export function useGetComputeProvider<
+  TData = Awaited<ReturnType<typeof getComputeProvider>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  slug: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeProvider>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getComputeProvider>>,
+          TError,
+          Awaited<ReturnType<typeof getComputeProvider>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetComputeProvider<
+  TData = Awaited<ReturnType<typeof getComputeProvider>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  slug: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeProvider>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getComputeProvider>>,
+          TError,
+          Awaited<ReturnType<typeof getComputeProvider>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetComputeProvider<
+  TData = Awaited<ReturnType<typeof getComputeProvider>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  slug: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeProvider>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Compute provider detail
+ */
+
+export function useGetComputeProvider<
+  TData = Awaited<ReturnType<typeof getComputeProvider>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  slug: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeProvider>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetComputeProviderQueryOptions(slug, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetComputeOfferingsUrl = (
+  params?: GetComputeOfferingsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/compute/offerings?${stringifiedParams}`
+    : `/api/v1/compute/offerings`;
+};
+
+/**
+ * Public. Sorted by provider name, then offering name. Each offering includes its current prices. `gpuModel` and `modelName` are normalized matches (`h100` matches "H100 SXM").
+ * @summary Search compute offerings
+ */
+export const getComputeOfferings = async (
+  params?: GetComputeOfferingsParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ComputeOfferingsResponse> => {
+  return customFetch<ComputeOfferingsResponse>(
+    getGetComputeOfferingsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetComputeOfferingsQueryKey = (
+  params?: GetComputeOfferingsParams,
+) => {
+  return [`/api/v1/compute/offerings`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetComputeOfferingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getComputeOfferings>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetComputeOfferingsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeOfferings>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetComputeOfferingsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getComputeOfferings>>
+  > = ({ signal }) =>
+    getComputeOfferings(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getComputeOfferings>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetComputeOfferingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getComputeOfferings>>
+>;
+export type GetComputeOfferingsQueryError = ErrorType<ApiErrorResponse>;
+
+export function useGetComputeOfferings<
+  TData = Awaited<ReturnType<typeof getComputeOfferings>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: undefined | GetComputeOfferingsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeOfferings>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getComputeOfferings>>,
+          TError,
+          Awaited<ReturnType<typeof getComputeOfferings>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetComputeOfferings<
+  TData = Awaited<ReturnType<typeof getComputeOfferings>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetComputeOfferingsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeOfferings>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getComputeOfferings>>,
+          TError,
+          Awaited<ReturnType<typeof getComputeOfferings>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetComputeOfferings<
+  TData = Awaited<ReturnType<typeof getComputeOfferings>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetComputeOfferingsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeOfferings>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Search compute offerings
+ */
+
+export function useGetComputeOfferings<
+  TData = Awaited<ReturnType<typeof getComputeOfferings>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetComputeOfferingsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeOfferings>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetComputeOfferingsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetComputeOfferingUrl = (id: string) => {
+  return `/api/v1/compute/offerings/${id}`;
+};
+
+/**
+ * Public. Takes an offering id (UUID). Inactive offerings and malformed ids return 404.
+ * @summary Compute offering detail
+ */
+export const getComputeOffering = async (
+  id: string,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ComputeOfferingResponse> => {
+  return customFetch<ComputeOfferingResponse>(getGetComputeOfferingUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetComputeOfferingQueryKey = (id: string) => {
+  return [`/api/v1/compute/offerings/${id}`] as const;
+};
+
+export const getGetComputeOfferingQueryOptions = <
+  TData = Awaited<ReturnType<typeof getComputeOffering>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeOffering>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetComputeOfferingQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getComputeOffering>>
+  > = ({ signal }) => getComputeOffering(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: id !== null && id !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getComputeOffering>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetComputeOfferingQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getComputeOffering>>
+>;
+export type GetComputeOfferingQueryError = ErrorType<ApiErrorResponse>;
+
+export function useGetComputeOffering<
+  TData = Awaited<ReturnType<typeof getComputeOffering>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  id: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeOffering>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getComputeOffering>>,
+          TError,
+          Awaited<ReturnType<typeof getComputeOffering>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetComputeOffering<
+  TData = Awaited<ReturnType<typeof getComputeOffering>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeOffering>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getComputeOffering>>,
+          TError,
+          Awaited<ReturnType<typeof getComputeOffering>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetComputeOffering<
+  TData = Awaited<ReturnType<typeof getComputeOffering>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeOffering>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Compute offering detail
+ */
+
+export function useGetComputeOffering<
+  TData = Awaited<ReturnType<typeof getComputeOffering>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeOffering>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetComputeOfferingQueryOptions(id, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetComputePricingUrl = (params?: GetComputePricingParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/compute/pricing?${stringifiedParams}`
+    : `/api/v1/compute/pricing`;
+};
+
+/**
+ * Public. Sorting by price requires `unit` (prices in different units are not comparable — 400 otherwise); `sortBy` defaults to `price_asc` when `unit` is set, else `newest`. `currency` defaults to USD when sorting by price. `region` matches that region or prices with no region. Quote-only rows (`amount: null`) sort last. `history=true` requires `offeringId`.
+ * @summary Price table (one row per price)
+ */
+export const getComputePricing = async (
+  params?: GetComputePricingParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ComputePriceRowsResponse> => {
+  return customFetch<ComputePriceRowsResponse>(
+    getGetComputePricingUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetComputePricingQueryKey = (
+  params?: GetComputePricingParams,
+) => {
+  return [`/api/v1/compute/pricing`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetComputePricingQueryOptions = <
+  TData = Awaited<ReturnType<typeof getComputePricing>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetComputePricingParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputePricing>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetComputePricingQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getComputePricing>>
+  > = ({ signal }) => getComputePricing(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getComputePricing>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetComputePricingQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getComputePricing>>
+>;
+export type GetComputePricingQueryError = ErrorType<ApiErrorResponse>;
+
+export function useGetComputePricing<
+  TData = Awaited<ReturnType<typeof getComputePricing>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: undefined | GetComputePricingParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputePricing>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getComputePricing>>,
+          TError,
+          Awaited<ReturnType<typeof getComputePricing>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetComputePricing<
+  TData = Awaited<ReturnType<typeof getComputePricing>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetComputePricingParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputePricing>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getComputePricing>>,
+          TError,
+          Awaited<ReturnType<typeof getComputePricing>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetComputePricing<
+  TData = Awaited<ReturnType<typeof getComputePricing>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetComputePricingParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputePricing>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Price table (one row per price)
+ */
+
+export function useGetComputePricing<
+  TData = Awaited<ReturnType<typeof getComputePricing>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params?: GetComputePricingParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputePricing>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetComputePricingQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getCompareComputeOfferingsUrl = (
+  params: CompareComputeOfferingsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/compute/compare?${stringifiedParams}`
+    : `/api/v1/compute/compare`;
+};
+
+/**
+ * Public. `offerings` come back in the order requested. `groups` hold prices that can be ranked against each other (same unit, currency and billing mode), cheapest first. INSTANCE_HOUR prices of offerings with a known gpuCount also appear in the GPU_HOUR group with `isDerived: true`. Quote-only prices are listed in `quoteRequired` and never ranked. Any unknown/inactive id → 404; more than 10 or a malformed id → 400.
+ * @summary Side-by-side comparison of 1–10 offerings
+ */
+export const compareComputeOfferings = async (
+  params: CompareComputeOfferingsParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ComputeComparisonResponse> => {
+  return customFetch<ComputeComparisonResponse>(
+    getCompareComputeOfferingsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getCompareComputeOfferingsQueryKey = (
+  params?: CompareComputeOfferingsParams,
+) => {
+  return [`/api/v1/compute/compare`, ...(params ? [params] : [])] as const;
+};
+
+export const getCompareComputeOfferingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof compareComputeOfferings>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: CompareComputeOfferingsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof compareComputeOfferings>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getCompareComputeOfferingsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof compareComputeOfferings>>
+  > = ({ signal }) =>
+    compareComputeOfferings(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof compareComputeOfferings>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type CompareComputeOfferingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof compareComputeOfferings>>
+>;
+export type CompareComputeOfferingsQueryError = ErrorType<ApiErrorResponse>;
+
+export function useCompareComputeOfferings<
+  TData = Awaited<ReturnType<typeof compareComputeOfferings>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: CompareComputeOfferingsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof compareComputeOfferings>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof compareComputeOfferings>>,
+          TError,
+          Awaited<ReturnType<typeof compareComputeOfferings>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useCompareComputeOfferings<
+  TData = Awaited<ReturnType<typeof compareComputeOfferings>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: CompareComputeOfferingsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof compareComputeOfferings>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof compareComputeOfferings>>,
+          TError,
+          Awaited<ReturnType<typeof compareComputeOfferings>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useCompareComputeOfferings<
+  TData = Awaited<ReturnType<typeof compareComputeOfferings>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: CompareComputeOfferingsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof compareComputeOfferings>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Side-by-side comparison of 1–10 offerings
+ */
+
+export function useCompareComputeOfferings<
+  TData = Awaited<ReturnType<typeof compareComputeOfferings>>,
+  TError = ErrorType<ApiErrorResponse>,
+>(
+  params: CompareComputeOfferingsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof compareComputeOfferings>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getCompareComputeOfferingsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetComputeModelsUrl = (params?: GetComputeModelsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/compute/models?${stringifiedParams}`
+    : `/api/v1/compute/models`;
+};
+
+/**
+ * Public. Distinct model names across public offerings, with how many offerings serve each.
+ * @summary Hosted model catalogue
+ */
+export const getComputeModels = async (
+  params?: GetComputeModelsParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ComputeModelsResponse> => {
+  return customFetch<ComputeModelsResponse>(getGetComputeModelsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetComputeModelsQueryKey = (
+  params?: GetComputeModelsParams,
+) => {
+  return [`/api/v1/compute/models`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetComputeModelsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getComputeModels>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetComputeModelsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeModels>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetComputeModelsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getComputeModels>>
+  > = ({ signal }) => getComputeModels(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getComputeModels>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetComputeModelsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getComputeModels>>
+>;
+export type GetComputeModelsQueryError = ErrorType<unknown>;
+
+export function useGetComputeModels<
+  TData = Awaited<ReturnType<typeof getComputeModels>>,
+  TError = ErrorType<unknown>,
+>(
+  params: undefined | GetComputeModelsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeModels>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getComputeModels>>,
+          TError,
+          Awaited<ReturnType<typeof getComputeModels>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetComputeModels<
+  TData = Awaited<ReturnType<typeof getComputeModels>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetComputeModelsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeModels>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getComputeModels>>,
+          TError,
+          Awaited<ReturnType<typeof getComputeModels>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetComputeModels<
+  TData = Awaited<ReturnType<typeof getComputeModels>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetComputeModelsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeModels>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Hosted model catalogue
+ */
+
+export function useGetComputeModels<
+  TData = Awaited<ReturnType<typeof getComputeModels>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetComputeModelsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getComputeModels>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGetComputeModelsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getVisitComputeProviderUrl = (
+  providerSlug: string,
+  params?: VisitComputeProviderParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/compute/go/${providerSlug}?${stringifiedParams}`
+    : `/api/v1/compute/go/${providerSlug}`;
+};
+
+/**
+ * Records the click and 302s to the provider. Use only as a plain link (`<a href>`) — never fetch or prefetch it, that counts fake clicks. The destination is chosen by the server. Invalid `offering`/`source` values are ignored.
+ * @summary Outbound "Visit provider" redirect
+ */
+export const visitComputeProvider = async (
+  providerSlug: string,
+  params?: VisitComputeProviderParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<unknown> => {
+  return customFetch<unknown>(
+    getVisitComputeProviderUrl(providerSlug, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getVisitComputeProviderQueryKey = (
+  providerSlug: string,
+  params?: VisitComputeProviderParams,
+) => {
+  return [
+    `/api/v1/compute/go/${providerSlug}`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getVisitComputeProviderQueryOptions = <
+  TData = Awaited<ReturnType<typeof visitComputeProvider>>,
+  TError = ErrorType<void | ApiErrorResponse>,
+>(
+  providerSlug: string,
+  params?: VisitComputeProviderParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof visitComputeProvider>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getVisitComputeProviderQueryKey(providerSlug, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof visitComputeProvider>>
+  > = ({ signal }) =>
+    visitComputeProvider(providerSlug, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: providerSlug !== null && providerSlug !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof visitComputeProvider>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type VisitComputeProviderQueryResult = NonNullable<
+  Awaited<ReturnType<typeof visitComputeProvider>>
+>;
+export type VisitComputeProviderQueryError = ErrorType<void | ApiErrorResponse>;
+
+export function useVisitComputeProvider<
+  TData = Awaited<ReturnType<typeof visitComputeProvider>>,
+  TError = ErrorType<void | ApiErrorResponse>,
+>(
+  providerSlug: string,
+  params: undefined | VisitComputeProviderParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof visitComputeProvider>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof visitComputeProvider>>,
+          TError,
+          Awaited<ReturnType<typeof visitComputeProvider>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useVisitComputeProvider<
+  TData = Awaited<ReturnType<typeof visitComputeProvider>>,
+  TError = ErrorType<void | ApiErrorResponse>,
+>(
+  providerSlug: string,
+  params?: VisitComputeProviderParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof visitComputeProvider>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof visitComputeProvider>>,
+          TError,
+          Awaited<ReturnType<typeof visitComputeProvider>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useVisitComputeProvider<
+  TData = Awaited<ReturnType<typeof visitComputeProvider>>,
+  TError = ErrorType<void | ApiErrorResponse>,
+>(
+  providerSlug: string,
+  params?: VisitComputeProviderParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof visitComputeProvider>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Outbound "Visit provider" redirect
+ */
+
+export function useVisitComputeProvider<
+  TData = Awaited<ReturnType<typeof visitComputeProvider>>,
+  TError = ErrorType<void | ApiErrorResponse>,
+>(
+  providerSlug: string,
+  params?: VisitComputeProviderParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof visitComputeProvider>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getVisitComputeProviderQueryOptions(
+    providerSlug,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getCreateComputeRequestUrl = () => {
+  return `/api/v1/compute/requests`;
+};
+
+/**
+ * Public; a bearer token is optional — when present the request is linked to the signed-in user. Blank strings are treated as not provided. Rate-limited to 3 per minute.
+ * @summary Tell us what compute you need
+ */
+export const createComputeRequest = async (
+  computeRequestInput: ComputeRequestInput,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<ComputeRequestResponse> => {
+  return customFetch<ComputeRequestResponse>(getCreateComputeRequestUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(computeRequestInput),
+  });
+};
+
+export const getCreateComputeRequestMutationOptions = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createComputeRequest>>,
+    TError,
+    { data: BodyType<ComputeRequestInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createComputeRequest>>,
+  TError,
+  { data: BodyType<ComputeRequestInput> },
+  TContext
+> => {
+  const mutationKey = ["createComputeRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createComputeRequest>>,
+    { data: BodyType<ComputeRequestInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createComputeRequest(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateComputeRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createComputeRequest>>
+>;
+export type CreateComputeRequestMutationBody = BodyType<ComputeRequestInput>;
+export type CreateComputeRequestMutationError = ErrorType<ApiErrorResponse>;
+
+/**
+ * @summary Tell us what compute you need
+ */
+export const useCreateComputeRequest = <
+  TError = ErrorType<ApiErrorResponse>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createComputeRequest>>,
+      TError,
+      { data: BodyType<ComputeRequestInput> },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createComputeRequest>>,
+  TError,
+  { data: BodyType<ComputeRequestInput> },
+  TContext
+> => {
+  return useMutation(
+    getCreateComputeRequestMutationOptions(options),
     queryClient,
   );
 };

@@ -773,6 +773,359 @@ export interface ContactMessageResponse {
   data: ContactMessage;
 }
 
+export type ComputeProviderType =
+  (typeof ComputeProviderType)[keyof typeof ComputeProviderType];
+
+export const ComputeProviderType = {
+  GPU_CLOUD: "GPU_CLOUD",
+  INFERENCE_API: "INFERENCE_API",
+  SERVERLESS_COMPUTE: "SERVERLESS_COMPUTE",
+  DEDICATED_INFERENCE: "DEDICATED_INFERENCE",
+  NEO_CLOUD: "NEO_CLOUD",
+  MULTI_SERVICE: "MULTI_SERVICE",
+} as const;
+
+export type ComputeOfferingType =
+  (typeof ComputeOfferingType)[keyof typeof ComputeOfferingType];
+
+export const ComputeOfferingType = {
+  GPU_INSTANCE: "GPU_INSTANCE",
+  GPU_SERVERLESS: "GPU_SERVERLESS",
+  MODEL_INFERENCE: "MODEL_INFERENCE",
+  DEDICATED_INFERENCE: "DEDICATED_INFERENCE",
+  RESERVED_CAPACITY: "RESERVED_CAPACITY",
+} as const;
+
+/**
+ * GPU_HOUR = per GPU per hour; INSTANCE_HOUR = whole instance per hour (may contain several GPUs); CUSTOM_QUOTE = no public price.
+ */
+export type ComputePricingUnit =
+  (typeof ComputePricingUnit)[keyof typeof ComputePricingUnit];
+
+export const ComputePricingUnit = {
+  GPU_HOUR: "GPU_HOUR",
+  INSTANCE_HOUR: "INSTANCE_HOUR",
+  SECOND: "SECOND",
+  INPUT_MILLION_TOKENS: "INPUT_MILLION_TOKENS",
+  OUTPUT_MILLION_TOKENS: "OUTPUT_MILLION_TOKENS",
+  REQUEST: "REQUEST",
+  FIXED_MONTHLY: "FIXED_MONTHLY",
+  CUSTOM_QUOTE: "CUSTOM_QUOTE",
+} as const;
+
+export type ComputeBillingMode =
+  (typeof ComputeBillingMode)[keyof typeof ComputeBillingMode];
+
+export const ComputeBillingMode = {
+  ON_DEMAND: "ON_DEMAND",
+  SPOT: "SPOT",
+  RESERVED: "RESERVED",
+  SERVERLESS: "SERVERLESS",
+} as const;
+
+export type ComputePricingSource =
+  (typeof ComputePricingSource)[keyof typeof ComputePricingSource];
+
+export const ComputePricingSource = {
+  OFFICIAL_API: "OFFICIAL_API",
+  OFFICIAL_WEBSITE: "OFFICIAL_WEBSITE",
+  MANUAL: "MANUAL",
+  PARTNER_FEED: "PARTNER_FEED",
+} as const;
+
+/**
+ * QUOTE_REQUIRED is always paired with unit CUSTOM_QUOTE and amount null.
+ */
+export type ComputePricingConfidence =
+  (typeof ComputePricingConfidence)[keyof typeof ComputePricingConfidence];
+
+export const ComputePricingConfidence = {
+  LIVE: "LIVE",
+  VERIFIED: "VERIFIED",
+  ESTIMATED: "ESTIMATED",
+  QUOTE_REQUIRED: "QUOTE_REQUIRED",
+  UNKNOWN: "UNKNOWN",
+} as const;
+
+export type ComputeWorkloadType =
+  (typeof ComputeWorkloadType)[keyof typeof ComputeWorkloadType];
+
+export const ComputeWorkloadType = {
+  TRAINING: "TRAINING",
+  FINE_TUNING: "FINE_TUNING",
+  INFERENCE: "INFERENCE",
+  BATCH_PROCESSING: "BATCH_PROCESSING",
+  RENDERING: "RENDERING",
+  OTHER: "OTHER",
+} as const;
+
+export interface ComputeProviderSummary {
+  id: string;
+  name: string;
+  slug: string;
+  /** @nullable */
+  logoUrl: string | null;
+}
+
+export interface ComputeProvider {
+  id: string;
+  name: string;
+  slug: string;
+  /** @nullable */
+  description: string | null;
+  websiteUrl: string;
+  /**
+   * Provider's own pricing page
+   * @nullable
+   */
+  pricingUrl: string | null;
+  /** @nullable */
+  logoUrl: string | null;
+  providerTypes: ComputeProviderType[];
+  isFeatured: boolean;
+  updatedAt: string;
+  /** Active offerings */
+  offeringCount: number;
+}
+
+export interface ComputePrice {
+  id: string;
+  unit: ComputePricingUnit;
+  /**
+   * Decimal string (trailing zeros dropped). Null only for CUSTOM_QUOTE.
+   * @nullable
+   */
+  amount: string | null;
+  /** ISO 4217 */
+  currency: string;
+  billingMode: ComputeBillingMode;
+  /**
+   * Null = all regions
+   * @nullable
+   */
+  region: string | null;
+  /** @nullable */
+  minimumCommitment: string | null;
+  sourceType: ComputePricingSource;
+  confidence: ComputePricingConfidence;
+  /**
+   * Where the price was checked
+   * @nullable
+   */
+  sourceUrl: string | null;
+  capturedAt: string;
+  /** @nullable */
+  validUntil: string | null;
+  isCurrent: boolean;
+  /** Captured > 30 days ago, or past validUntil */
+  isStale: boolean;
+  /** @nullable */
+  notes: string | null;
+}
+
+export interface ComputeOffering {
+  id: string;
+  slug: string;
+  name: string;
+  offeringType: ComputeOfferingType;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  productUrl: string | null;
+  /** @nullable */
+  gpuModel: string | null;
+  /**
+   * Per GPU
+   * @nullable
+   */
+  gpuVramGb: number | null;
+  /** @nullable */
+  gpuCount: number | null;
+  /** @nullable */
+  gpuArchitecture: string | null;
+  /** @nullable */
+  cpuDescription: string | null;
+  /** @nullable */
+  ramGb: number | null;
+  /** @nullable */
+  storageDescription: string | null;
+  /** @nullable */
+  modelName: string | null;
+  /** @nullable */
+  modelProvider: string | null;
+  /** @nullable */
+  contextLength: number | null;
+  /**
+   * Null = unknown
+   * @nullable
+   */
+  supportsStreaming: boolean | null;
+  /**
+   * Null = unknown
+   * @nullable
+   */
+  openAiCompatible: boolean | null;
+  /**
+   * Null = unknown
+   * @nullable
+   */
+  supportsFineTuning: boolean | null;
+  regions: string[];
+  updatedAt: string;
+  provider: ComputeProviderSummary;
+  /** Current prices only */
+  pricing: ComputePrice[];
+}
+
+export interface ComputePriceRowOffering {
+  id: string;
+  slug: string;
+  name: string;
+  offeringType: ComputeOfferingType;
+  /** @nullable */
+  gpuModel: string | null;
+  /** @nullable */
+  gpuVramGb: number | null;
+  /** @nullable */
+  gpuCount: number | null;
+  /** @nullable */
+  modelName: string | null;
+  /** @nullable */
+  contextLength: number | null;
+  provider: ComputeProviderSummary;
+}
+
+export type ComputePriceRow = ComputePrice & {
+  offering: ComputePriceRowOffering;
+};
+
+export interface ComputeComparisonEntry {
+  offeringId: string;
+  pricingId: string;
+  unit: ComputePricingUnit;
+  /** Original amount */
+  amount: string;
+  /** Amount in the group's unit */
+  comparableAmount: string;
+  isDerived: boolean;
+  /** @nullable */
+  region: string | null;
+  confidence: ComputePricingConfidence;
+  capturedAt: string;
+  isStale: boolean;
+}
+
+export interface ComputeComparisonGroup {
+  unit: ComputePricingUnit;
+  currency: string;
+  billingMode: ComputeBillingMode;
+  offeringCount: number;
+  /** Cheapest first */
+  entries: ComputeComparisonEntry[];
+}
+
+export interface ComputeQuoteRequired {
+  offeringId: string;
+  pricingId: string;
+  /** @nullable */
+  region: string | null;
+}
+
+export interface ComputeComparison {
+  offerings: ComputeOffering[];
+  groups: ComputeComparisonGroup[];
+  quoteRequired: ComputeQuoteRequired[];
+}
+
+export interface ComputeModel {
+  modelName: string;
+  offeringCount: number;
+}
+
+export interface ComputeRequestInput {
+  workloadType: ComputeWorkloadType;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  contactName: string;
+  /** @maxLength 255 */
+  email: string;
+  /** @maxLength 100 */
+  gpuModel?: string;
+  /**
+   * @minimum 1
+   * @maximum 100000
+   */
+  gpuCount?: number;
+  /** Decimal, ≥0, ≤2 decimals */
+  monthlyBudget?: string;
+  /**
+   * @minLength 3
+   * @maxLength 3
+   */
+  currency?: string;
+  /** Whole number, ≤15 digits */
+  monthlyInputTokens?: string;
+  /** Whole number, ≤15 digits */
+  monthlyOutputTokens?: string;
+  /**
+   * @maxItems 20
+   * @items.maxLength 200
+   */
+  modelNames?: string[];
+  /** @maxLength 100 */
+  region?: string;
+  /** @maxLength 100 */
+  country?: string;
+  /** @maxLength 255 */
+  companyName?: string;
+  /** @maxLength 5000 */
+  requirements?: string;
+}
+
+export interface ComputeRequestCreated {
+  id: string;
+  workloadType: ComputeWorkloadType;
+  createdAt: string;
+}
+
+export interface ComputeProviderResponse {
+  data: ComputeProvider;
+}
+
+export interface ComputeProvidersResponse {
+  data: ComputeProvider[];
+  pagination: Pagination;
+}
+
+export interface ComputeOfferingResponse {
+  data: ComputeOffering;
+}
+
+export interface ComputeOfferingsResponse {
+  data: ComputeOffering[];
+  pagination: Pagination;
+}
+
+export interface ComputePriceRowsResponse {
+  data: ComputePriceRow[];
+  pagination: Pagination;
+}
+
+export interface ComputeComparisonResponse {
+  data: ComputeComparison;
+}
+
+export interface ComputeModelsResponse {
+  data: ComputeModel[];
+  pagination: Pagination;
+}
+
+export interface ComputeRequestResponse {
+  data: ComputeRequestCreated;
+}
+
 export type GetListingsParams = {
   /**
    * Free-text search over title/description/normalized model
@@ -867,4 +1220,173 @@ export type GetPublicProfileParams = {
 export type GetApiKeysParams = {
   page?: number;
   limit?: number;
+};
+
+export type GetComputeProvidersParams = {
+  type?: ComputeProviderType;
+  /**
+   * Name or description contains (case-insensitive)
+   * @minLength 1
+   * @maxLength 100
+   */
+  q?: string;
+  featured?: GetComputeProvidersFeatured;
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+};
+
+export type GetComputeProvidersFeatured =
+  (typeof GetComputeProvidersFeatured)[keyof typeof GetComputeProvidersFeatured];
+
+export const GetComputeProvidersFeatured = {
+  true: "true",
+  false: "false",
+} as const;
+
+export type GetComputeOfferingsParams = {
+  type?: ComputeOfferingType;
+  /**
+   * Provider slug
+   */
+  provider?: string;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  q?: string;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  gpuModel?: string;
+  /**
+   * @minimum 1
+   */
+  minVramGb?: number;
+  /**
+   * @minimum 1
+   */
+  gpuCount?: number;
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  modelName?: string;
+  /**
+   * @maxLength 50
+   */
+  region?: string;
+  openAiCompatible?: GetComputeOfferingsOpenAiCompatible;
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+};
+
+export type GetComputeOfferingsOpenAiCompatible =
+  (typeof GetComputeOfferingsOpenAiCompatible)[keyof typeof GetComputeOfferingsOpenAiCompatible];
+
+export const GetComputeOfferingsOpenAiCompatible = {
+  true: "true",
+  false: "false",
+} as const;
+
+export type GetComputePricingParams = {
+  unit?: ComputePricingUnit;
+  sortBy?: GetComputePricingSortBy;
+  /**
+   * @minLength 3
+   * @maxLength 3
+   */
+  currency?: string;
+  billingMode?: ComputeBillingMode;
+  /**
+   * @maxLength 50
+   */
+  region?: string;
+  type?: ComputeOfferingType;
+  provider?: string;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  gpuModel?: string;
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  modelName?: string;
+  offeringId?: string;
+  history?: GetComputePricingHistory;
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+};
+
+export type GetComputePricingSortBy =
+  (typeof GetComputePricingSortBy)[keyof typeof GetComputePricingSortBy];
+
+export const GetComputePricingSortBy = {
+  price_asc: "price_asc",
+  price_desc: "price_desc",
+  newest: "newest",
+} as const;
+
+export type GetComputePricingHistory =
+  (typeof GetComputePricingHistory)[keyof typeof GetComputePricingHistory];
+
+export const GetComputePricingHistory = {
+  true: "true",
+  false: "false",
+} as const;
+
+export type CompareComputeOfferingsParams = {
+  /**
+   * Comma-separated offering UUIDs (1–10)
+   */
+  offeringIds: string;
+};
+
+export type GetComputeModelsParams = {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  q?: string;
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+};
+
+export type VisitComputeProviderParams = {
+  offering?: string;
+  /**
+   * Where the click came from, e.g. `pricing-table`
+   * @pattern ^[a-zA-Z0-9/_-]{1,100}$
+   */
+  source?: string;
 };

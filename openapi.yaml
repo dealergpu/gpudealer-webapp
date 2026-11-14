@@ -30,6 +30,8 @@ tags:
     description: Contact form messages
   - name: apiKeys
     description: Personal API key management (session auth only)
+  - name: compute
+    description: GPU cloud and inference provider comparison (public)
 
 paths:
   /healthz:
@@ -1250,6 +1252,305 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
+  /compute/providers:
+    get:
+      operationId: getComputeProviders
+      tags: [compute]
+      summary: Compute provider directory
+      description: Public. Active providers only, sorted by name (A–Z).
+      parameters:
+        - name: type
+          in: query
+          schema: { $ref: "#/components/schemas/ComputeProviderType" }
+        - name: q
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 100 }
+          description: Name or description contains (case-insensitive)
+        - name: featured
+          in: query
+          schema: { type: string, enum: ["true", "false"] }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 24 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ComputeProvidersResponse" }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /compute/providers/{slug}:
+    get:
+      operationId: getComputeProvider
+      tags: [compute]
+      summary: Compute provider detail
+      description: >-
+        Public. Unknown, inactive or pending providers return 404. Offerings
+        are not embedded — load them with `GET /compute/offerings?provider=`.
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ComputeProviderResponse" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /compute/offerings:
+    get:
+      operationId: getComputeOfferings
+      tags: [compute]
+      summary: Search compute offerings
+      description: >-
+        Public. Sorted by provider name, then offering name. Each offering
+        includes its current prices. `gpuModel` and `modelName` are
+        normalized matches (`h100` matches "H100 SXM").
+      parameters:
+        - name: type
+          in: query
+          schema: { $ref: "#/components/schemas/ComputeOfferingType" }
+        - name: provider
+          in: query
+          schema: { type: string }
+          description: Provider slug
+        - name: q
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: gpuModel
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: minVramGb
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: gpuCount
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: modelName
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 200 }
+        - name: region
+          in: query
+          schema: { type: string, maxLength: 50 }
+        - name: openAiCompatible
+          in: query
+          schema: { type: string, enum: ["true", "false"] }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 24 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ComputeOfferingsResponse" }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /compute/offerings/{id}:
+    get:
+      operationId: getComputeOffering
+      tags: [compute]
+      summary: Compute offering detail
+      description: Public. Takes an offering id (UUID). Inactive offerings and malformed ids return 404.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ComputeOfferingResponse" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /compute/pricing:
+    get:
+      operationId: getComputePricing
+      tags: [compute]
+      summary: Price table (one row per price)
+      description: >-
+        Public. Sorting by price requires `unit` (prices in different units
+        are not comparable — 400 otherwise); `sortBy` defaults to `price_asc`
+        when `unit` is set, else `newest`. `currency` defaults to USD when
+        sorting by price. `region` matches that region or prices with no
+        region. Quote-only rows (`amount: null`) sort last. `history=true`
+        requires `offeringId`.
+      parameters:
+        - name: unit
+          in: query
+          schema: { $ref: "#/components/schemas/ComputePricingUnit" }
+        - name: sortBy
+          in: query
+          schema: { type: string, enum: [price_asc, price_desc, newest] }
+        - name: currency
+          in: query
+          schema: { type: string, minLength: 3, maxLength: 3 }
+        - name: billingMode
+          in: query
+          schema: { $ref: "#/components/schemas/ComputeBillingMode" }
+        - name: region
+          in: query
+          schema: { type: string, maxLength: 50 }
+        - name: type
+          in: query
+          schema: { $ref: "#/components/schemas/ComputeOfferingType" }
+        - name: provider
+          in: query
+          schema: { type: string }
+        - name: gpuModel
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: modelName
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 200 }
+        - name: offeringId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: history
+          in: query
+          schema: { type: string, enum: ["true", "false"] }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 24 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ComputePriceRowsResponse" }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /compute/compare:
+    get:
+      operationId: compareComputeOfferings
+      tags: [compute]
+      summary: Side-by-side comparison of 1–10 offerings
+      description: >-
+        Public. `offerings` come back in the order requested. `groups` hold
+        prices that can be ranked against each other (same unit, currency and
+        billing mode), cheapest first. INSTANCE_HOUR prices of offerings with
+        a known gpuCount also appear in the GPU_HOUR group with
+        `isDerived: true`. Quote-only prices are listed in `quoteRequired` and
+        never ranked. Any unknown/inactive id → 404; more than 10 or a
+        malformed id → 400.
+      parameters:
+        - name: offeringIds
+          in: query
+          required: true
+          schema: { type: string }
+          description: Comma-separated offering UUIDs (1–10)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ComputeComparisonResponse" }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "404":
+          description: One or more offerings not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /compute/models:
+    get:
+      operationId: getComputeModels
+      tags: [compute]
+      summary: Hosted model catalogue
+      description: Public. Distinct model names across public offerings, with how many offerings serve each.
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 24 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ComputeModelsResponse" }
+
+  /compute/go/{providerSlug}:
+    get:
+      operationId: visitComputeProvider
+      tags: [compute]
+      summary: Outbound "Visit provider" redirect
+      description: >-
+        Records the click and 302s to the provider. Use only as a plain link
+        (`<a href>`) — never fetch or prefetch it, that counts fake clicks.
+        The destination is chosen by the server. Invalid `offering`/`source`
+        values are ignored.
+      parameters:
+        - { name: providerSlug, in: path, required: true, schema: { type: string } }
+        - name: offering
+          in: query
+          schema: { type: string, format: uuid }
+        - name: source
+          in: query
+          schema: { type: string, pattern: "^[a-zA-Z0-9/_-]{1,100}$" }
+          description: Where the click came from, e.g. `pricing-table`
+      responses:
+        "302":
+          description: Redirect to the provider
+        "404":
+          description: Unknown or inactive provider
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
+  /compute/requests:
+    post:
+      operationId: createComputeRequest
+      tags: [compute]
+      summary: Tell us what compute you need
+      description: >-
+        Public; a bearer token is optional — when present the request is
+        linked to the signed-in user. Blank strings are treated as not
+        provided. Rate-limited to 3 per minute.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ComputeRequestInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ComputeRequestResponse" }
+        "400":
+          description: Validation error — `error.fields` maps each bad field to its message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiErrorResponse" }
+
 components:
   schemas:
     HealthStatus:
@@ -1963,3 +2264,287 @@ components:
       required: [data]
       properties:
         data: { $ref: "#/components/schemas/ContactMessage" }
+
+    ComputeProviderType:
+      type: string
+      enum: [GPU_CLOUD, INFERENCE_API, SERVERLESS_COMPUTE, DEDICATED_INFERENCE, NEO_CLOUD, MULTI_SERVICE]
+
+    ComputeOfferingType:
+      type: string
+      enum: [GPU_INSTANCE, GPU_SERVERLESS, MODEL_INFERENCE, DEDICATED_INFERENCE, RESERVED_CAPACITY]
+
+    ComputePricingUnit:
+      type: string
+      description: >-
+        GPU_HOUR = per GPU per hour; INSTANCE_HOUR = whole instance per hour
+        (may contain several GPUs); CUSTOM_QUOTE = no public price.
+      enum: [GPU_HOUR, INSTANCE_HOUR, SECOND, INPUT_MILLION_TOKENS, OUTPUT_MILLION_TOKENS, REQUEST, FIXED_MONTHLY, CUSTOM_QUOTE]
+
+    ComputeBillingMode:
+      type: string
+      enum: [ON_DEMAND, SPOT, RESERVED, SERVERLESS]
+
+    ComputePricingSource:
+      type: string
+      enum: [OFFICIAL_API, OFFICIAL_WEBSITE, MANUAL, PARTNER_FEED]
+
+    ComputePricingConfidence:
+      type: string
+      description: QUOTE_REQUIRED is always paired with unit CUSTOM_QUOTE and amount null.
+      enum: [LIVE, VERIFIED, ESTIMATED, QUOTE_REQUIRED, UNKNOWN]
+
+    ComputeWorkloadType:
+      type: string
+      enum: [TRAINING, FINE_TUNING, INFERENCE, BATCH_PROCESSING, RENDERING, OTHER]
+
+    ComputeProviderSummary:
+      type: object
+      required: [id, name, slug, logoUrl]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        logoUrl: { type: ["string", "null"] }
+
+    ComputeProvider:
+      type: object
+      required: [id, name, slug, description, websiteUrl, pricingUrl, logoUrl, providerTypes, isFeatured, updatedAt, offeringCount]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: ["string", "null"] }
+        websiteUrl: { type: string }
+        pricingUrl: { type: ["string", "null"], description: "Provider's own pricing page" }
+        logoUrl: { type: ["string", "null"] }
+        providerTypes:
+          type: array
+          items: { $ref: "#/components/schemas/ComputeProviderType" }
+        isFeatured: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+        offeringCount: { type: integer, description: Active offerings }
+
+    ComputePrice:
+      type: object
+      required: [id, unit, amount, currency, billingMode, region, minimumCommitment, sourceType, confidence, sourceUrl, capturedAt, validUntil, isCurrent, isStale, notes]
+      properties:
+        id: { type: string, format: uuid }
+        unit: { $ref: "#/components/schemas/ComputePricingUnit" }
+        amount:
+          type: ["string", "null"]
+          description: Decimal string (trailing zeros dropped). Null only for CUSTOM_QUOTE.
+        currency: { type: string, description: ISO 4217 }
+        billingMode: { $ref: "#/components/schemas/ComputeBillingMode" }
+        region: { type: ["string", "null"], description: Null = all regions }
+        minimumCommitment: { type: ["string", "null"] }
+        sourceType: { $ref: "#/components/schemas/ComputePricingSource" }
+        confidence: { $ref: "#/components/schemas/ComputePricingConfidence" }
+        sourceUrl: { type: ["string", "null"], description: Where the price was checked }
+        capturedAt: { type: string, format: date-time }
+        validUntil: { type: ["string", "null"], format: date-time }
+        isCurrent: { type: boolean }
+        isStale: { type: boolean, description: "Captured > 30 days ago, or past validUntil" }
+        notes: { type: ["string", "null"] }
+
+    ComputeOffering:
+      type: object
+      required: [id, slug, name, offeringType, description, productUrl, gpuModel, gpuVramGb, gpuCount, gpuArchitecture, cpuDescription, ramGb, storageDescription, modelName, modelProvider, contextLength, supportsStreaming, openAiCompatible, supportsFineTuning, regions, updatedAt, provider, pricing]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        offeringType: { $ref: "#/components/schemas/ComputeOfferingType" }
+        description: { type: ["string", "null"] }
+        productUrl: { type: ["string", "null"] }
+        gpuModel: { type: ["string", "null"] }
+        gpuVramGb: { type: ["integer", "null"], description: Per GPU }
+        gpuCount: { type: ["integer", "null"] }
+        gpuArchitecture: { type: ["string", "null"] }
+        cpuDescription: { type: ["string", "null"] }
+        ramGb: { type: ["integer", "null"] }
+        storageDescription: { type: ["string", "null"] }
+        modelName: { type: ["string", "null"] }
+        modelProvider: { type: ["string", "null"] }
+        contextLength: { type: ["integer", "null"] }
+        supportsStreaming: { type: ["boolean", "null"], description: Null = unknown }
+        openAiCompatible: { type: ["boolean", "null"], description: Null = unknown }
+        supportsFineTuning: { type: ["boolean", "null"], description: Null = unknown }
+        regions:
+          type: array
+          items: { type: string }
+        updatedAt: { type: string, format: date-time }
+        provider: { $ref: "#/components/schemas/ComputeProviderSummary" }
+        pricing:
+          type: array
+          description: Current prices only
+          items: { $ref: "#/components/schemas/ComputePrice" }
+
+    ComputePriceRowOffering:
+      type: object
+      required: [id, slug, name, offeringType, gpuModel, gpuVramGb, gpuCount, modelName, contextLength, provider]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        offeringType: { $ref: "#/components/schemas/ComputeOfferingType" }
+        gpuModel: { type: ["string", "null"] }
+        gpuVramGb: { type: ["integer", "null"] }
+        gpuCount: { type: ["integer", "null"] }
+        modelName: { type: ["string", "null"] }
+        contextLength: { type: ["integer", "null"] }
+        provider: { $ref: "#/components/schemas/ComputeProviderSummary" }
+
+    ComputePriceRow:
+      allOf:
+        - $ref: "#/components/schemas/ComputePrice"
+        - type: object
+          required: [offering]
+          properties:
+            offering: { $ref: "#/components/schemas/ComputePriceRowOffering" }
+
+    ComputeComparisonEntry:
+      type: object
+      required: [offeringId, pricingId, unit, amount, comparableAmount, isDerived, region, confidence, capturedAt, isStale]
+      properties:
+        offeringId: { type: string, format: uuid }
+        pricingId: { type: string, format: uuid }
+        unit: { $ref: "#/components/schemas/ComputePricingUnit" }
+        amount: { type: string, description: Original amount }
+        comparableAmount: { type: string, description: "Amount in the group's unit" }
+        isDerived: { type: boolean }
+        region: { type: ["string", "null"] }
+        confidence: { $ref: "#/components/schemas/ComputePricingConfidence" }
+        capturedAt: { type: string, format: date-time }
+        isStale: { type: boolean }
+
+    ComputeComparisonGroup:
+      type: object
+      required: [unit, currency, billingMode, offeringCount, entries]
+      properties:
+        unit: { $ref: "#/components/schemas/ComputePricingUnit" }
+        currency: { type: string }
+        billingMode: { $ref: "#/components/schemas/ComputeBillingMode" }
+        offeringCount: { type: integer }
+        entries:
+          type: array
+          description: Cheapest first
+          items: { $ref: "#/components/schemas/ComputeComparisonEntry" }
+
+    ComputeQuoteRequired:
+      type: object
+      required: [offeringId, pricingId, region]
+      properties:
+        offeringId: { type: string, format: uuid }
+        pricingId: { type: string, format: uuid }
+        region: { type: ["string", "null"] }
+
+    ComputeComparison:
+      type: object
+      required: [offerings, groups, quoteRequired]
+      properties:
+        offerings:
+          type: array
+          items: { $ref: "#/components/schemas/ComputeOffering" }
+        groups:
+          type: array
+          items: { $ref: "#/components/schemas/ComputeComparisonGroup" }
+        quoteRequired:
+          type: array
+          items: { $ref: "#/components/schemas/ComputeQuoteRequired" }
+
+    ComputeModel:
+      type: object
+      required: [modelName, offeringCount]
+      properties:
+        modelName: { type: string }
+        offeringCount: { type: integer }
+
+    ComputeRequestInput:
+      type: object
+      required: [workloadType, contactName, email]
+      properties:
+        workloadType: { $ref: "#/components/schemas/ComputeWorkloadType" }
+        contactName: { type: string, minLength: 1, maxLength: 100 }
+        email: { type: string, format: email, maxLength: 255 }
+        gpuModel: { type: string, maxLength: 100 }
+        gpuCount: { type: integer, minimum: 1, maximum: 100000 }
+        monthlyBudget: { type: string, description: "Decimal, ≥0, ≤2 decimals" }
+        currency: { type: string, minLength: 3, maxLength: 3, default: USD }
+        monthlyInputTokens: { type: string, description: "Whole number, ≤15 digits" }
+        monthlyOutputTokens: { type: string, description: "Whole number, ≤15 digits" }
+        modelNames:
+          type: array
+          maxItems: 20
+          items: { type: string, maxLength: 200 }
+        region: { type: string, maxLength: 100 }
+        country: { type: string, maxLength: 100 }
+        companyName: { type: string, maxLength: 255 }
+        requirements: { type: string, maxLength: 5000 }
+
+    ComputeRequestCreated:
+      type: object
+      required: [id, workloadType, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        workloadType: { $ref: "#/components/schemas/ComputeWorkloadType" }
+        createdAt: { type: string, format: date-time }
+
+    ComputeProviderResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: "#/components/schemas/ComputeProvider" }
+
+    ComputeProvidersResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/ComputeProvider" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+
+    ComputeOfferingResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: "#/components/schemas/ComputeOffering" }
+
+    ComputeOfferingsResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/ComputeOffering" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+
+    ComputePriceRowsResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/ComputePriceRow" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+
+    ComputeComparisonResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: "#/components/schemas/ComputeComparison" }
+
+    ComputeModelsResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/ComputeModel" }
+        pagination: { $ref: "#/components/schemas/Pagination" }
+
+    ComputeRequestResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: "#/components/schemas/ComputeRequestCreated" }

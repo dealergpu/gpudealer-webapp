@@ -11,6 +11,8 @@ const columns = [
       { href: "/gpus?category=SERVER", label: "GPU servers" },
       { href: "/gpus?category=MEMORY", label: "Memory" },
       { href: "/gpus", label: "All hardware" },
+      { href: "/compute/gpu-cloud", label: "GPU cloud pricing" },
+      { href: "/compute/inference", label: "Inference pricing" },
     ],
   },
   {
