@@ -914,10 +914,11 @@ export interface ComputePrice {
    */
   sourceUrl: string | null;
   capturedAt: string;
+  lastVerifiedAt: string;
   /** @nullable */
   validUntil: string | null;
   isCurrent: boolean;
-  /** Captured > 30 days ago, or past validUntil */
+  /** Not verified for > 30 days, or past validUntil */
   isStale: boolean;
   /** @nullable */
   notes: string | null;
@@ -1012,6 +1013,7 @@ export interface ComputeComparisonEntry {
   region: string | null;
   confidence: ComputePricingConfidence;
   capturedAt: string;
+  lastVerifiedAt: string;
   isStale: boolean;
 }
 

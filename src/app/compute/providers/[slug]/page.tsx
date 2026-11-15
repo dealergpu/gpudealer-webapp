@@ -152,7 +152,7 @@ export default async function ProviderPage({ params }: { params: Params }) {
         eyebrow={provider.providerTypes.map((t) => PROVIDER_TYPE_LABELS[t]).join(" · ")}
         title={provider.name}
         description={provider.description ?? undefined}
-        aside={<ProviderLogo provider={provider} className="hidden h-20 w-20 rounded-2xl text-xl lg:flex" />}
+        aside={<ProviderLogo provider={provider} variant="full" className="hidden h-24 w-24 rounded-2xl text-xl lg:flex" />}
       >
         <div className="flex flex-wrap items-center gap-3">
           <ProviderCTA provider={provider} source="provider-page" variant="accent" size="default" />

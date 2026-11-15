@@ -4,6 +4,7 @@ import { ArrowRight, ArrowUpRight, BadgeCheck, ExternalLink, Search, Tag, UserRo
 import { Button } from "@/components/ui/button";
 import { ListingCard, ListingCardSkeleton } from "@/components/ListingCard";
 import { HeroIntro } from "@/components/home/HeroIntro";
+import { ComputeHighlights } from "@/components/home/ComputeHighlights";
 import { CountUp, Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { SpotlightCard } from "@/components/motion/SpotlightCard";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -260,6 +261,9 @@ export default async function Home() {
           )}
         </div>
       </section>
+
+      {/* Compute price comparison */}
+      <ComputeHighlights />
 
       {/* Latest listings */}
       <Suspense fallback={<LatestListingsSkeleton />}>

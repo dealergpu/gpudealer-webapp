@@ -12,7 +12,8 @@ const CONFIDENCE_ICONS = {
 };
 
 /**
- * Where a price stands: confidence, when it was checked, and a visible
+ * Where a price stands: confidence, when it was last checked
+ * (`lastVerifiedAt`; `capturedAt` is when it first appeared), and a visible
  * "may be outdated" marker when the API flags it stale. Always text, never
  * colour alone.
  */
@@ -20,7 +21,7 @@ export function PricingStatus({
   price,
   className,
 }: {
-  price: Pick<ComputePrice, "confidence" | "capturedAt" | "isStale">;
+  price: Pick<ComputePrice, "confidence" | "capturedAt" | "lastVerifiedAt" | "isStale">;
   className?: string;
 }) {
   const Icon = CONFIDENCE_ICONS[price.confidence];
@@ -30,7 +31,7 @@ export function PricingStatus({
         <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
         {CONFIDENCE_LABELS[price.confidence]}
       </span>
-      <span className="text-muted-foreground">checked {formatCheckedDate(price.capturedAt)}</span>
+      <span className="text-muted-foreground">checked {formatCheckedDate(price.lastVerifiedAt ?? price.capturedAt)}</span>
       {price.isStale && (
         <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-400">
           <AlertTriangle className="h-3 w-3" aria-hidden />

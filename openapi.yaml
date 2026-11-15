@@ -2326,7 +2326,7 @@ components:
 
     ComputePrice:
       type: object
-      required: [id, unit, amount, currency, billingMode, region, minimumCommitment, sourceType, confidence, sourceUrl, capturedAt, validUntil, isCurrent, isStale, notes]
+      required: [id, unit, amount, currency, billingMode, region, minimumCommitment, sourceType, confidence, sourceUrl, capturedAt, lastVerifiedAt, validUntil, isCurrent, isStale, notes]
       properties:
         id: { type: string, format: uuid }
         unit: { $ref: "#/components/schemas/ComputePricingUnit" }
@@ -2341,9 +2341,10 @@ components:
         confidence: { $ref: "#/components/schemas/ComputePricingConfidence" }
         sourceUrl: { type: ["string", "null"], description: Where the price was checked }
         capturedAt: { type: string, format: date-time }
+        lastVerifiedAt: { type: string, format: date-time }
         validUntil: { type: ["string", "null"], format: date-time }
         isCurrent: { type: boolean }
-        isStale: { type: boolean, description: "Captured > 30 days ago, or past validUntil" }
+        isStale: { type: boolean, description: "Not verified for > 30 days, or past validUntil" }
         notes: { type: ["string", "null"] }
 
     ComputeOffering:
@@ -2404,7 +2405,7 @@ components:
 
     ComputeComparisonEntry:
       type: object
-      required: [offeringId, pricingId, unit, amount, comparableAmount, isDerived, region, confidence, capturedAt, isStale]
+      required: [offeringId, pricingId, unit, amount, comparableAmount, isDerived, region, confidence, capturedAt, lastVerifiedAt, isStale]
       properties:
         offeringId: { type: string, format: uuid }
         pricingId: { type: string, format: uuid }
@@ -2415,6 +2416,7 @@ components:
         region: { type: ["string", "null"] }
         confidence: { $ref: "#/components/schemas/ComputePricingConfidence" }
         capturedAt: { type: string, format: date-time }
+        lastVerifiedAt: { type: string, format: date-time }
         isStale: { type: boolean }
 
     ComputeComparisonGroup:

@@ -1068,6 +1068,13 @@ Rules:
   bigint fixed-point helpers in `src/lib/compute.ts`, not floats.
 - No partner/affiliate badges; `AffiliateDisclosure` sits next to
   provider links.
+- Provider logos live in `public/gpu-inference-compute-company-logos/`,
+  named by provider slug (`icons/{slug}.png` = square mark, `{slug}.png` =
+  full logo on brand colour). `providerLogoSrc()` in `src/lib/compute.ts`
+  lists the slugs that have files — add new ones there; anything else falls
+  back to `logoUrl`, then initials.
+- The home page shows `ComputeHighlights` (above Latest listings): cheapest
+  on-demand `GPU_HOUR` price for a few GPUs plus the provider strip.
 - Compare selection (max 10) lives in localStorage
   (`src/lib/compute-compare.ts`); the tray is mounted by
   `src/app/compute/layout.tsx`.

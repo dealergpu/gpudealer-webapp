@@ -149,6 +149,26 @@ export function pickPrice(pricing: ComputePrice[], unit: ComputePricingUnit): Co
   return pricing.filter((price) => price.unit === unit).sort((a, b) => score(a) - score(b))[0];
 }
 
+// Logos shipped in /public/gpu-inference-compute-company-logos, named by
+// provider slug: `icons/{slug}.png` is the square mark for small sizes, and
+// `{slug}.png` is the full logo on the brand colour for large tiles. Add a
+// slug here when its files are added; others fall back to the API's
+// `logoUrl`, then to initials.
+const LOGO_DIR = "/gpu-inference-compute-company-logos";
+const LOCAL_LOGO_SLUGS = new Set([
+  "baseten", "cerebras", "coreweave", "deepinfra", "fal", "featherless-ai", "fireworks-ai",
+  "fluidstack", "groq", "hyperstack", "lambda", "nebius", "novita-ai", "replicate", "runpod",
+  "salad", "tensordock", "together-ai", "vast-ai", "verda", "voltage-park",
+]);
+
+export function providerLogoSrc(
+  provider: { slug: string; logoUrl: string | null },
+  variant: "icon" | "full" = "icon",
+): string | null {
+  if (!LOCAL_LOGO_SLUGS.has(provider.slug)) return provider.logoUrl;
+  return variant === "icon" ? `${LOGO_DIR}/icons/${provider.slug}.png` : `${LOGO_DIR}/${provider.slug}.png`;
+}
+
 /**
  * Outbound "Visit provider" link. Always goes through the API's redirect so
  * the click is recorded and the server picks the destination — never link
