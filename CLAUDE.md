@@ -1068,6 +1068,12 @@ Rules:
   bigint fixed-point helpers in `src/lib/compute.ts`, not floats.
 - No partner/affiliate badges; `AffiliateDisclosure` sits next to
   provider links.
+- SEO: provider pages are indexed when `isProviderIndexable()` (offerings
+  or a description); GPU pages only when they have prices. The page robots
+  meta, `sitemap.ts` and `llms.txt` all use the same rules. `/compute/compare`
+  is never in the sitemap. Compute pages carry BreadcrumbList JSON-LD
+  (`breadcrumbJsonLd()` in `src/lib/site.ts`); provider pages add an
+  Organization with their public prices as Offers.
 - Provider logos live in `public/gpu-inference-compute-company-logos/`,
   named by provider slug (`icons/{slug}.png` = square mark, `{slug}.png` =
   full logo on brand colour). `providerLogoSrc()` in `src/lib/compute.ts`

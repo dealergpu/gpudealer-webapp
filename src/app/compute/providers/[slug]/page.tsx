@@ -19,8 +19,11 @@ import {
   UNIT_LABELS,
   formatContextLength,
   formatPriceAmount,
+  isProviderIndexable,
+  providerLogoSrc,
 } from "@/lib/compute";
-import { SITE_URL } from "@/lib/site";
+import { SITE_URL, breadcrumbJsonLd } from "@/lib/site";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { PricingStatus, PriceTags } from "@/components/compute/PricingStatus";
 import { ProviderCTA } from "@/components/compute/ProviderCTA";
 import { ProviderLogo } from "@/components/compute/ProviderLogo";
@@ -62,8 +65,51 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       provider.description ??
       `${provider.name} GPU cloud and inference prices on GPUDealer, with when each price was last checked.`,
     alternates: { canonical: `${SITE_URL}/compute/providers/${provider.slug}` },
-    // A provider with no offerings would be a thin page.
-    ...(provider.offeringCount === 0 ? { robots: { index: false, follow: true } } : {}),
+    // Thin otherwise; same rule as the sitemap and llms.txt.
+    ...(isProviderIndexable(provider) ? {} : { robots: { index: false, follow: true } }),
+  };
+}
+
+/**
+ * Breadcrumbs plus the provider as an Organization, with each public price
+ * as an Offer (quote-only prices have no number, so they're left out).
+ */
+function providerJsonLd(provider: ComputeProvider, offerings: ComputeOffering[]) {
+  const logo = providerLogoSrc(provider, "full");
+  const offers = offerings.flatMap((offering) =>
+    offering.pricing.flatMap((price) =>
+      price.amount == null
+        ? []
+        : [
+            {
+              "@type": "Offer",
+              itemOffered: { "@type": "Service", name: offering.name, category: OFFERING_TYPE_LABELS[offering.offeringType] },
+              priceSpecification: {
+                "@type": "UnitPriceSpecification",
+                price: price.amount,
+                priceCurrency: price.currency,
+                unitText: UNIT_LABELS[price.unit].replace(/^\/ /, "per "),
+              },
+            },
+          ],
+    ),
+  );
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      breadcrumbJsonLd([
+        ["Compute", "/compute"],
+        [provider.name, `/compute/providers/${provider.slug}`],
+      ]),
+      {
+        "@type": "Organization",
+        name: provider.name,
+        url: provider.websiteUrl,
+        ...(provider.description ? { description: provider.description } : {}),
+        ...(logo ? { logo: logo.startsWith("/") ? `${SITE_URL}${logo}` : logo } : {}),
+        ...(offers.length ? { makesOffer: offers.slice(0, 100) } : {}),
+      },
+    ],
   };
 }
 
@@ -148,6 +194,7 @@ export default async function ProviderPage({ params }: { params: Params }) {
 
   return (
     <>
+      <JsonLd data={providerJsonLd(provider, offerings?.data ?? [])} />
       <PageHeader
         eyebrow={provider.providerTypes.map((t) => PROVIDER_TYPE_LABELS[t]).join(" · ")}
         title={provider.name}

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { breadcrumbJsonLd } from "@/lib/site";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { GpuCloudView, type SearchParams } from "@/components/compute/GpuCloudView";
 import { findGpuPage, hasGpuPricing } from "@/lib/compute";
@@ -26,6 +28,16 @@ export default async function GpuModelPage({ params, searchParams }: { params: P
 
   return (
     <>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          ...breadcrumbJsonLd([
+            ["Compute", "/compute"],
+            ["GPU cloud", "/compute/gpu-cloud"],
+            [gpu.label, `/compute/gpu-cloud/${gpu.slug}`],
+          ]),
+        }}
+      />
       <PageHeader
         eyebrow="GPU cloud"
         title={<>{gpu.label} <em>cloud pricing</em></>}

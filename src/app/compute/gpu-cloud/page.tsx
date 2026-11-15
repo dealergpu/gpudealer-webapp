@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { breadcrumbJsonLd } from "@/lib/site";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { GpuCloudView, type SearchParams } from "@/components/compute/GpuCloudView";
 
@@ -13,6 +15,7 @@ export const metadata: Metadata = {
 export default async function GpuCloudPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   return (
     <>
+      <JsonLd data={{ "@context": "https://schema.org", ...breadcrumbJsonLd([["Compute", "/compute"], ["GPU cloud", "/compute/gpu-cloud"]]) }} />
       <PageHeader
         eyebrow="GPU cloud"
         title={<>Compare GPU <em>cloud prices</em></>}

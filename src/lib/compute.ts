@@ -5,9 +5,13 @@ import {
   ComputePricingUnit,
   ComputeProviderType,
   ComputeWorkloadType,
+  GetComputePricingSortBy,
   getComputePricing,
+  getComputeProviders,
   getVisitComputeProviderUrl,
   type ComputePrice,
+  type ComputePriceRow,
+  type ComputeProvider,
 } from "@/lib/api";
 
 // Display rules for the compute comparison pages. Prices are decimal strings
@@ -218,4 +222,48 @@ export async function hasGpuPricing(gpuSlug: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Cheapest current on-demand per-GPU-hour price for a GPU page, or null.
+ * One unit and billing mode only, so a "from" price is like-for-like.
+ */
+export async function cheapestOnDemandGpuHour(gpuSlug: string): Promise<ComputePriceRow | null> {
+  try {
+    const result = await getComputePricing({
+      gpuModel: gpuSlug,
+      unit: ComputePricingUnit.GPU_HOUR,
+      billingMode: ComputeBillingMode.ON_DEMAND,
+      sortBy: GetComputePricingSortBy.price_asc,
+      limit: 1,
+    });
+    const row = result.data[0];
+    return row?.amount != null ? row : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether a provider page is worth indexing: it has offerings, or at least
+ * a description to go with its services and pricing link. Shared by the
+ * page's robots meta, the sitemap and llms.txt so they never disagree.
+ */
+export function isProviderIndexable(provider: Pick<ComputeProvider, "offeringCount" | "description">): boolean {
+  return provider.offeringCount > 0 || Boolean(provider.description?.trim());
+}
+
+/** Every active provider (A–Z), paged through the public API. Used by the sitemap and llms.txt. */
+export async function getAllComputeProviders(): Promise<ComputeProvider[]> {
+  const providers: ComputeProvider[] = [];
+  for (let page = 1; page <= 20; page++) {
+    try {
+      const res = await getComputeProviders({ limit: 100, page });
+      providers.push(...res.data);
+      if (page >= res.pagination.totalPages) break;
+    } catch {
+      break;
+    }
+  }
+  return providers;
 }

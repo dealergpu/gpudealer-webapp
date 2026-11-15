@@ -5,38 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { ProviderLogo } from "@/components/compute/ProviderLogo";
 import { PricingStatus } from "@/components/compute/PricingStatus";
-import {
-  ComputeBillingMode,
-  ComputePricingUnit,
-  GetComputePricingSortBy,
-  getComputePricing,
-  getComputeProviders,
-  type ComputePriceRow,
-  type ComputeProvider,
-} from "@/lib/api";
-import { GPU_PAGES, UNIT_LABELS, formatPriceAmount } from "@/lib/compute";
+import { getComputeProviders, type ComputeProvider } from "@/lib/api";
+import { GPU_PAGES, UNIT_LABELS, cheapestOnDemandGpuHour, formatPriceAmount } from "@/lib/compute";
 
 // GPUs headlined on the home page; each links to its /compute/gpu-cloud page.
 const HOME_GPUS = GPU_PAGES.filter((gpu) => ["h100", "h200", "a100", "rtx-4090"].includes(gpu.slug));
 const PROVIDER_STRIP_LIMIT = 12;
-
-// Cheapest current on-demand per-GPU-hour price. One unit and billing mode
-// only, so the "from" price is a like-for-like comparison.
-async function cheapestGpuHour(gpuModel: string): Promise<ComputePriceRow | null> {
-  try {
-    const result = await getComputePricing({
-      gpuModel,
-      unit: ComputePricingUnit.GPU_HOUR,
-      billingMode: ComputeBillingMode.ON_DEMAND,
-      sortBy: GetComputePricingSortBy.price_asc,
-      limit: 1,
-    });
-    const row = result.data[0];
-    return row?.amount != null ? row : null;
-  } catch {
-    return null;
-  }
-}
 
 async function loadProviders(): Promise<{ providers: ComputeProvider[]; total: number } | null> {
   try {
@@ -71,7 +45,7 @@ function ComputeDataSkeleton() {
 
 async function ComputeData() {
   const [prices, directory] = await Promise.all([
-    Promise.all(HOME_GPUS.map((gpu) => cheapestGpuHour(gpu.slug))),
+    Promise.all(HOME_GPUS.map((gpu) => cheapestOnDemandGpuHour(gpu.slug))),
     loadProviders(),
   ]);
 

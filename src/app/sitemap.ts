@@ -2,8 +2,7 @@ import type { MetadataRoute } from "next";
 import { getAllPublishedListings, SITE_URL } from "@/lib/site";
 import { listingPath } from "@/lib/listing-path";
 import { CITY_PAGES } from "@/lib/cities";
-import { getComputeProviders, type ComputeProvider } from "@/lib/api";
-import { GPU_PAGES, hasGpuPricing } from "@/lib/compute";
+import { GPU_PAGES, getAllComputeProviders, hasGpuPricing, isProviderIndexable } from "@/lib/compute";
 
 // Rebuilt per request: there's no ISR cache on Cloudflare (see app/page.tsx),
 // so a cached sitemap would stay frozen at build-time inventory.
@@ -11,26 +10,11 @@ export const dynamic = "force-dynamic";
 
 const CATEGORY_PAGES = ["GPU", "SERVER", "MEMORY"];
 
-// Active compute providers with at least one offering (others are noindex).
-async function getListedComputeProviders(): Promise<ComputeProvider[]> {
-  const providers: ComputeProvider[] = [];
-  for (let page = 1; page <= 20; page++) {
-    try {
-      const res = await getComputeProviders({ limit: 100, page });
-      providers.push(...res.data);
-      if (page >= res.pagination.totalPages) break;
-    } catch {
-      break;
-    }
-  }
-  return providers.filter((provider) => provider.offeringCount > 0);
-}
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   const [listings, computeProviders, gpuPagesWithPrices] = await Promise.all([
     getAllPublishedListings(),
-    getListedComputeProviders(),
+    getAllComputeProviders(),
     Promise.all(GPU_PAGES.map(async (gpu) => ((await hasGpuPricing(gpu.slug)) ? gpu : null))),
   ]);
 
@@ -59,7 +43,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...gpuPagesWithPrices.flatMap((gpu) =>
       gpu ? [{ url: `${SITE_URL}/compute/gpu-cloud/${gpu.slug}`, lastModified: now, changeFrequency: "daily" as const, priority: 0.7 }] : [],
     ),
-    ...computeProviders.map((provider) => ({
+    // Same rule as the provider page's robots meta. /compute/compare is
+    // user-built (`?ids=`) and noindex, so it's never listed.
+    ...computeProviders.filter(isProviderIndexable).map((provider) => ({
       url: `${SITE_URL}/compute/providers/${provider.slug}`,
       lastModified: new Date(provider.updatedAt),
       changeFrequency: "weekly" as const,

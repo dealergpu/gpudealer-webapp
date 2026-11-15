@@ -7,6 +7,19 @@ export const SITE_NAME = "GPUDealer";
 export const SITE_DESCRIPTION =
   "GPUDealer — used GPUs, AI servers, memory and compute hardware. Find. Sell. Request.";
 
+/** schema.org BreadcrumbList for a trail of site paths, e.g. [["Compute", "/compute"]]. */
+export function breadcrumbJsonLd(trail: [name: string, path: string][]) {
+  return {
+    "@type": "BreadcrumbList",
+    itemListElement: [[SITE_NAME, ""] as const, ...trail].map(([name, path], i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name,
+      item: `${SITE_URL}${path}`,
+    })),
+  };
+}
+
 const PAGE_SIZE = 100; // API maximum
 const MAX_PAGES = 400; // 40k URLs — safely under the 50k-per-sitemap limit
 

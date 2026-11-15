@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowRight, Cpu, MessagesSquare, Server } from "lucide-react";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { SITE_URL, breadcrumbJsonLd } from "@/lib/site";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { ComputeProviderType, getComputeProviders, type ComputeProvidersResponse } from "@/lib/api";
@@ -58,8 +60,30 @@ export default async function ComputePage({ searchParams }: { searchParams: Prom
   const type = Object.values(ComputeProviderType).find((t) => t === typeParam);
   const providers = await loadProviders(type);
 
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      breadcrumbJsonLd([["Compute", "/compute"]]),
+      ...(providers?.data.length
+        ? [
+            {
+              "@type": "ItemList",
+              name: "GPU cloud and AI inference providers",
+              itemListElement: providers.data.map((provider, i) => ({
+                "@type": "ListItem",
+                position: i + 1,
+                name: provider.name,
+                url: `${SITE_URL}/compute/providers/${provider.slug}`,
+              })),
+            },
+          ]
+        : []),
+    ],
+  };
+
   return (
     <>
+      <JsonLd data={structuredData} />
       <PageHeader
         eyebrow="Compute"
         title={<>GPU compute, <em>compared.</em></>}

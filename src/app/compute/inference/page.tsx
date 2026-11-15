@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { breadcrumbJsonLd } from "@/lib/site";
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
   ComputeOfferingType,
@@ -234,6 +236,7 @@ export default async function InferencePage({ searchParams }: { searchParams: Pr
 
   return (
     <>
+      <JsonLd data={{ "@context": "https://schema.org", ...breadcrumbJsonLd([["Compute", "/compute"], ["Inference APIs", "/compute/inference"]]) }} />
       <PageHeader
         eyebrow="Inference"
         title={<>Compare AI <em>inference</em> providers</>}
