@@ -38,7 +38,8 @@ function describeProvider(provider: ComputeProvider): string {
       ? `${provider.offeringCount} ${provider.offeringCount === 1 ? "offering" : "offerings"} with prices`
       : "prices not recorded yet",
   ].filter(Boolean);
-  return `- [${provider.name}](${SITE_URL}/compute/providers/${provider.slug}): ${details.join(" · ")}`;
+  const featured = provider.isFeatured === true ? " (Featured)" : "";
+  return `- [${provider.name}](${SITE_URL}/compute/providers/${provider.slug})${featured}: ${details.join(" · ")}`;
 }
 
 // Only GPU pages that have prices are listed (the rest are noindex).
@@ -80,7 +81,8 @@ GPUDealer is not a GPU cloud or rental service — it lists physical hardware fo
 
 Compares GPU cloud and AI inference providers. Prices come from each provider's own pricing pages or APIs; every price shows a confidence level (Live, Verified, Estimate) and the date it was last checked, and older prices are marked as possibly outdated. Prices in different units (per GPU-hour vs per instance-hour, input vs output tokens) are never ranked against each other. Quote-only offerings show "Contact for pricing".
 
-- [Compute overview](${SITE_URL}/compute): GPU cloud vs inference APIs vs dedicated inference, plus the provider directory. Filter with \`type\` (${Object.keys(PROVIDER_TYPE_LABELS).join(" | ")}).
+- [Compute overview](${SITE_URL}/compute): GPU cloud vs inference APIs vs dedicated inference, and featured providers.
+- [Provider directory](${SITE_URL}/compute/providers): every provider, A–Z. URL parameters — \`type\` (${Object.keys(PROVIDER_TYPE_LABELS).join(" | ")}), \`featured\` (\`true\` for featured providers only). Featuring adds a "Featured" label; it doesn't change order or prices.
 - [GPU cloud prices](${SITE_URL}/compute/gpu-cloud): hourly GPU rental prices. URL parameters — \`gpu\` (model, e.g. H100), \`unit\` (\`instance\` for per-instance-hour; per-GPU-hour by default), \`billing\` (ON_DEMAND | SPOT | RESERVED | SERVERLESS | ANY), \`region\`, \`sort\` (price_asc | price_desc | newest). Example: ${SITE_URL}/compute/gpu-cloud?gpu=H100&billing=ANY
 - [Inference API prices](${SITE_URL}/compute/inference): per-token prices for hosted models, input and output listed separately, with context length and API features. URL parameters — \`model\`, \`provider\` (provider slug), \`region\`, \`openai\` (true | false).
 - [Compare offerings](${SITE_URL}/compute/compare): side-by-side comparison of up to 10 offerings, \`?ids=\` with comma-separated offering ids.

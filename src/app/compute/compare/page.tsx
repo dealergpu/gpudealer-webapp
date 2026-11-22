@@ -22,6 +22,7 @@ import {
 } from "@/lib/compute";
 import { PricingStatus } from "@/components/compute/PricingStatus";
 import { ProviderCTA } from "@/components/compute/ProviderCTA";
+import { FeaturedBadge } from "@/components/compute/FeaturedBadge";
 import { ProviderLogo } from "@/components/compute/ProviderLogo";
 import { AffiliateDisclosure } from "@/components/compute/AffiliateDisclosure";
 import { CAPABILITIES, yesNo } from "@/components/compute/Capabilities";
@@ -91,7 +92,10 @@ function PriceGroup({ group, offerings }: { group: ComputeComparisonGroup; offer
                 {ranked && <span className="w-5 pt-2 font-mono text-xs text-muted-foreground">{index + 1}</span>}
                 <ProviderLogo provider={offering.provider} />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium">{offering.provider.name}</p>
+                  <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                    {offering.provider.name}
+                    <FeaturedBadge provider={offering.provider} />
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {offering.name}
                     {entry.region && <> · {entry.region}</>}
@@ -245,7 +249,10 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
                       <div className="flex items-center gap-2">
                         <ProviderLogo provider={o.provider} className="h-7 w-7" />
                         <div>
-                          <Link href={`/compute/providers/${o.provider.slug}`} className="text-sm font-medium hover:underline">{o.provider.name}</Link>
+                          <p className="flex flex-wrap items-center gap-2">
+                            <Link href={`/compute/providers/${o.provider.slug}`} className="text-sm font-medium hover:underline">{o.provider.name}</Link>
+                            <FeaturedBadge provider={o.provider} />
+                          </p>
                           <p className="text-xs text-muted-foreground">{o.name}</p>
                         </div>
                       </div>
@@ -281,7 +288,10 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
                 <div className="flex items-center gap-3">
                   <ProviderLogo provider={o.provider} />
                   <div>
-                    <p className="text-sm font-medium">{o.provider.name}</p>
+                    <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                      {o.provider.name}
+                      <FeaturedBadge provider={o.provider} />
+                    </p>
                     <p className="text-xs text-muted-foreground">{o.name}</p>
                   </div>
                 </div>

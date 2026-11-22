@@ -19,6 +19,7 @@ import { CompareToggle } from "@/components/compute/CompareSelection";
 import { GpuCostCalculator, type GpuPriceOption } from "@/components/compute/CostCalculators";
 import { PricingStatus, PriceTags } from "@/components/compute/PricingStatus";
 import { ProviderCTA } from "@/components/compute/ProviderCTA";
+import { FeaturedBadge } from "@/components/compute/FeaturedBadge";
 import { ProviderLogo } from "@/components/compute/ProviderLogo";
 import { AffiliateDisclosure } from "@/components/compute/AffiliateDisclosure";
 import { ComputeEmpty, ComputeError, Pager } from "@/components/compute/ComputeStates";
@@ -110,9 +111,12 @@ function ProviderCell({ row }: { row: ComputePriceRow }) {
     <div className="flex min-w-0 items-center gap-3">
       <ProviderLogo provider={row.offering.provider} />
       <div className="min-w-0">
-        <Link href={`/compute/providers/${row.offering.provider.slug}`} className="text-sm font-medium hover:underline">
-          {row.offering.provider.name}
-        </Link>
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <Link href={`/compute/providers/${row.offering.provider.slug}`} className="text-sm font-medium hover:underline">
+            {row.offering.provider.name}
+          </Link>
+          <FeaturedBadge provider={row.offering.provider} />
+        </p>
         <p className="truncate text-xs text-muted-foreground">{row.offering.name}</p>
       </div>
     </div>

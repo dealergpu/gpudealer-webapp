@@ -1046,7 +1046,7 @@ GPU cloud / inference provider comparison under `/compute` (backend
 "Visit provider" / "Compare", never "Rent" or "Deploy".
 
 Routes (all Server Components fetching public data): `/compute` (landing +
-provider directory, `?type=`), `/compute/gpu-cloud` and
+featured strip), `/compute/providers` (directory), `/compute/gpu-cloud` and
 `/compute/gpu-cloud/{gpu}` (price rows from `/compute/pricing`; per-model
 pages only for `GPU_PAGES` in `src/lib/compute.ts`, noindexed while they
 have no prices), `/compute/inference` (offerings), `/compute/compare?ids=`
@@ -1074,6 +1074,12 @@ Rules:
   is never in the sitemap. Compute pages carry BreadcrumbList JSON-LD
   (`breadcrumbJsonLd()` in `src/lib/site.ts`); provider pages add an
   Organization with their public prices as Offers.
+- Featured providers: read the API's `isFeatured` (missing = false), never
+  a hardcoded list. `FeaturedBadge` next to the provider name is the only
+  difference — never re-sort or pin them, and the label is "Featured" only
+  (not Sponsored/Partner/Recommended). Directory: `/compute/providers`
+  (`?type=`, `?featured=true`); `/compute` shows a featured strip
+  (`featured=true&limit=6`, hidden when empty).
 - Provider logos live in `public/gpu-inference-compute-company-logos/`,
   named by provider slug (`icons/{slug}.png` = square mark, `{slug}.png` =
   full logo on brand colour). `providerLogoSrc()` in `src/lib/compute.ts`

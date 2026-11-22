@@ -2,22 +2,17 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowRight, Cpu, MessagesSquare, Server } from "lucide-react";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { SITE_URL, breadcrumbJsonLd } from "@/lib/site";
+import { breadcrumbJsonLd } from "@/lib/site";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
-import { ComputeProviderType, getComputeProviders, type ComputeProvidersResponse } from "@/lib/api";
-import { GPU_PAGES, PROVIDER_TYPE_LABELS } from "@/lib/compute";
-import { ProviderLogo } from "@/components/compute/ProviderLogo";
-import { ComputeError } from "@/components/compute/ComputeStates";
-import { cn } from "@/lib/utils";
-
-type SearchParams = Record<string, string | string[] | undefined>;
+import { ComputeProviderType, GetComputeProvidersFeatured, getComputeProviders, type ComputeProvider } from "@/lib/api";
+import { GPU_PAGES } from "@/lib/compute";
+import { ProviderCard } from "@/components/compute/ProviderCard";
 
 export const metadata: Metadata = {
   title: "Compare GPU Cloud & AI Inference Providers",
   description:
     "Compare GPU cloud providers, inference APIs and dedicated AI infrastructure — hourly GPU prices, per-token model prices, regions and capabilities.",
-  // Type filters fold into the main directory.
   alternates: { canonical: "/compute" },
 };
 
@@ -37,7 +32,7 @@ const ENTRY_POINTS = [
     cta: "Compare inference prices",
   },
   {
-    href: `/compute?type=${ComputeProviderType.DEDICATED_INFERENCE}#providers`,
+    href: `/compute/providers?type=${ComputeProviderType.DEDICATED_INFERENCE}`,
     icon: Cpu,
     title: "Dedicated inference",
     body: "Managed or reserved capacity for your own deployment — usually quote-based, with no public rate card.",
@@ -45,41 +40,20 @@ const ENTRY_POINTS = [
   },
 ] as const;
 
-const TYPE_FILTERS: (ComputeProviderType | undefined)[] = [undefined, ...Object.values(ComputeProviderType)];
-
-async function loadProviders(type?: ComputeProviderType): Promise<ComputeProvidersResponse | null> {
+// Featured providers strip, in the API's order. Hidden when there are none
+// or the request fails — it's never the only way into the directory.
+async function loadFeaturedProviders(): Promise<ComputeProvider[]> {
   try {
-    return await getComputeProviders({ type, limit: 100 });
+    return (await getComputeProviders({ featured: GetComputeProvidersFeatured.true, limit: 6 })).data;
   } catch {
-    return null;
+    return [];
   }
 }
 
-export default async function ComputePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const typeParam = (await searchParams).type;
-  const type = Object.values(ComputeProviderType).find((t) => t === typeParam);
-  const providers = await loadProviders(type);
+export default async function ComputePage() {
+  const featured = await loadFeaturedProviders();
 
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@graph": [
-      breadcrumbJsonLd([["Compute", "/compute"]]),
-      ...(providers?.data.length
-        ? [
-            {
-              "@type": "ItemList",
-              name: "GPU cloud and AI inference providers",
-              itemListElement: providers.data.map((provider, i) => ({
-                "@type": "ListItem",
-                position: i + 1,
-                name: provider.name,
-                url: `${SITE_URL}/compute/providers/${provider.slug}`,
-              })),
-            },
-          ]
-        : []),
-    ],
-  };
+  const structuredData = { "@context": "https://schema.org", ...breadcrumbJsonLd([["Compute", "/compute"]]) };
 
   return (
     <>
@@ -154,62 +128,29 @@ export default async function ComputePage({ searchParams }: { searchParams: Prom
           </div>
         </section>
 
-        <section id="providers" aria-labelledby="providers-heading" className="scroll-mt-28 space-y-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <h2 id="providers-heading" className="font-display text-4xl">Providers</h2>
-            <nav aria-label="Filter providers by type" className="flex flex-wrap gap-1.5">
-              {TYPE_FILTERS.map((t) => (
-                <Link
-                  key={t ?? "all"}
-                  href={t ? `/compute?type=${t}#providers` : "/compute#providers"}
-                  scroll={false}
-                  aria-current={t === type ? "page" : undefined}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-xs transition-colors",
-                    t === type ? "border-foreground bg-foreground text-background" : "border-border hover:border-foreground/30",
-                  )}
-                >
-                  {t ? PROVIDER_TYPE_LABELS[t] : "All"}
-                </Link>
-              ))}
-            </nav>
-          </div>
-
-          {providers === null ? (
-            <ComputeError what="providers" retryHref={type ? `/compute?type=${type}` : "/compute"} />
-          ) : providers.data.length === 0 ? (
-            <p className="rounded-3xl border border-border bg-card px-6 py-10 text-center text-muted-foreground">
-              No providers of this type yet.
-            </p>
-          ) : (
+        {featured.length > 0 && (
+          <section aria-labelledby="featured-heading" className="space-y-5">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <h2 id="featured-heading" className="font-display text-4xl">Featured providers</h2>
+              <Link href="/compute/providers" className="inline-flex items-center gap-1.5 text-sm font-medium">
+                All providers <ArrowRight className="h-4 w-4" aria-hidden />
+              </Link>
+            </div>
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {providers.data.map((provider) => (
+              {featured.map((provider) => (
                 <li key={provider.id}>
-                  <Link
-                    href={`/compute/providers/${provider.slug}`}
-                    className="flex h-full flex-col rounded-2xl border border-border bg-card p-4 transition-colors hover:border-foreground/25"
-                  >
-                    <div className="flex items-center gap-3">
-                      <ProviderLogo provider={provider} />
-                      <div className="min-w-0">
-                        <p className="font-medium">{provider.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {provider.providerTypes.map((t) => PROVIDER_TYPE_LABELS[t]).join(" · ")}
-                        </p>
-                      </div>
-                    </div>
-                    {provider.description && <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{provider.description}</p>}
-                    <p className="mt-auto pt-3 text-xs text-muted-foreground">
-                      {provider.offeringCount > 0
-                        ? `${provider.offeringCount} ${provider.offeringCount === 1 ? "offering" : "offerings"}`
-                        : "Prices not recorded yet"}
-                    </p>
-                  </Link>
+                  <ProviderCard provider={provider} />
                 </li>
               ))}
             </ul>
-          )}
-        </section>
+          </section>
+        )}
+
+        <p>
+          <Link href="/compute/providers" className="inline-flex items-center gap-1.5 text-sm font-medium">
+            Browse all compute providers <ArrowRight className="h-4 w-4" aria-hidden />
+          </Link>
+        </p>
       </div>
     </>
   );

@@ -20,6 +20,7 @@ import { CompareToggle } from "@/components/compute/CompareSelection";
 import { InferenceCostCalculator, type InferencePriceOption } from "@/components/compute/CostCalculators";
 import { PricingStatus, PriceTags } from "@/components/compute/PricingStatus";
 import { ProviderCTA } from "@/components/compute/ProviderCTA";
+import { FeaturedBadge } from "@/components/compute/FeaturedBadge";
 import { ProviderLogo } from "@/components/compute/ProviderLogo";
 import { Capabilities } from "@/components/compute/Capabilities";
 import { AffiliateDisclosure } from "@/components/compute/AffiliateDisclosure";
@@ -144,6 +145,7 @@ function ModelCell({ offering }: { offering: ComputeOffering }) {
           <Link href={`/compute/providers/${offering.provider.slug}`} className="hover:underline">
             {offering.provider.name}
           </Link>
+          <FeaturedBadge provider={offering.provider} className="ml-1.5 align-middle" />
           {offering.modelProvider && <> · by {offering.modelProvider}</>}
           {offering.modelName && offering.modelName !== offering.name && <> · {offering.modelName}</>}
         </p>

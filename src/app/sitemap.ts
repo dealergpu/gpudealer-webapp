@@ -34,7 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily" as const,
       priority: 0.8,
     })),
-    ...["/compute", "/compute/gpu-cloud", "/compute/inference"].map((path) => ({
+    ...["/compute", "/compute/gpu-cloud", "/compute/inference", "/compute/providers"].map((path) => ({
       url: `${SITE_URL}${path}`,
       lastModified: now,
       changeFrequency: "daily" as const,

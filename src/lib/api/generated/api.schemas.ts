@@ -865,6 +865,7 @@ export interface ComputeProviderSummary {
   slug: string;
   /** @nullable */
   logoUrl: string | null;
+  isFeatured: boolean;
 }
 
 export interface ComputeProvider {

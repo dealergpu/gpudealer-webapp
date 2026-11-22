@@ -15,9 +15,9 @@ const PROVIDER_STRIP_LIMIT = 12;
 async function loadProviders(): Promise<{ providers: ComputeProvider[]; total: number } | null> {
   try {
     const result = await getComputeProviders({ limit: 100 });
-    // Providers with prices first, then featured, keeping the API's A–Z order otherwise.
-    const rank = (p: ComputeProvider) => (p.offeringCount > 0 ? 0 : 2) + (p.isFeatured ? 0 : 1);
-    const providers = [...result.data].sort((a, b) => rank(a) - rank(b));
+    // Providers with prices first, keeping the API's A–Z order otherwise.
+    // Featured providers are never pinned (see FeaturedBadge).
+    const providers = [...result.data].sort((a, b) => Number(b.offeringCount > 0) - Number(a.offeringCount > 0));
     return { providers, total: result.pagination.total };
   } catch {
     return null;
@@ -103,7 +103,7 @@ async function ComputeData() {
             {directory.total > PROVIDER_STRIP_LIMIT && (
               <li>
                 <Link
-                  href="/compute#providers"
+                  href="/compute/providers"
                   className="flex h-full items-center gap-1.5 rounded-full px-3.5 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
                   All {directory.total} providers

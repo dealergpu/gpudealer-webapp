@@ -26,6 +26,7 @@ import { SITE_URL, breadcrumbJsonLd } from "@/lib/site";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { PricingStatus, PriceTags } from "@/components/compute/PricingStatus";
 import { ProviderCTA } from "@/components/compute/ProviderCTA";
+import { FeaturedBadge } from "@/components/compute/FeaturedBadge";
 import { ProviderLogo } from "@/components/compute/ProviderLogo";
 import { CompareToggle } from "@/components/compute/CompareSelection";
 import { Capabilities } from "@/components/compute/Capabilities";
@@ -197,7 +198,12 @@ export default async function ProviderPage({ params }: { params: Params }) {
       <JsonLd data={providerJsonLd(provider, offerings?.data ?? [])} />
       <PageHeader
         eyebrow={provider.providerTypes.map((t) => PROVIDER_TYPE_LABELS[t]).join(" · ")}
-        title={provider.name}
+        title={
+          <>
+            {provider.name}
+            <FeaturedBadge provider={provider} className="ml-4 px-2.5 py-0.5 align-middle font-sans text-xs tracking-normal" />
+          </>
+        }
         description={provider.description ?? undefined}
         aside={<ProviderLogo provider={provider} variant="full" className="hidden h-24 w-24 rounded-2xl text-xl lg:flex" />}
       >

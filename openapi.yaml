@@ -2299,12 +2299,13 @@ components:
 
     ComputeProviderSummary:
       type: object
-      required: [id, name, slug, logoUrl]
+      required: [id, name, slug, logoUrl, isFeatured]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         slug: { type: string }
         logoUrl: { type: ["string", "null"] }
+        isFeatured: { type: boolean }
 
     ComputeProvider:
       type: object
