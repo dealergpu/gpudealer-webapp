@@ -3,6 +3,7 @@ import {
   ComputeBillingMode,
   ComputePricingUnit,
   getComputePricing,
+  type ComputeProvider,
   type ComputePriceRow,
   type ComputePriceRowsResponse,
   type GetComputePricingSortBy,
@@ -12,6 +13,7 @@ import {
   GPU_PAGES,
   UNIT_LABELS,
   formatPriceAmount,
+  getFeaturedProviders,
   type GpuPage,
 } from "@/lib/compute";
 import { ComputeFilters, type FilterField } from "@/components/compute/ComputeFilters";
@@ -64,20 +66,38 @@ function parseFilters(searchParams: SearchParams, gpu?: GpuPage) {
 
 type Filters = ReturnType<typeof parseFilters>;
 
+function pricingQuery(filters: Filters) {
+  return {
+    unit: filters.unit,
+    gpuModel: filters.gpuModel,
+    region: filters.region,
+    billingMode: filters.billing === ANY ? undefined : (filters.billing as ComputeBillingMode),
+    sortBy: filters.sort,
+  };
+}
+
 async function loadPrices(filters: Filters): Promise<ComputePriceRowsResponse | null> {
   try {
-    return await getComputePricing({
-      unit: filters.unit,
-      gpuModel: filters.gpuModel,
-      region: filters.region,
-      billingMode: filters.billing === ANY ? undefined : (filters.billing as ComputeBillingMode),
-      sortBy: filters.sort,
-      page: filters.page,
-      limit: PAGE_SIZE,
-    });
+    return await getComputePricing({ ...pricingQuery(filters), page: filters.page, limit: PAGE_SIZE });
   } catch {
     return null;
   }
+}
+
+/**
+ * Featured providers' prices under the same filters and sort, pinned above
+ * the table on page 1 — provider by provider, A–Z. A provider whose
+ * request fails is just left out.
+ */
+async function loadPinnedPrices(filters: Filters, featured: ComputeProvider[]): Promise<ComputePriceRow[]> {
+  const perProvider = await Promise.all(
+    featured.map((provider) =>
+      getComputePricing({ ...pricingQuery(filters), provider: provider.slug, limit: 100 })
+        .then((result) => result.data)
+        .catch(() => []),
+    ),
+  );
+  return perProvider.flat();
 }
 
 /** Quote-only GPU capacity (reserved clusters etc.): listed separately, never ranked. */
@@ -145,7 +165,72 @@ function SourceLink({ row }: { row: ComputePriceRow }) {
   );
 }
 
-function PriceTable({ rows, source }: { rows: ComputePriceRow[]; source: string }) {
+function PriceRow({ row, source }: { row: ComputePriceRow; source: string }) {
+  return (
+    <tr className="align-top">
+      <td className="px-4 py-4"><ProviderCell row={row} /></td>
+      <td className="px-4 py-4 whitespace-nowrap">{gpuSpec(row) || "—"}</td>
+      <td className="px-4 py-4"><PriceCell row={row} className="items-end text-right" /></td>
+      <td className="px-4 py-4">
+        <PricingStatus price={row} />
+        <SourceLink row={row} />
+      </td>
+      <td className="px-4 py-4">
+        <div className="flex flex-col items-end gap-3">
+          <ProviderCTA provider={row.offering.provider} offeringId={row.offering.id} source={source} label="Visit" />
+          <CompareToggle item={compareItem(row)} />
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function PriceCard({ row, source }: { row: ComputePriceRow; source: string }) {
+  return (
+    <li className="rounded-2xl border border-border bg-card p-4">
+      <ProviderCell row={row} />
+      <div className="mt-4 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">GPU</p>
+          <p className="text-sm">{gpuSpec(row) || "—"}</p>
+        </div>
+        <PriceCell row={row} className="items-end text-right" />
+      </div>
+      <div className="mt-3 flex items-end justify-between gap-4">
+        <div>
+          <PricingStatus price={row} />
+          <SourceLink row={row} />
+        </div>
+        <CompareToggle item={compareItem(row)} />
+      </div>
+      <ProviderCTA provider={row.offering.provider} offeringId={row.offering.id} source={source} className="mt-4 w-full" />
+    </li>
+  );
+}
+
+const GROUP_HEADING = "font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground";
+
+/**
+ * Price rows, optionally with featured providers' rows pinned in their own
+ * labelled group above the ranked rows — so "Lowest price" still means
+ * exactly that for the rows under it.
+ */
+function PriceTable({
+  pinned,
+  rows,
+  rankedLabel,
+  source,
+}: {
+  pinned: ComputePriceRow[];
+  rows: ComputePriceRow[];
+  rankedLabel: string;
+  source: string;
+}) {
+  const groups = [
+    { key: "featured", label: "Featured", rows: pinned, source: `${source}-featured` },
+    { key: "ranked", label: pinned.length > 0 ? `All other providers · ${rankedLabel}` : null, rows, source },
+  ].filter((group) => group.rows.length > 0);
+
   return (
     <>
       {/* Desktop: a dense table. */}
@@ -160,51 +245,30 @@ function PriceTable({ rows, source }: { rows: ComputePriceRow[]; source: string 
               <th scope="col" className="px-4 py-3 font-medium"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((row) => (
-              <tr key={row.id} className="align-top">
-                <td className="px-4 py-4"><ProviderCell row={row} /></td>
-                <td className="px-4 py-4 whitespace-nowrap">{gpuSpec(row) || "—"}</td>
-                <td className="px-4 py-4"><PriceCell row={row} className="items-end text-right" /></td>
-                <td className="px-4 py-4">
-                  <PricingStatus price={row} />
-                  <SourceLink row={row} />
-                </td>
-                <td className="px-4 py-4">
-                  <div className="flex flex-col items-end gap-3">
-                    <ProviderCTA provider={row.offering.provider} offeringId={row.offering.id} source={source} label="Visit" />
-                    <CompareToggle item={compareItem(row)} />
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          {groups.map((group) => (
+            <tbody key={group.key} className="divide-y divide-border border-b border-border last:border-b-0">
+              {group.label && (
+                <tr className="bg-muted/20">
+                  <th scope="colgroup" colSpan={5} className={cn("px-4 py-2 text-left", GROUP_HEADING)}>{group.label}</th>
+                </tr>
+              )}
+              {group.rows.map((row) => <PriceRow key={row.id} row={row} source={group.source} />)}
+            </tbody>
+          ))}
         </table>
       </div>
 
       {/* Mobile: one card per price, CTA always in view. */}
-      <ul className="grid gap-3 md:hidden">
-        {rows.map((row) => (
-          <li key={row.id} className="rounded-2xl border border-border bg-card p-4">
-            <ProviderCell row={row} />
-            <div className="mt-4 flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">GPU</p>
-                <p className="text-sm">{gpuSpec(row) || "—"}</p>
-              </div>
-              <PriceCell row={row} className="items-end text-right" />
-            </div>
-            <div className="mt-3 flex items-end justify-between gap-4">
-              <div>
-                <PricingStatus price={row} />
-                <SourceLink row={row} />
-              </div>
-              <CompareToggle item={compareItem(row)} />
-            </div>
-            <ProviderCTA provider={row.offering.provider} offeringId={row.offering.id} source={source} className="mt-4 w-full" />
-          </li>
+      <div className="space-y-5 md:hidden">
+        {groups.map((group) => (
+          <div key={group.key} className="space-y-3">
+            {group.label && <p className={GROUP_HEADING}>{group.label}</p>}
+            <ul className="grid gap-3">
+              {group.rows.map((row) => <PriceCard key={row.id} row={row} source={group.source} />)}
+            </ul>
+          </div>
         ))}
-      </ul>
+      </div>
     </>
   );
 }
@@ -237,10 +301,18 @@ export async function GpuCloudView({
   gpu?: GpuPage;
 }) {
   const filters = parseFilters(searchParams, gpu);
-  const [result, quoteOnly] = await Promise.all([
+  const [result, quoteOnly, featured] = await Promise.all([
     loadPrices(filters),
     filters.page === 1 ? loadQuoteOnly(filters) : Promise.resolve([]),
+    getFeaturedProviders(),
   ]);
+
+  // Featured providers' rows are pinned on page 1 and left out of the ranked
+  // rows on every page, so none appears twice. If the featured list can't be
+  // loaded, nothing is pinned or removed.
+  const featuredSlugs = new Set((featured ?? []).map((provider) => provider.slug));
+  const pinned = featured && filters.page === 1 ? await loadPinnedPrices(filters, featured) : [];
+  const rows = result?.data.filter((row) => !featuredSlugs.has(row.offering.provider.slug)) ?? [];
 
   // Defaults are left out, so URLs stay short and canonical-looking.
   const urlValues: Record<string, string | undefined> = {
@@ -292,7 +364,7 @@ export async function GpuCloudView({
 
   const total = result?.pagination.total;
   const source = gpu ? `gpu-cloud-${gpu.slug}` : "gpu-cloud-table";
-  const options = result ? calculatorOptions(result.data) : [];
+  const options = calculatorOptions([...pinned, ...rows]);
 
   return (
     <div className="container mx-auto space-y-8 px-4 py-10 sm:px-6 lg:px-8">
@@ -316,9 +388,9 @@ export async function GpuCloudView({
 
         {result === null ? (
           <ComputeError what="GPU prices" retryHref={pageHref(filters.page)} />
-        ) : result.data.length > 0 ? (
+        ) : pinned.length + rows.length > 0 ? (
           <>
-            <PriceTable rows={result.data} source={source} />
+            <PriceTable pinned={pinned} rows={rows} rankedLabel={SORTS[filters.sort]} source={source} />
             <Pager page={filters.page} totalPages={result.pagination.totalPages} href={pageHref} />
           </>
         ) : (

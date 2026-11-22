@@ -1074,10 +1074,14 @@ Rules:
   is never in the sitemap. Compute pages carry BreadcrumbList JSON-LD
   (`breadcrumbJsonLd()` in `src/lib/site.ts`); provider pages add an
   Organization with their public prices as Offers.
-- Featured providers: read the API's `isFeatured` (missing = false), never
-  a hardcoded list. `FeaturedBadge` next to the provider name is the only
-  difference — never re-sort or pin them, and the label is "Featured" only
-  (not Sponsored/Partner/Recommended). Directory: `/compute/providers`
+- Featured providers: read the API's `isFeatured` (missing = false) /
+  `getFeaturedProviders()`, never a hardcoded list. They get a
+  `FeaturedBadge` and are shown first: the directory loads `featured=true`
+  then pages `featured=false`; the GPU cloud and inference tables pin their
+  rows in a labelled "Featured" group on page 1 and drop them from the
+  ranked rows below (no pinning when a provider filter is set). The ranked
+  group keeps the true sort, and `AffiliateDisclosure` says featured are
+  shown first. Label is "Featured" only (not Sponsored/Partner/Recommended). Directory: `/compute/providers`
   (`?type=`, `?featured=true`); `/compute` shows a featured strip
   (`featured=true&limit=6`, hidden when empty).
 - Provider logos live in `public/gpu-inference-compute-company-logos/`,

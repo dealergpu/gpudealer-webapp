@@ -4,6 +4,7 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { ProviderLogo } from "@/components/compute/ProviderLogo";
+import { FeaturedBadge } from "@/components/compute/FeaturedBadge";
 import { PricingStatus } from "@/components/compute/PricingStatus";
 import { getComputeProviders, type ComputeProvider } from "@/lib/api";
 import { GPU_PAGES, UNIT_LABELS, cheapestOnDemandGpuHour, formatPriceAmount } from "@/lib/compute";
@@ -15,9 +16,10 @@ const PROVIDER_STRIP_LIMIT = 12;
 async function loadProviders(): Promise<{ providers: ComputeProvider[]; total: number } | null> {
   try {
     const result = await getComputeProviders({ limit: 100 });
-    // Providers with prices first, keeping the API's A–Z order otherwise.
-    // Featured providers are never pinned (see FeaturedBadge).
-    const providers = [...result.data].sort((a, b) => Number(b.offeringCount > 0) - Number(a.offeringCount > 0));
+    // Featured providers first, then those with prices, keeping the API's
+    // A–Z order otherwise.
+    const rank = (p: ComputeProvider) => (p.isFeatured === true ? 0 : 2) + (p.offeringCount > 0 ? 0 : 1);
+    const providers = [...result.data].sort((a, b) => rank(a) - rank(b));
     return { providers, total: result.pagination.total };
   } catch {
     return null;
@@ -97,6 +99,7 @@ async function ComputeData() {
                 >
                   <ProviderLogo provider={provider} className="h-7 w-7 rounded-full" />
                   {provider.name}
+                  <FeaturedBadge provider={provider} />
                 </Link>
               </li>
             ))}

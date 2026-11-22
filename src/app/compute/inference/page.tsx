@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { breadcrumbJsonLd } from "@/lib/site";
+import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
   ComputeOfferingType,
@@ -14,7 +15,7 @@ import {
   type ComputePrice,
   type GetComputeOfferingsOpenAiCompatible,
 } from "@/lib/api";
-import { UNIT_LABELS, formatContextLength, formatPriceAmount, pickPrice } from "@/lib/compute";
+import { UNIT_LABELS, formatContextLength, formatPriceAmount, getFeaturedProviders, pickPrice } from "@/lib/compute";
 import { ComputeFilters, type FilterField } from "@/components/compute/ComputeFilters";
 import { CompareToggle } from "@/components/compute/CompareSelection";
 import { InferenceCostCalculator, type InferencePriceOption } from "@/components/compute/CostCalculators";
@@ -61,20 +62,34 @@ function parseFilters(searchParams: SearchParams) {
 
 type Filters = ReturnType<typeof parseFilters>;
 
+function offeringsQuery(filters: Filters) {
+  return {
+    type: ComputeOfferingType.MODEL_INFERENCE,
+    modelName: filters.model,
+    provider: filters.provider,
+    region: filters.region,
+    openAiCompatible: filters.openai,
+  };
+}
+
 async function loadOfferings(filters: Filters): Promise<ComputeOfferingsResponse | null> {
   try {
-    return await getComputeOfferings({
-      type: ComputeOfferingType.MODEL_INFERENCE,
-      modelName: filters.model,
-      provider: filters.provider,
-      region: filters.region,
-      openAiCompatible: filters.openai,
-      page: filters.page,
-      limit: PAGE_SIZE,
-    });
+    return await getComputeOfferings({ ...offeringsQuery(filters), page: filters.page, limit: PAGE_SIZE });
   } catch {
     return null;
   }
+}
+
+/** Featured providers' offerings under the same filters, pinned above the table on page 1. */
+async function loadPinnedOfferings(filters: Filters, featuredSlugs: string[]): Promise<ComputeOffering[]> {
+  const perProvider = await Promise.all(
+    featuredSlugs.map((slug) =>
+      getComputeOfferings({ ...offeringsQuery(filters), provider: slug, limit: 100 })
+        .then((result) => result.data)
+        .catch(() => []),
+    ),
+  );
+  return perProvider.flat();
 }
 
 // Filter dropdown contents. If either fails, that filter just has fewer options.
@@ -158,6 +173,73 @@ function statusPrice(row: Row) {
   return row.input ?? row.output ?? row.other;
 }
 
+function InferenceRow({ row, source }: { row: Row; source: string }) {
+  const status = statusPrice(row);
+  return (
+    <tr className="align-top">
+      <td className="px-4 py-4"><ModelCell offering={row.offering} /></td>
+      <td className="px-4 py-4 text-right tabular-nums">
+        {row.offering.contextLength ? formatContextLength(row.offering.contextLength) : "—"}
+      </td>
+      {row.input || row.output ? (
+        <>
+          <td className="px-4 py-4 text-right"><TokenPrice price={row.input} /></td>
+          <td className="px-4 py-4 text-right"><TokenPrice price={row.output} /></td>
+        </>
+      ) : (
+        <td colSpan={2} className="px-4 py-4 text-right"><OtherPrice price={row.other} /></td>
+      )}
+      <td className="px-4 py-4"><Capabilities offering={row.offering} /></td>
+      <td className="px-4 py-4">{status && <PricingStatus price={status} />}</td>
+      <td className="px-4 py-4">
+        <div className="flex flex-col items-end gap-3">
+          <ProviderCTA provider={row.offering.provider} offeringId={row.offering.id} source={source} label="Visit" />
+          <CompareToggle item={compareItem(row.offering)} />
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function InferenceCard({ row, source }: { row: Row; source: string }) {
+  const status = statusPrice(row);
+  return (
+    <li className="flex flex-col rounded-2xl border border-border bg-card p-4">
+      <ModelCell offering={row.offering} />
+      {row.input || row.output ? (
+        <dl className="mt-4 grid grid-cols-2 gap-3">
+          <div>
+            <dt className="text-xs text-muted-foreground">Input / 1M</dt>
+            <dd className="mt-1 [&>div]:items-start"><TokenPrice price={row.input} /></dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">Output / 1M</dt>
+            <dd className="mt-1 [&>div]:items-start"><TokenPrice price={row.output} /></dd>
+          </div>
+        </dl>
+      ) : (
+        <p className="mt-4"><OtherPrice price={row.other} /></p>
+      )}
+      <div className="mt-4 flex items-start justify-between gap-4">
+        <Capabilities offering={row.offering} />
+        <p className="text-right text-xs">
+          <span className="text-muted-foreground">Context</span>{" "}
+          <span className="font-medium tabular-nums">
+            {row.offering.contextLength ? formatContextLength(row.offering.contextLength) : "—"}
+          </span>
+        </p>
+      </div>
+      <div className="mt-4 flex items-end justify-between gap-4">
+        {status ? <PricingStatus price={status} /> : <span />}
+        <CompareToggle item={compareItem(row.offering)} />
+      </div>
+      <ProviderCTA provider={row.offering.provider} offeringId={row.offering.id} source={source} className="mt-4 w-full" />
+    </li>
+  );
+}
+
+const GROUP_HEADING = "font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground";
+
 function compareItem(offering: ComputeOffering) {
   return { id: offering.id, label: `${offering.provider.name} · ${offering.name}` };
 }
@@ -172,8 +254,25 @@ function calculatorOptions(rows: Row[]): InferencePriceOption[] {
 
 export default async function InferencePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const filters = parseFilters(await searchParams);
-  const [result, { models, providers }] = await Promise.all([loadOfferings(filters), loadFilterOptions()]);
-  const rows = result ? sortRows(result.data.map(toRow), filters.sort) : [];
+  const [result, { models, providers }, featured] = await Promise.all([
+    loadOfferings(filters),
+    loadFilterOptions(),
+    getFeaturedProviders(),
+  ]);
+
+  // Featured providers' offerings are pinned on page 1 and left out of the
+  // sorted rows on every page — unless one provider is filtered for.
+  const featuredSlugs = filters.provider || !featured ? [] : featured.map((provider) => provider.slug);
+  const pinnedOfferings = filters.page === 1 ? await loadPinnedOfferings(filters, featuredSlugs) : [];
+  const pinned = sortRows(pinnedOfferings.map(toRow), filters.sort);
+  const rows = sortRows(
+    (result?.data ?? []).filter((offering) => !featuredSlugs.includes(offering.provider.slug)).map(toRow),
+    filters.sort,
+  );
+  const groups = [
+    { key: "featured", label: "Featured", rows: pinned, source: "inference-table-featured" },
+    { key: "ranked", label: pinned.length > 0 ? `All other providers · ${SORTS[filters.sort]}` : null, rows, source: "inference-table" },
+  ].filter((group) => group.rows.length > 0);
 
   const urlValues: Record<string, string | undefined> = {
     model: filters.model,
@@ -266,7 +365,7 @@ export default async function InferencePage({ searchParams }: { searchParams: Pr
 
           {result === null ? (
             <ComputeError what="inference prices" retryHref={pageHref(filters.page)} />
-          ) : rows.length > 0 ? (
+          ) : groups.length > 0 ? (
             <>
               <div className="hidden overflow-hidden rounded-3xl border border-border bg-card lg:block">
                 <table className="w-full text-sm">
@@ -281,75 +380,28 @@ export default async function InferencePage({ searchParams }: { searchParams: Pr
                       <th scope="col" className="px-4 py-3 font-medium"><span className="sr-only">Actions</span></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
-                    {rows.map((row) => {
-                      const status = statusPrice(row);
-                      return (
-                        <tr key={row.offering.id} className="align-top">
-                          <td className="px-4 py-4"><ModelCell offering={row.offering} /></td>
-                          <td className="px-4 py-4 text-right tabular-nums">
-                            {row.offering.contextLength ? formatContextLength(row.offering.contextLength) : "—"}
-                          </td>
-                          {row.input || row.output ? (
-                            <>
-                              <td className="px-4 py-4 text-right"><TokenPrice price={row.input} /></td>
-                              <td className="px-4 py-4 text-right"><TokenPrice price={row.output} /></td>
-                            </>
-                          ) : (
-                            <td colSpan={2} className="px-4 py-4 text-right"><OtherPrice price={row.other} /></td>
-                          )}
-                          <td className="px-4 py-4"><Capabilities offering={row.offering} /></td>
-                          <td className="px-4 py-4">{status && <PricingStatus price={status} />}</td>
-                          <td className="px-4 py-4">
-                            <div className="flex flex-col items-end gap-3">
-                              <ProviderCTA provider={row.offering.provider} offeringId={row.offering.id} source="inference-table" label="Visit" />
-                              <CompareToggle item={compareItem(row.offering)} />
-                            </div>
-                          </td>
+                  {groups.map((group) => (
+                    <tbody key={group.key} className="divide-y divide-border border-b border-border last:border-b-0">
+                      {group.label && (
+                        <tr className="bg-muted/20">
+                          <th scope="colgroup" colSpan={7} className={cn("px-4 py-2 text-left", GROUP_HEADING)}>{group.label}</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
+                      )}
+                      {group.rows.map((row) => <InferenceRow key={row.offering.id} row={row} source={group.source} />)}
+                    </tbody>
+                  ))}
                 </table>
               </div>
 
-              <ul className="grid gap-3 sm:grid-cols-2 lg:hidden">
-                {rows.map((row) => {
-                  const status = statusPrice(row);
-                  return (
-                    <li key={row.offering.id} className="flex flex-col rounded-2xl border border-border bg-card p-4">
-                      <ModelCell offering={row.offering} />
-                      {row.input || row.output ? (
-                        <dl className="mt-4 grid grid-cols-2 gap-3">
-                          <div>
-                            <dt className="text-xs text-muted-foreground">Input / 1M</dt>
-                            <dd className="mt-1 [&>div]:items-start"><TokenPrice price={row.input} /></dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-muted-foreground">Output / 1M</dt>
-                            <dd className="mt-1 [&>div]:items-start"><TokenPrice price={row.output} /></dd>
-                          </div>
-                        </dl>
-                      ) : (
-                        <p className="mt-4"><OtherPrice price={row.other} /></p>
-                      )}
-                      <div className="mt-4 flex items-start justify-between gap-4">
-                        <Capabilities offering={row.offering} />
-                        <p className="text-right text-xs">
-                          <span className="text-muted-foreground">Context</span>{" "}
-                          <span className="font-medium tabular-nums">
-                            {row.offering.contextLength ? formatContextLength(row.offering.contextLength) : "—"}
-                          </span>
-                        </p>
-                      </div>
-                      <div className="mt-4 flex items-end justify-between gap-4">
-                        {status ? <PricingStatus price={status} /> : <span />}
-                        <CompareToggle item={compareItem(row.offering)} />
-                      </div>
-                      <ProviderCTA provider={row.offering.provider} offeringId={row.offering.id} source="inference-table" className="mt-4 w-full" />
-                    </li>
-                  );
-                })}
+              <ul className="space-y-5 lg:hidden">
+                {groups.map((group) => (
+                  <li key={group.key} className="space-y-3">
+                    {group.label && <p className={GROUP_HEADING}>{group.label}</p>}
+                    <ul className="grid gap-3 sm:grid-cols-2">
+                      {group.rows.map((row) => <InferenceCard key={row.offering.id} row={row} source={group.source} />)}
+                    </ul>
+                  </li>
+                ))}
               </ul>
               <Pager page={filters.page} totalPages={result.pagination.totalPages} href={pageHref} />
             </>
@@ -385,7 +437,7 @@ export default async function InferencePage({ searchParams }: { searchParams: Pr
               </li>
             </ul>
           </section>
-          <InferenceCostCalculator options={calculatorOptions(rows)} />
+          <InferenceCostCalculator options={calculatorOptions([...pinned, ...rows])} />
         </div>
       </div>
     </>

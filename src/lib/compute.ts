@@ -1,3 +1,4 @@
+import { cache } from "react";
 import {
   ComputeBillingMode,
   ComputeOfferingType,
@@ -6,6 +7,7 @@ import {
   ComputeProviderType,
   ComputeWorkloadType,
   GetComputePricingSortBy,
+  GetComputeProvidersFeatured,
   getComputePricing,
   getComputeProviders,
   getVisitComputeProviderUrl,
@@ -267,3 +269,17 @@ export async function getAllComputeProviders(): Promise<ComputeProvider[]> {
   }
   return providers;
 }
+
+/**
+ * Featured providers (A–Z), read from the API's `isFeatured` flag — never a
+ * hardcoded list. Featured providers are shown first in the directory and
+ * pinned above the price tables. Null when the request fails, so callers
+ * fall back to the plain, unpinned list. Deduped per request.
+ */
+export const getFeaturedProviders = cache(async (): Promise<ComputeProvider[] | null> => {
+  try {
+    return (await getComputeProviders({ featured: GetComputeProvidersFeatured.true, limit: 100 })).data;
+  } catch {
+    return null;
+  }
+});

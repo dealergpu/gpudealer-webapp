@@ -6,6 +6,7 @@ import {
   ComputeProviderType,
   GetComputeProvidersFeatured,
   getComputeProviders,
+  type ComputeProvider,
   type ComputeProvidersResponse,
 } from "@/lib/api";
 import { PROVIDER_TYPE_LABELS } from "@/lib/compute";
@@ -44,17 +45,30 @@ function directoryHref({ type, featured, page }: Filters): string {
   return query ? `/compute/providers?${query}` : "/compute/providers";
 }
 
-async function loadProviders({ type, featured, page }: Filters): Promise<ComputeProvidersResponse | null> {
+async function loadPage(
+  { type, page }: Filters,
+  featured: GetComputeProvidersFeatured | undefined,
+): Promise<ComputeProvidersResponse | null> {
   try {
-    return await getComputeProviders({
-      type,
-      featured: featured ? GetComputeProvidersFeatured.true : undefined,
-      page,
-      limit: PAGE_SIZE,
-    });
+    return await getComputeProviders({ type, featured, page, limit: PAGE_SIZE });
   } catch {
     return null;
   }
+}
+
+/**
+ * Featured providers first, then everyone else A–Z: the featured ones are
+ * loaded in full (`featured=true`) and the rest are paged (`featured=false`),
+ * so pinning holds on every page. If the featured request fails, falls back
+ * to the plain A–Z list.
+ */
+async function loadDirectory(filters: Filters): Promise<{ pinned: ComputeProvider[]; rest: ComputeProvidersResponse | null }> {
+  if (filters.featured) return { pinned: [], rest: await loadPage(filters, GetComputeProvidersFeatured.true) };
+  const featured = await getComputeProviders({ type: filters.type, featured: GetComputeProvidersFeatured.true, limit: 100 })
+    .then((result) => result.data)
+    .catch(() => null);
+  const rest = await loadPage(filters, featured ? GetComputeProvidersFeatured.false : undefined);
+  return { pinned: featured ?? [], rest };
 }
 
 const PILL = "rounded-full border px-3 py-1 text-xs transition-colors";
@@ -68,10 +82,11 @@ export default async function ComputeProvidersPage({ searchParams }: { searchPar
     featured: first(params.featured) === "true",
     page: Math.max(1, Number.parseInt(first(params.page) ?? "1", 10) || 1),
   };
-  const providers = await loadProviders(filters);
+  const { pinned, rest: providers } = await loadDirectory(filters);
   const filtered = Boolean(filters.type || filters.featured);
+  const shown = [...(filters.page === 1 ? pinned : []), ...(providers?.data ?? [])];
+  const total = (providers?.pagination.total ?? 0) + pinned.length;
 
-  // Order is the API's (A–Z); featured providers are only badged, never pinned.
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -79,14 +94,14 @@ export default async function ComputeProvidersPage({ searchParams }: { searchPar
         ["Compute", "/compute"],
         ["Providers", "/compute/providers"],
       ]),
-      ...(providers?.data.length
+      ...(shown.length
         ? [
             {
               "@type": "ItemList",
               name: "GPU cloud and AI inference providers",
-              itemListElement: providers.data.map((provider, i) => ({
+              itemListElement: shown.map((provider, i) => ({
                 "@type": "ListItem",
-                position: (filters.page - 1) * PAGE_SIZE + i + 1,
+                position: (filters.page === 1 ? 0 : pinned.length + (filters.page - 1) * PAGE_SIZE) + i + 1,
                 name: provider.name,
                 url: `${SITE_URL}/compute/providers/${provider.slug}`,
               })),
@@ -131,7 +146,7 @@ export default async function ComputeProvidersPage({ searchParams }: { searchPar
 
         {providers === null ? (
           <ComputeError what="providers" retryHref={directoryHref(filters)} />
-        ) : providers.data.length === 0 ? (
+        ) : shown.length === 0 ? (
           <div className="rounded-3xl border border-border bg-card px-6 py-10 text-center">
             <p className="font-display text-2xl">No providers match these filters.</p>
             {filtered && (
@@ -143,10 +158,11 @@ export default async function ComputeProvidersPage({ searchParams }: { searchPar
         ) : (
           <>
             <p className="text-sm text-muted-foreground">
-              {providers.pagination.total} {providers.pagination.total === 1 ? "provider" : "providers"}
+              {total} {total === 1 ? "provider" : "providers"}
+              {pinned.length > 0 && " · featured first"}
             </p>
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {providers.data.map((provider) => (
+              {shown.map((provider) => (
                 <li key={provider.id}>
                   <ProviderCard provider={provider} />
                 </li>

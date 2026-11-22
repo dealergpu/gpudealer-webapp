@@ -8,8 +8,8 @@ export function AffiliateDisclosure({ className }: { className?: string }) {
       <Info className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
       <span>
         GPUDealer may earn a commission when you sign up or purchase through certain provider links, including those of
-        providers marked Featured. This doesn&apos;t affect the price you pay, and it never affects how providers are
-        ordered or compared.
+        providers marked Featured, which are shown first. This doesn&apos;t affect the price you pay, and prices are only
+        ever ranked against each other by price.
       </span>
     </p>
   );
