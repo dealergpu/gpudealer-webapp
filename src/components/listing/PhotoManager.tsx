@@ -11,6 +11,8 @@ import {
   uploadListingPhoto,
   validatePhotoFile,
 } from "@/lib/supabase/listing-photos";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
 
 export type PhotoItem = {
   key: string;
@@ -44,6 +46,8 @@ export function PhotoManager({
   onUploaded,
 }: PhotoManagerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const { t } = useI18n();
+  const ph = t.photos;
   const [pickError, setPickError] = useState<string | null>(null);
 
   const update = (key: string, patch: Partial<PhotoItem>) =>
@@ -64,7 +68,7 @@ export function PhotoManager({
     } catch (error) {
       update(key, {
         status: "error",
-        error: error instanceof Error ? error.message : "Upload failed",
+        error: error instanceof Error ? error.message : ph.uploadFailed,
       });
     }
   };
@@ -76,12 +80,12 @@ export function PhotoManager({
     const room = MAX_LISTING_PHOTOS - photos.length;
 
     const accepted = files.filter((file) => {
-      const error = validatePhotoFile(file);
+      const error = validatePhotoFile(file, ph);
       if (error) errors.push(error);
       return !error;
     });
     if (accepted.length > room) {
-      errors.push(`A listing can have at most ${MAX_LISTING_PHOTOS} photos.`);
+      errors.push(fmt(ph.maxPhotos, { max: MAX_LISTING_PHOTOS }));
       accepted.splice(Math.max(room, 0));
     }
     setPickError(errors.length > 0 ? errors.join(" ") : null);
@@ -121,17 +125,17 @@ export function PhotoManager({
               <div className="relative aspect-[4/3] bg-muted">
                 <img
                   src={photo.url ?? photo.previewUrl}
-                  alt={photo.altText || `Photo ${index + 1}`}
+                  alt={photo.altText || fmt(ph.photoN, { n: index + 1 })}
                   className="h-full w-full object-cover"
                 />
                 {index === 0 && (
                   <span className="absolute left-2 top-2 rounded bg-foreground/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-background">
-                    Cover
+                    {ph.cover}
                   </span>
                 )}
                 {photo.status === "uploading" && (
                   <div className="absolute inset-0 flex items-center justify-center bg-background/60">
-                    <Loader2 className="h-6 w-6 animate-spin text-foreground" aria-label="Uploading" />
+                    <Loader2 className="h-6 w-6 animate-spin text-foreground" aria-label={ph.uploading} />
                   </div>
                 )}
                 <Button
@@ -139,7 +143,7 @@ export function PhotoManager({
                   variant="secondary"
                   size="icon"
                   className="absolute right-2 top-2 h-7 w-7"
-                  aria-label={`Remove photo ${index + 1}`}
+                  aria-label={fmt(ph.removePhoto, { n: index + 1 })}
                   onClick={() => remove(photo.key)}
                 >
                   <X className="h-4 w-4" />
@@ -149,7 +153,7 @@ export function PhotoManager({
               <div className="space-y-2 p-2">
                 {photo.status === "error" && (
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-destructive" role="alert">{photo.error ?? "Upload failed"}</p>
+                    <p className="text-xs text-destructive" role="alert">{photo.error ?? ph.uploadFailed}</p>
                     {photo.file && (
                       <Button
                         type="button"
@@ -158,7 +162,7 @@ export function PhotoManager({
                         className="h-7 shrink-0"
                         onClick={() => upload(photo.key, photo.file!)}
                       >
-                        <RotateCw className="mr-1 h-3 w-3" /> Retry
+                        <RotateCw className="mr-1 h-3 w-3" /> {ph.retry}
                       </Button>
                     )}
                   </div>
@@ -166,8 +170,8 @@ export function PhotoManager({
                 <Input
                   value={photo.altText}
                   onChange={(e) => update(photo.key, { altText: e.target.value })}
-                  placeholder="Alt text (optional)"
-                  aria-label={`Alt text for photo ${index + 1}`}
+                  placeholder={ph.altPlaceholder}
+                  aria-label={fmt(ph.altLabel, { n: index + 1 })}
                   className="h-8 text-xs"
                 />
                 <div className="flex justify-between">
@@ -176,7 +180,7 @@ export function PhotoManager({
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    aria-label={`Move photo ${index + 1} earlier`}
+                    aria-label={fmt(ph.moveEarlier, { n: index + 1 })}
                     disabled={index === 0}
                     onClick={() => move(index, -1)}
                   >
@@ -187,7 +191,7 @@ export function PhotoManager({
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    aria-label={`Move photo ${index + 1} later`}
+                    aria-label={fmt(ph.moveLater, { n: index + 1 })}
                     disabled={index === photos.length - 1}
                     onClick={() => move(index, 1)}
                   >
@@ -220,10 +224,10 @@ export function PhotoManager({
           disabled={photos.length >= MAX_LISTING_PHOTOS}
           onClick={() => inputRef.current?.click()}
         >
-          <ImagePlus className="mr-2 h-4 w-4" /> Add photos
+          <ImagePlus className="mr-2 h-4 w-4" /> {ph.addPhotos}
         </Button>
         <p className="text-xs text-muted-foreground">
-          JPEG, PNG or WebP, up to 5 MB each. {photos.length}/{MAX_LISTING_PHOTOS} photos. The first photo is the cover.
+          {fmt(ph.hint, { count: photos.length, max: MAX_LISTING_PHOTOS })}
         </p>
       </div>
       {pickError && <p className="text-sm text-destructive" role="alert">{pickError}</p>}

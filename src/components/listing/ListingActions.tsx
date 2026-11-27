@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
 import { MessageSquare, Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { SaveListingButton } from "@/components/listing/SaveListingButton";
@@ -26,6 +27,8 @@ import {
 
 export function ListingActions({ listing }: { listing: Listing }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const d = t.listingDetail;
   const { user } = useAuth();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -53,10 +56,10 @@ export function ListingActions({ listing }: { listing: Listing }) {
         onSuccess: () => {
           setDialogOpen(false);
           setMessage("");
-          toast({ title: "Message sent", description: "The seller will be notified of your inquiry." });
+          toast({ title: d.messageSentTitle, description: d.messageSentBody });
         },
         onError: () => {
-          toast({ title: "Error", description: "Couldn't send your message. Please try again.", variant: "destructive" });
+          toast({ title: d.errorTitle, description: d.messageFailed, variant: "destructive" });
         },
       },
     );
@@ -66,7 +69,7 @@ export function ListingActions({ listing }: { listing: Listing }) {
     return (
       <Button asChild variant="outline" className="w-full h-12 text-base font-semibold">
         <Link href={`/listing/${listing.id}/edit`}>
-          <Pencil className="mr-2 h-5 w-5" /> Edit your listing
+          <Pencil className="mr-2 h-5 w-5" /> {d.editYourListing}
         </Link>
       </Button>
     );
@@ -82,18 +85,18 @@ export function ListingActions({ listing }: { listing: Listing }) {
             onClick={handleContactClick}
           >
             <MessageSquare className="mr-2 h-4 w-4" />
-            Contact Seller
+            {d.contactSeller}
           </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Contact seller</DialogTitle>
+            <DialogTitle>{d.contactSellerTitle}</DialogTitle>
             <DialogDescription>
-              Send a message about &ldquo;{listing.title}&rdquo;. The seller will see your inquiry from their dashboard.
+              {fmt(d.contactSellerDescription, { title: listing.title })}
             </DialogDescription>
           </DialogHeader>
           <Textarea
-            placeholder="Is this still available? Would you ship to..."
+            placeholder={d.messagePlaceholder}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             className="min-h-[120px]"
@@ -105,7 +108,7 @@ export function ListingActions({ listing }: { listing: Listing }) {
               disabled={!message.trim() || createInquiry.isPending}
               
             >
-              {createInquiry.isPending ? "Sending..." : "Send Message"}
+              {createInquiry.isPending ? d.sending : d.sendMessage}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -16,6 +16,9 @@ import {
   type ComputeProvider,
 } from "@/lib/api";
 
+// Pages show `t.computeLabels` from the locale files (same keys) in the
+// visitor's language; these English maps are for llms.txt and defaults.
+
 // Display rules for the compute comparison pages. Prices are decimal strings
 // from the API; they're only turned into numbers for display formatting.
 // Any arithmetic (calculators) goes through the fixed-point helpers below.
@@ -128,14 +131,17 @@ export function formatMoney(amount: string, currency: string): string {
   }
 }
 
-/** "$2.49" — or "Contact for pricing" for quote-only prices. Never "$0". */
-export function formatPriceAmount(price: Pick<ComputePrice, "amount" | "currency">): string {
-  return price.amount == null ? "Contact for pricing" : formatMoney(price.amount, price.currency);
+/** "$2.49" — or "Contact for pricing" (`contactLabel`) for quote-only prices. Never "$0". */
+export function formatPriceAmount(
+  price: Pick<ComputePrice, "amount" | "currency">,
+  contactLabel = "Contact for pricing",
+): string {
+  return price.amount == null ? contactLabel : formatMoney(price.amount, price.currency);
 }
 
 /** "Nov 10, 2026" — dates are UTC so server and browser agree. */
-export function formatCheckedDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+export function formatCheckedDate(iso: string, intl = "en-US"): string {
+  return new Date(iso).toLocaleDateString(intl, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
 export function formatContextLength(tokens: number): string {

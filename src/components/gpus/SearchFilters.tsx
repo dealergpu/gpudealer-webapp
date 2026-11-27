@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
 import { Filter, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,8 @@ function buildQuery(filters: SearchFilterValues): string {
 
 export function SearchFilters({ initialFilters }: { initialFilters: SearchFilterValues }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const s = t.search;
   const [filters, setFilters] = useState<SearchFilterValues>(initialFilters);
   const [searchInput, setSearchInput] = useState(initialFilters.q ?? "");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -77,7 +80,7 @@ export function SearchFilters({ initialFilters }: { initialFilters: SearchFilter
   return (
     <>
       <div className="flex w-full items-center justify-between md:hidden">
-        <p className="text-sm text-muted-foreground">Refine results</p>
+        <p className="text-sm text-muted-foreground">{s.refine}</p>
         <Button
           variant="outline"
           onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
@@ -85,7 +88,7 @@ export function SearchFilters({ initialFilters }: { initialFilters: SearchFilter
           aria-controls="search-filters"
         >
           <Filter className="h-4 w-4" />
-          Filters
+          {s.filters}
         </Button>
       </div>
 
@@ -98,10 +101,10 @@ export function SearchFilters({ initialFilters }: { initialFilters: SearchFilter
         <div className="mb-6 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
             <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-            Filters
+            {s.filters}
           </h2>
           {mobileFiltersOpen && (
-            <Button variant="ghost" size="icon" onClick={() => setMobileFiltersOpen(false)} className="md:hidden" aria-label="Close filters">
+            <Button variant="ghost" size="icon" onClick={() => setMobileFiltersOpen(false)} className="md:hidden" aria-label={s.closeFilters}>
               <X className="w-4 h-4" />
             </Button>
           )}
@@ -109,76 +112,76 @@ export function SearchFilters({ initialFilters }: { initialFilters: SearchFilter
 
         <div className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="search">Search</Label>
+            <Label htmlFor="search">{s.searchLabel}</Label>
             <Input
               id="search"
-              placeholder="Model, manufacturer..."
+              placeholder={s.searchPlaceholder}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Category</Label>
+            <Label>{s.category}</Label>
             <Select
               value={filters.category || "all"}
               onValueChange={(val) => updateFilter("category", val === "all" ? undefined : (val as ListingCategory))}
             >
               <SelectTrigger>
-                <SelectValue placeholder="All Categories" />
+                <SelectValue placeholder={s.allCategories} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value={ListingCategory.GPU}>GPUs</SelectItem>
-                <SelectItem value={ListingCategory.SERVER}>Servers</SelectItem>
-                <SelectItem value={ListingCategory.MEMORY}>Memory & Storage</SelectItem>
-                <SelectItem value={ListingCategory.OTHER}>Other</SelectItem>
+                <SelectItem value="all">{s.allCategories}</SelectItem>
+                <SelectItem value={ListingCategory.GPU}>{s.catGpu}</SelectItem>
+                <SelectItem value={ListingCategory.SERVER}>{s.catServer}</SelectItem>
+                <SelectItem value={ListingCategory.MEMORY}>{s.catMemory}</SelectItem>
+                <SelectItem value={ListingCategory.OTHER}>{s.catOther}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label>Condition</Label>
+            <Label>{s.condition}</Label>
             <Select
               value={filters.condition || "all"}
               onValueChange={(val) => updateFilter("condition", val === "all" ? undefined : (val as ListingCondition))}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Any Condition" />
+                <SelectValue placeholder={s.anyCondition} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Any Condition</SelectItem>
-                <SelectItem value={ListingCondition.NEW}>New</SelectItem>
-                <SelectItem value={ListingCondition.USED}>Used</SelectItem>
-                <SelectItem value={ListingCondition.REFURBISHED}>Refurbished</SelectItem>
+                <SelectItem value="all">{s.anyCondition}</SelectItem>
+                <SelectItem value={ListingCondition.NEW}>{t.condition.NEW}</SelectItem>
+                <SelectItem value={ListingCondition.USED}>{t.condition.USED}</SelectItem>
+                <SelectItem value={ListingCondition.REFURBISHED}>{t.condition.REFURBISHED}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="vram">Min VRAM (GB)</Label>
+            <Label htmlFor="vram">{s.minVram}</Label>
             <Input
               id="vram"
               type="number"
-              placeholder="e.g. 24"
+              placeholder={s.minVramPlaceholder}
               value={filters.minVramGb || ""}
               onChange={(e) => updateFilter("minVramGb", e.target.value ? Number(e.target.value) : undefined)}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="price">Max Price ($)</Label>
+            <Label htmlFor="price">{s.maxPrice}</Label>
             <Input
               id="price"
               type="number"
-              placeholder="e.g. 5000"
+              placeholder={s.maxPricePlaceholder}
               value={filters.maxPrice || ""}
               onChange={(e) => updateFilter("maxPrice", e.target.value ? Number(e.target.value) : undefined)}
             />
           </div>
 
           <Button variant="outline" className="w-full mt-4" onClick={clearFilters}>
-            Clear Filters
+            {s.clearFiltersButton}
           </Button>
         </div>
       </aside>
@@ -188,6 +191,8 @@ export function SearchFilters({ initialFilters }: { initialFilters: SearchFilter
 
 export function SortSelect({ value }: { value?: ListingSortBy }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const s = t.search;
 
   const onChange = (sortBy: string) => {
     const params = new URLSearchParams(window.location.search);
@@ -203,13 +208,13 @@ export function SortSelect({ value }: { value?: ListingSortBy }) {
   return (
     <Select value={value || ListingSortBy.newest} onValueChange={onChange}>
       <SelectTrigger className="w-[180px] rounded-full bg-card">
-        <SelectValue placeholder="Newest First" />
+        <SelectValue placeholder={s.sortNewest} />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value={ListingSortBy.newest}>Newest First</SelectItem>
-        <SelectItem value={ListingSortBy.price_asc}>Price: Low to High</SelectItem>
-        <SelectItem value={ListingSortBy.price_desc}>Price: High to Low</SelectItem>
-        <SelectItem value={ListingSortBy.relevance}>Relevance</SelectItem>
+        <SelectItem value={ListingSortBy.newest}>{s.sortNewest}</SelectItem>
+        <SelectItem value={ListingSortBy.price_asc}>{s.sortPriceAsc}</SelectItem>
+        <SelectItem value={ListingSortBy.price_desc}>{s.sortPriceDesc}</SelectItem>
+        <SelectItem value={ListingSortBy.relevance}>{s.sortRelevance}</SelectItem>
       </SelectContent>
     </Select>
   );

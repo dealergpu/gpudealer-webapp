@@ -43,10 +43,10 @@
   --color-destructive-foreground: hsl(var(--destructive-foreground));
   --color-destructive-border: var(--destructive-border);
 
-  --font-sans: var(--app-font-sans);
-  --font-heading: var(--app-font-sans);
-  --font-display: var(--app-font-display);
-  --font-mono: var(--app-font-mono);
+  --font-sans: var(--app-font-sans), var(--app-font-cjk-sans);
+  --font-heading: var(--app-font-sans), var(--app-font-cjk-sans);
+  --font-display: var(--app-font-display), var(--app-font-cjk-display);
+  --font-mono: var(--app-font-mono), var(--app-font-cjk-sans);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -165,6 +165,23 @@
 
   .lenis.lenis-smooth {
     scroll-behavior: auto !important;
+  }
+
+  /* The Latin web fonts have no CJK glyphs; these system fonts pick them up. */
+  :root {
+    --app-font-cjk-sans: sans-serif;
+    --app-font-cjk-display: serif;
+  }
+
+  html:lang(zh-CN) {
+    --app-font-cjk-sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", sans-serif;
+    --app-font-cjk-display: "Songti SC", "Noto Serif SC", "Source Han Serif SC", "STSong", "SimSun", serif;
+  }
+
+  /* Chinese has no true italics — synthesized slanting just looks broken. */
+  html:lang(zh-CN) em,
+  html:lang(zh-CN) .italic {
+    font-style: normal;
   }
 
   body {

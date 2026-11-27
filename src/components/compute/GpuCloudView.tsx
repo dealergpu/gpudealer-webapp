@@ -1,4 +1,7 @@
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { getI18n } from "@/i18n/server";
+import { fmt } from "@/i18n/format";
+import type { Messages } from "@/i18n/messages";
 import {
   ComputeBillingMode,
   ComputePricingUnit,
@@ -11,7 +14,6 @@ import {
 import {
   BILLING_MODE_LABELS,
   GPU_PAGES,
-  UNIT_LABELS,
   formatPriceAmount,
   getFeaturedProviders,
   type GpuPage,
@@ -31,12 +33,7 @@ export type SearchParams = Record<string, string | string[] | undefined>;
 
 const PAGE_SIZE = 24;
 const ANY = "ANY";
-
-const SORTS: Record<GetComputePricingSortBy, string> = {
-  price_asc: "Lowest price",
-  price_desc: "Highest price",
-  newest: "Recently checked",
-};
+const SORT_KEYS: GetComputePricingSortBy[] = ["price_asc", "price_desc", "newest"];
 
 function first(value: string | string[] | undefined): string | undefined {
   const v = Array.isArray(value) ? value[0] : value;
@@ -52,7 +49,7 @@ function parseFilters(searchParams: SearchParams, gpu?: GpuPage) {
       ? billingParam
       : ComputeBillingMode.ON_DEMAND;
   const sortParam = first(searchParams.sort);
-  const sort = (sortParam && sortParam in SORTS ? sortParam : "price_asc") as GetComputePricingSortBy;
+  const sort = (SORT_KEYS.find((key) => key === sortParam) ?? "price_asc") as GetComputePricingSortBy;
   const page = Math.max(1, Math.floor(Number(first(searchParams.page))) || 1);
   return {
     unit,
@@ -143,12 +140,12 @@ function ProviderCell({ row }: { row: ComputePriceRow }) {
   );
 }
 
-function PriceCell({ row, className }: { row: ComputePriceRow; className?: string }) {
+function PriceCell({ row, className, t }: { row: ComputePriceRow; className?: string; t: Messages }) {
   return (
     <div className={cn("flex flex-col gap-1", className)}>
       <p className="whitespace-nowrap">
-        <span className="font-mono text-base font-semibold tabular-nums">{formatPriceAmount(row)}</span>{" "}
-        <span className="text-xs text-muted-foreground">{UNIT_LABELS[row.unit]}</span>
+        <span className="font-mono text-base font-semibold tabular-nums">{formatPriceAmount(row, t.computeLabels.contactForPricing)}</span>{" "}
+        <span className="text-xs text-muted-foreground">{t.computeLabels.units[row.unit]}</span>
       </p>
       <PriceTags price={row} />
       {row.notes && <p className="max-w-56 text-xs text-muted-foreground">{row.notes}</p>}
@@ -156,28 +153,28 @@ function PriceCell({ row, className }: { row: ComputePriceRow; className?: strin
   );
 }
 
-function SourceLink({ row }: { row: ComputePriceRow }) {
+function SourceLink({ row, t }: { row: ComputePriceRow; t: Messages }) {
   if (!row.sourceUrl) return null;
   return (
     <a href={row.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="text-xs text-muted-foreground underline-offset-2 hover:underline">
-      Source
+      {t.gpuCloud.source}
     </a>
   );
 }
 
-function PriceRow({ row, source }: { row: ComputePriceRow; source: string }) {
+function PriceRow({ row, source, t }: { row: ComputePriceRow; source: string; t: Messages }) {
   return (
     <tr className="align-top">
       <td className="px-4 py-4"><ProviderCell row={row} /></td>
       <td className="px-4 py-4 whitespace-nowrap">{gpuSpec(row) || "—"}</td>
-      <td className="px-4 py-4"><PriceCell row={row} className="items-end text-right" /></td>
+      <td className="px-4 py-4"><PriceCell row={row} className="items-end text-right" t={t} /></td>
       <td className="px-4 py-4">
         <PricingStatus price={row} />
-        <SourceLink row={row} />
+        <SourceLink row={row} t={t} />
       </td>
       <td className="px-4 py-4">
         <div className="flex flex-col items-end gap-3">
-          <ProviderCTA provider={row.offering.provider} offeringId={row.offering.id} source={source} label="Visit" />
+          <ProviderCTA provider={row.offering.provider} offeringId={row.offering.id} source={source} label={t.gpuCloud.visit} />
           <CompareToggle item={compareItem(row)} />
         </div>
       </td>
@@ -185,21 +182,21 @@ function PriceRow({ row, source }: { row: ComputePriceRow; source: string }) {
   );
 }
 
-function PriceCard({ row, source }: { row: ComputePriceRow; source: string }) {
+function PriceCard({ row, source, t }: { row: ComputePriceRow; source: string; t: Messages }) {
   return (
     <li className="rounded-2xl border border-border bg-card p-4">
       <ProviderCell row={row} />
       <div className="mt-4 flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-xs text-muted-foreground">GPU</p>
+          <p className="text-xs text-muted-foreground">{t.gpuCloud.gpu}</p>
           <p className="text-sm">{gpuSpec(row) || "—"}</p>
         </div>
-        <PriceCell row={row} className="items-end text-right" />
+        <PriceCell row={row} className="items-end text-right" t={t} />
       </div>
       <div className="mt-3 flex items-end justify-between gap-4">
         <div>
           <PricingStatus price={row} />
-          <SourceLink row={row} />
+          <SourceLink row={row} t={t} />
         </div>
         <CompareToggle item={compareItem(row)} />
       </div>
@@ -220,15 +217,18 @@ function PriceTable({
   rows,
   rankedLabel,
   source,
+  t,
 }: {
   pinned: ComputePriceRow[];
   rows: ComputePriceRow[];
   rankedLabel: string;
   source: string;
+  t: Messages;
 }) {
+  const g = t.gpuCloud;
   const groups = [
-    { key: "featured", label: "Featured", rows: pinned, source: `${source}-featured` },
-    { key: "ranked", label: pinned.length > 0 ? `All other providers · ${rankedLabel}` : null, rows, source },
+    { key: "featured", label: g.featuredGroup, rows: pinned, source: `${source}-featured` },
+    { key: "ranked", label: pinned.length > 0 ? fmt(g.otherProviders, { sort: rankedLabel }) : null, rows, source },
   ].filter((group) => group.rows.length > 0);
 
   return (
@@ -238,11 +238,11 @@ function PriceTable({
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-muted/40 text-left text-xs text-muted-foreground">
             <tr>
-              <th scope="col" className="px-4 py-3 font-medium">Provider</th>
-              <th scope="col" className="px-4 py-3 font-medium">GPU</th>
-              <th scope="col" className="px-4 py-3 text-right font-medium">Price</th>
-              <th scope="col" className="px-4 py-3 font-medium">Pricing status</th>
-              <th scope="col" className="px-4 py-3 font-medium"><span className="sr-only">Actions</span></th>
+              <th scope="col" className="px-4 py-3 font-medium">{g.provider}</th>
+              <th scope="col" className="px-4 py-3 font-medium">{g.gpu}</th>
+              <th scope="col" className="px-4 py-3 text-right font-medium">{g.price}</th>
+              <th scope="col" className="px-4 py-3 font-medium">{g.pricingStatus}</th>
+              <th scope="col" className="px-4 py-3 font-medium"><span className="sr-only">{g.actions}</span></th>
             </tr>
           </thead>
           {groups.map((group) => (
@@ -252,7 +252,7 @@ function PriceTable({
                   <th scope="colgroup" colSpan={5} className={cn("px-4 py-2 text-left", GROUP_HEADING)}>{group.label}</th>
                 </tr>
               )}
-              {group.rows.map((row) => <PriceRow key={row.id} row={row} source={group.source} />)}
+              {group.rows.map((row) => <PriceRow key={row.id} row={row} source={group.source} t={t} />)}
             </tbody>
           ))}
         </table>
@@ -264,7 +264,7 @@ function PriceTable({
           <div key={group.key} className="space-y-3">
             {group.label && <p className={GROUP_HEADING}>{group.label}</p>}
             <ul className="grid gap-3">
-              {group.rows.map((row) => <PriceCard key={row.id} row={row} source={group.source} />)}
+              {group.rows.map((row) => <PriceCard key={row.id} row={row} source={group.source} t={t} />)}
             </ul>
           </div>
         ))}
@@ -273,12 +273,12 @@ function PriceTable({
   );
 }
 
-function calculatorOptions(rows: ComputePriceRow[]): GpuPriceOption[] {
+function calculatorOptions(rows: ComputePriceRow[], t: Messages): GpuPriceOption[] {
   return rows
     .filter((row) => row.amount != null)
     .map((row) => ({
       id: row.id,
-      label: `${row.offering.provider.name} · ${row.offering.name}${row.billingMode !== ComputeBillingMode.ON_DEMAND ? ` (${BILLING_MODE_LABELS[row.billingMode]})` : ""}`,
+      label: `${row.offering.provider.name} · ${row.offering.name}${row.billingMode !== ComputeBillingMode.ON_DEMAND ? ` (${t.computeLabels.billing[row.billingMode]})` : ""}`,
       amount: row.amount!,
       currency: row.currency,
       unit: row.unit as GpuPriceOption["unit"],
@@ -301,6 +301,8 @@ export async function GpuCloudView({
   gpu?: GpuPage;
 }) {
   const filters = parseFilters(searchParams, gpu);
+  const { t } = await getI18n();
+  const g = t.gpuCloud;
   const [result, quoteOnly, featured] = await Promise.all([
     loadPrices(filters),
     filters.page === 1 ? loadQuoteOnly(filters) : Promise.resolve([]),
@@ -334,71 +336,71 @@ export async function GpuCloudView({
     {
       kind: "select",
       name: "unit",
-      label: "Price per",
+      label: g.pricePer,
       defaultValue: "gpu",
       options: [
-        { value: "gpu", label: "GPU-hour" },
-        { value: "instance", label: "Instance-hour" },
+        { value: "gpu", label: g.gpuHour },
+        { value: "instance", label: g.instanceHour },
       ],
     },
-    ...(gpu ? [] : [{ kind: "text", name: "gpu", label: "GPU model", placeholder: "e.g. H100", maxLength: 100 } satisfies FilterField]),
-    { kind: "text", name: "region", label: "Region", placeholder: "e.g. US, EU", maxLength: 50 },
+    ...(gpu ? [] : [{ kind: "text", name: "gpu", label: g.gpuModel, placeholder: g.gpuModelPlaceholder, maxLength: 100 } satisfies FilterField]),
+    { kind: "text", name: "region", label: g.region, placeholder: g.regionPlaceholder, maxLength: 50 },
     {
       kind: "select",
       name: "billing",
-      label: "Billing",
+      label: g.billing,
       defaultValue: ComputeBillingMode.ON_DEMAND,
       options: [
-        ...Object.entries(BILLING_MODE_LABELS).map(([value, label]) => ({ value, label })),
-        { value: ANY, label: "Any billing" },
+        ...Object.entries(t.computeLabels.billing).map(([value, label]) => ({ value, label })),
+        { value: ANY, label: g.anyBilling },
       ],
     },
     {
       kind: "select",
       name: "sort",
-      label: "Sort by",
+      label: g.sortBy,
       defaultValue: "price_asc",
-      options: Object.entries(SORTS).map(([value, label]) => ({ value, label })),
+      options: Object.entries(g.sorts).map(([value, label]) => ({ value, label })),
     },
   ];
 
   const total = result?.pagination.total;
   const source = gpu ? `gpu-cloud-${gpu.slug}` : "gpu-cloud-table";
-  const options = calculatorOptions([...pinned, ...rows]);
+  const options = calculatorOptions([...pinned, ...rows], t);
 
   return (
     <div className="container mx-auto space-y-8 px-4 py-10 sm:px-6 lg:px-8">
       <ComputeFilters basePath={basePath} fields={fields} values={urlValues} />
 
-      <section aria-label="GPU cloud prices" className="space-y-4">
+      <section aria-label={g.pricesLabel} className="space-y-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <p className="text-sm text-muted-foreground">
             {total != null ? (
               <>
                 <span className="font-semibold text-foreground tabular-nums">{total.toLocaleString("en-US")}</span>{" "}
-                {total === 1 ? "price" : "prices"},{" "}
-                {filters.unit === ComputePricingUnit.GPU_HOUR ? "per GPU per hour" : "per whole instance per hour"}
+                {total === 1 ? g.priceOne : g.priceMany},{" "}
+                {filters.unit === ComputePricingUnit.GPU_HOUR ? g.perGpuHour : g.perInstanceHour}
               </>
             ) : (
-              "GPU cloud prices"
+              g.pricesLabel
             )}
           </p>
           <AffiliateDisclosure className="max-w-xl" />
         </div>
 
         {result === null ? (
-          <ComputeError what="GPU prices" retryHref={pageHref(filters.page)} />
+          <ComputeError what={g.pricesWhat} retryHref={pageHref(filters.page)} />
         ) : pinned.length + rows.length > 0 ? (
           <>
-            <PriceTable pinned={pinned} rows={rows} rankedLabel={SORTS[filters.sort]} source={source} />
+            <PriceTable pinned={pinned} rows={rows} rankedLabel={g.sorts[filters.sort]} source={source} t={t} />
             <Pager page={filters.page} totalPages={result.pagination.totalPages} href={pageHref} />
           </>
         ) : (
           <ComputeEmpty
             title={
               filters.unit === ComputePricingUnit.GPU_HOUR
-                ? "No matching per-GPU prices. Try per instance-hour or any billing."
-                : "No matching per-instance prices. Try per GPU-hour or any billing."
+                ? g.emptyGpu
+                : g.emptyInstance
             }
             clearHref={basePath}
             requestHref={gpu ? `/compute/request?gpu=${encodeURIComponent(gpu.label)}` : "/compute/request"}
@@ -408,10 +410,9 @@ export async function GpuCloudView({
 
       {quoteOnly.length > 0 && (
         <section aria-labelledby="quote-only" className="space-y-3">
-          <h2 id="quote-only" className="text-lg font-semibold">Quote-only capacity</h2>
+          <h2 id="quote-only" className="text-lg font-semibold">{g.quoteOnly}</h2>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Reserved clusters and dedicated capacity without a public rate. Contact the provider for pricing — these are never
-            ranked against listed prices.
+            {g.quoteOnlyBody}
           </p>
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {quoteOnly.map((row) => (
@@ -419,7 +420,7 @@ export async function GpuCloudView({
                 <ProviderCell row={row} />
                 <p className="text-sm">{gpuSpec(row) || "—"}</p>
                 <PriceTags price={row} />
-                <p className="text-sm font-medium">Contact for pricing</p>
+                <p className="text-sm font-medium">{t.computeLabels.contactForPricing}</p>
                 <div className="mt-auto flex items-center justify-between gap-3">
                   <CompareToggle item={compareItem(row)} />
                   <ProviderCTA provider={row.offering.provider} offeringId={row.offering.id} source={`${source}-quote`} />
@@ -432,24 +433,21 @@ export async function GpuCloudView({
 
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
         <section aria-labelledby="reading-prices" className="prose prose-sm max-w-none dark:prose-invert">
-          <h2 id="reading-prices">How to read these prices</h2>
+          <h2 id="reading-prices">{g.howToRead}</h2>
           <ul>
             <li>
-              <strong>Per GPU-hour</strong> prices are for one GPU. <strong>Per instance-hour</strong> prices cover a whole
-              machine, which may hold several GPUs — the two are listed separately and never ranked together. To compare them
-              per GPU, pick offerings and use <em>Compare</em>.
+              <strong>{g.readPerGpuStrong}</strong> {g.readPerGpu} <strong>{g.readPerInstanceStrong}</strong> {g.readPerInstance}{" "}
+              <em>{g.readCompareEm}</em>.
             </li>
             <li>
-              <strong>Spot</strong> capacity is cheaper but can be interrupted. <strong>Reserved</strong> prices usually need a
-              commitment, shown next to the price.
+              <strong>{g.readSpotStrong}</strong> {g.readSpot} <strong>{g.readReservedStrong}</strong> {g.readReserved}
             </li>
             <li>
-              Every price shows when it was last checked. <em>Verified</em> means GPUDealer checked it against the provider&apos;s
-              site; prices older than 30 days are marked as possibly outdated. Always confirm on the provider&apos;s site.
+              {g.readCheckedStart} <em>{g.readVerifiedEm}</em> {g.readChecked}
             </li>
-            <li>Rates usually exclude storage, network egress and taxes.</li>
+            <li>{g.readExcludes}</li>
           </ul>
-          <h3>GPU pricing by model</h3>
+          <h3>{g.byModel}</h3>
           <p className="not-prose flex flex-wrap gap-2">
             {GPU_PAGES.filter((page) => page.slug !== gpu?.slug).map((page) => (
               <Link
@@ -457,7 +455,7 @@ export async function GpuCloudView({
                 href={`/compute/gpu-cloud/${page.slug}`}
                 className="rounded-full border border-border px-3 py-1 text-sm transition-colors hover:border-foreground/30"
               >
-                {page.label} cloud pricing
+                {fmt(g.modelCloudPricing, { gpu: page.label })}
               </Link>
             ))}
           </p>

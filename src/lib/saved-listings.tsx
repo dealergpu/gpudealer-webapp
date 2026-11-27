@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
+import type { Messages } from "@/i18n/messages";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ApiError,
@@ -94,10 +96,10 @@ function useSendToSignIn() {
   };
 }
 
-function saveErrorToast(error: unknown) {
+function saveErrorToast(error: unknown, s: Messages["saved"]) {
   return error instanceof ApiError && error.status === 404
-    ? { title: "This listing is no longer available", variant: "destructive" as const }
-    : { title: "Couldn't update saved listings", description: "Please try again.", variant: "destructive" as const };
+    ? { title: s.listingGone, variant: "destructive" as const }
+    : { title: s.updateFailed, description: s.pleaseTryAgain, variant: "destructive" as const };
 }
 
 /** Optimistic save/unsave for one listing (by id — the API doesn't take slugs). */
@@ -105,6 +107,7 @@ export function useSaveToggle(listingId: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useI18n();
   const sendToSignIn = useSendToSignIn();
   const ids = useSavedListingIds();
   const key = savedIdsKey(user?.id ?? "");
@@ -127,7 +130,7 @@ export function useSaveToggle(listingId: string) {
         sendToSignIn(listingId, save);
         return;
       }
-      toast(saveErrorToast(error));
+      toast(saveErrorToast(error, t.saved));
     },
     onSettled: () => {
       // Resync with the server once the last concurrent toggle finishes;
@@ -164,6 +167,7 @@ export function PendingSaveResumer() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!user) return;
@@ -173,10 +177,10 @@ export function PendingSaveResumer() {
     request
       .then(() => {
         void queryClient.invalidateQueries({ queryKey: getGetSavedListingsQueryKey() });
-        toast({ title: pending.save ? "Listing saved" : "Removed from saved listings" });
+        toast({ title: pending.save ? t.saved.listingSaved : t.saved.removed });
       })
-      .catch((error) => toast(saveErrorToast(error)));
-  }, [user, queryClient, toast]);
+      .catch((error) => toast(saveErrorToast(error, t.saved)));
+  }, [user, queryClient, toast, t]);
 
   return null;
 }

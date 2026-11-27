@@ -684,7 +684,8 @@ Source: eBay
 
 Cards should be information-dense but clean.
 
-`ListingCard` (a Server-Component-safe component) also carries:
+`ListingCard` (a Client Component, so it can translate; safe to render
+from Server Components) also carries:
 
 - a bookmark save toggle (`SaveListingButton`, client) in the photo's
   bottom-right corner, layered above the card's stretched link;
@@ -1094,6 +1095,61 @@ Rules:
 - Compare selection (max 10) lives in localStorage
   (`src/lib/compute-compare.ts`); the tray is mounted by
   `src/app/compute/layout.tsx`.
+
+---
+
+# 23d. Internationalization (English / Simplified Chinese)
+
+English is the default and keeps the unprefixed URLs (`/gpus`); Simplified
+Chinese lives under `/zh` (`/zh/gpus`). Each language has its own indexable
+URL — never serve two languages at one URL.
+
+Routing (`src/middleware.ts`, `src/i18n/config.ts`):
+
+- Every page lives under `src/app/[lang]/` (the root layout is
+  `[lang]/layout.tsx`). Unprefixed requests are **rewritten** to `/en/...`;
+  `/en/...` is never public and 308-redirects to the unprefixed URL.
+  Route handlers (`auth/callback`, `sitemap.ts`, `robots.ts`, `llms.txt`,
+  `opengraph-image`) stay at the app root, outside `[lang]`.
+- First-time visitors from mainland China (`CF-IPCountry: CN`, set by
+  Cloudflare) are 307-redirected to `/zh`. A `NEXT_LOCALE` cookie (set by the
+  language switcher) always wins, and crawlers are never redirected.
+- `LanguageSwitcher` (navbar + footer) is a real `<a hreflang>` link.
+
+Translations:
+
+- All UI copy is in `src/i18n/locales/en.json` (source of truth) and
+  `zh.json`. `src/i18n/messages.ts` type-checks that `zh.json` has every key
+  in `en.json`, so a missing translation fails `pnpm typecheck`.
+- Server Components: `const { t, locale, intl } = await getI18n()` from
+  `@/i18n/server` (reads the `[lang]` root param). Client Components:
+  `useI18n()` from `@/i18n/client`. Placeholders: `fmt(t.x.y, { count })`.
+- Don't translate user/API content: listing titles, descriptions, specs,
+  provider descriptions, comments and profiles are shown as-is.
+- Always import `Link`, `useRouter` and `usePathname` from
+  `@/i18n/navigation`, never `next/link` / `next/navigation` — they add the
+  locale prefix (and `usePathname` returns the path without it). Server
+  redirects use `localizedRedirect()` / `localizedPermanentRedirect()`.
+  Absolute URLs for JSON-LD/OG use `absoluteUrl()`.
+- Zod schemas with messages are built per locale (`makeXSchema(t)`), not at
+  module level.
+
+SEO:
+
+- Every indexable page's metadata uses `alternatesFor(path)` (canonical in
+  the current locale + hreflang `en`, `zh-CN`, `x-default`). The sitemap
+  lists each URL in both languages with the same alternates; robots.txt
+  disallows the private paths under `/zh` too.
+
+CNY approximations:
+
+- On the Chinese site only, `CnyPrice` shows "≈ ¥8,311" under a listing's
+  price (ListingCard, listing details, dashboard). Listings keep their own
+  price and currency — the CNY figure is a hint, never stored or sent.
+- Rates: `getCnyRates()` (`src/lib/cny-rates.ts`) fetches ECB reference
+  rates from Frankfurter (free, no key), cached 6h per worker isolate, with
+  a 2.5s timeout and `FALLBACK_CNY_RATES` if it fails. The root layout loads
+  them only for `zh` and passes them down through `I18nProvider`.
 
 ---
 

@@ -17,12 +17,12 @@ const EXTENSION_BY_TYPE: Record<string, string> = {
 export const ACCEPTED_PHOTO_TYPES = Object.keys(EXTENSION_BY_TYPE).join(",");
 
 /** Returns a user-facing error message, or null if the file is acceptable. */
-export function validatePhotoFile(file: File): string | null {
+export function validatePhotoFile(file: File, messages?: { typeNotAllowed: string; tooLarge: string }): string | null {
   if (!EXTENSION_BY_TYPE[file.type]) {
-    return `${file.name}: only JPEG, PNG and WebP images are allowed.`;
+    return (messages?.typeNotAllowed ?? "{name}: only JPEG, PNG and WebP images are allowed.").replace("{name}", file.name);
   }
   if (file.size > MAX_PHOTO_BYTES) {
-    return `${file.name}: images must be 5 MB or smaller.`;
+    return (messages?.tooLarge ?? "{name}: images must be 5 MB or smaller.").replace("{name}", file.name);
   }
   return null;
 }

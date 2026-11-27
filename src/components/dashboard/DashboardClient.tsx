@@ -1,6 +1,10 @@
 'use client';
 
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
+import type { Messages } from "@/i18n/messages";
+import { CnyPrice } from "@/components/CnyPrice";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetListings,
@@ -39,45 +43,47 @@ import { listingPath } from "@/lib/listing-path";
 import { formatListingPrice } from "@/lib/listing-price";
 import { profilePath } from "@/lib/profile";
 
-const formatDate = (dateString: string) =>
-  new Date(dateString).toLocaleDateString("en-US", {
+type DashboardMessages = Messages["dashboard"];
+
+const formatDate = (dateString: string, intl: string) =>
+  new Date(dateString).toLocaleDateString(intl, {
     month: "short",
     day: "numeric",
     year: "numeric"
   });
 
-function getStatusBadge(status: string) {
+function getStatusBadge(status: string, d: DashboardMessages) {
   switch (status) {
     case ListingStatus.PUBLISHED:
     case HardwareRequestStatus.OPEN:
-      return <Badge variant="success" className="uppercase text-[10px]">Active</Badge>;
+      return <Badge variant="success" className="uppercase text-[10px]">{d.status.active}</Badge>;
     case ListingStatus.PENDING_REVIEW:
     case HardwareRequestStatus.MATCHED:
-      return <Badge variant="warning" className="uppercase text-[10px]">Pending</Badge>;
+      return <Badge variant="warning" className="uppercase text-[10px]">{d.status.pending}</Badge>;
     case ListingStatus.DRAFT:
     case HardwareRequestStatus.CANCELLED:
     case ListingStatus.EXPIRED:
-      return <Badge variant="secondary" className="uppercase text-[10px]">Inactive</Badge>;
+      return <Badge variant="secondary" className="uppercase text-[10px]">{d.status.inactive}</Badge>;
     case ListingStatus.SOLD:
     case HardwareRequestStatus.CLOSED:
-      return <Badge variant="default" className="uppercase text-[10px]">Completed</Badge>;
+      return <Badge variant="default" className="uppercase text-[10px]">{d.status.completed}</Badge>;
     case ListingStatus.REJECTED:
-      return <Badge variant="destructive" className="uppercase text-[10px]">Rejected</Badge>;
+      return <Badge variant="destructive" className="uppercase text-[10px]">{d.status.rejected}</Badge>;
     case ListingStatus.DELISTED:
-      return <Badge variant="destructive" className="uppercase text-[10px]">Delisted</Badge>;
+      return <Badge variant="destructive" className="uppercase text-[10px]">{d.status.delisted}</Badge>;
     default:
       return <Badge variant="outline" className="uppercase text-[10px]">{status}</Badge>;
   }
 }
 
-function getInquiryStatusBadge(status: string) {
+function getInquiryStatusBadge(status: string, d: DashboardMessages) {
   switch (status) {
     case InquiryStatus.OPEN:
-      return <Badge variant="warning" className="uppercase text-[10px]">Open</Badge>;
+      return <Badge variant="warning" className="uppercase text-[10px]">{d.inquiryStatus.open}</Badge>;
     case InquiryStatus.RESPONDED:
-      return <Badge variant="success" className="uppercase text-[10px]">Responded</Badge>;
+      return <Badge variant="success" className="uppercase text-[10px]">{d.inquiryStatus.responded}</Badge>;
     case InquiryStatus.CLOSED:
-      return <Badge variant="secondary" className="uppercase text-[10px]">Closed</Badge>;
+      return <Badge variant="secondary" className="uppercase text-[10px]">{d.inquiryStatus.closed}</Badge>;
     default:
       return <Badge variant="outline" className="uppercase text-[10px]">{status}</Badge>;
   }
@@ -86,6 +92,8 @@ function getInquiryStatusBadge(status: string) {
 export function DashboardClient() {
   // Inquiry sellerId/buyerId hold the backend user id, not the Supabase auth
   // id — compare against the backend profile.
+  const { t, intl } = useI18n();
+  const d = t.dashboard;
   const { data: profile } = useGetMyProfile();
   const myId = profile?.data.id;
   // `mine=true` returns only the caller's own listings, in every status.
@@ -118,10 +126,10 @@ export function DashboardClient() {
       {
         onSuccess: () => {
           refreshMyListings();
-          toast({ title: "Submitted for review", description: "An admin will review your listing shortly." });
+          toast({ title: d.submittedTitle, description: d.submittedBody });
         },
         onError: () => {
-          toast({ title: "Error", description: "Couldn't submit this listing for review.", variant: "destructive" });
+          toast({ title: d.errorTitle, description: d.submitFailed, variant: "destructive" });
         },
       },
     );
@@ -133,10 +141,10 @@ export function DashboardClient() {
       {
         onSuccess: () => {
           refreshMyListings();
-          toast({ title: "Listing deleted" });
+          toast({ title: d.listingDeleted });
         },
         onError: () => {
-          toast({ title: "Error", description: "Couldn't delete this listing.", variant: "destructive" });
+          toast({ title: d.errorTitle, description: d.deleteFailed, variant: "destructive" });
         },
       },
     );
@@ -148,10 +156,10 @@ export function DashboardClient() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetRequestsQueryKey() });
-          toast({ title: "Request cancelled" });
+          toast({ title: d.requestCancelled });
         },
         onError: () => {
-          toast({ title: "Error", description: "Couldn't cancel this request.", variant: "destructive" });
+          toast({ title: d.errorTitle, description: d.cancelFailed, variant: "destructive" });
         },
       },
     );
@@ -163,7 +171,7 @@ export function DashboardClient() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetSavedListingsQueryKey() });
-          toast({ title: "Removed from saved listings" });
+          toast({ title: d.removedFromSaved });
         },
       },
     );
@@ -177,7 +185,7 @@ export function DashboardClient() {
           queryClient.invalidateQueries({ queryKey: getGetInquiriesQueryKey() });
         },
         onError: () => {
-          toast({ title: "Error", description: "Couldn't update this inquiry.", variant: "destructive" });
+          toast({ title: d.errorTitle, description: d.inquiryFailed, variant: "destructive" });
         },
       },
     );
@@ -190,34 +198,34 @@ export function DashboardClient() {
 
   return (
     <>
-    <PageHeader eyebrow="Dashboard" title={<>Your <em>workspace.</em></>} description="Listings, requests, saved hardware and inquiries in one place." />
+    <PageHeader eyebrow={d.eyebrow} title={<>{d.titleStart} <em>{d.titleEm}</em></>} description={d.description} />
     <div className="container mx-auto px-4 py-10">
       <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <h2 className="text-lg font-semibold">Overview</h2>
+        <h2 className="text-lg font-semibold">{d.overview}</h2>
         <div className="flex flex-wrap gap-3 w-full sm:w-auto">
           <Link href={profile ? profilePath(profile.data.username) : "/account/profile"} className="flex-1 sm:flex-none">
             <Button variant="ghost" className="w-full">
-              <UserRound className="mr-2 h-4 w-4" /> My Profile
+              <UserRound className="mr-2 h-4 w-4" /> {d.myProfile}
             </Button>
           </Link>
           <Link href="/account/profile" className="flex-1 sm:flex-none">
             <Button variant="ghost" className="w-full">
-              <Pencil className="mr-2 h-4 w-4" /> Edit Profile
+              <Pencil className="mr-2 h-4 w-4" /> {d.editProfile}
             </Button>
           </Link>
           <Link href="/account/api-keys" className="flex-1 sm:flex-none">
             <Button variant="ghost" className="w-full">
-              <KeyRound className="mr-2 h-4 w-4" /> API Keys
+              <KeyRound className="mr-2 h-4 w-4" /> {d.apiKeys}
             </Button>
           </Link>
           <Link href="/sell" className="flex-1 sm:flex-none">
             <Button variant="outline" className="w-full">
-              <Plus className="mr-2 h-4 w-4" /> List Hardware
+              <Plus className="mr-2 h-4 w-4" /> {d.listHardware}
             </Button>
           </Link>
           <Link href="/request" className="flex-1 sm:flex-none">
             <Button variant="accent" className="w-full">
-              <Plus className="mr-2 h-4 w-4" /> New Request
+              <Plus className="mr-2 h-4 w-4" /> {d.newRequest}
             </Button>
           </Link>
         </div>
@@ -227,7 +235,7 @@ export function DashboardClient() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         <Card className="border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Drafts</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{d.drafts}</CardTitle>
             <HardDrive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -238,7 +246,7 @@ export function DashboardClient() {
         </Card>
         <Card className="border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Review</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{d.pendingReview}</CardTitle>
             <Send className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -249,7 +257,7 @@ export function DashboardClient() {
         </Card>
         <Card className="border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Open Requests</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{d.openRequests}</CardTitle>
             <Inbox className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -260,7 +268,7 @@ export function DashboardClient() {
         </Card>
         <Card className="border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Saved</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{d.saved}</CardTitle>
             <Bookmark className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -271,7 +279,7 @@ export function DashboardClient() {
         </Card>
         <Card className="border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Open Inquiries</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{d.openInquiries}</CardTitle>
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -284,25 +292,25 @@ export function DashboardClient() {
 
       <Tabs defaultValue="listings" className="w-full">
         <TabsList className="mb-6 w-full sm:w-auto h-auto p-1 bg-muted/50 border border-border flex-wrap">
-          <TabsTrigger value="listings" className="py-2.5 px-6 font-semibold">My Listings</TabsTrigger>
-          <TabsTrigger value="requests" className="py-2.5 px-6 font-semibold">My Requests</TabsTrigger>
-          <TabsTrigger value="saved" className="py-2.5 px-6 font-semibold">Saved</TabsTrigger>
-          <TabsTrigger value="inquiries" className="py-2.5 px-6 font-semibold">Inquiries</TabsTrigger>
+          <TabsTrigger value="listings" className="py-2.5 px-6 font-semibold">{d.tabListings}</TabsTrigger>
+          <TabsTrigger value="requests" className="py-2.5 px-6 font-semibold">{d.tabRequests}</TabsTrigger>
+          <TabsTrigger value="saved" className="py-2.5 px-6 font-semibold">{d.tabSaved}</TabsTrigger>
+          <TabsTrigger value="inquiries" className="py-2.5 px-6 font-semibold">{d.tabInquiries}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="listings" className="m-0">
           <Card className="border-border shadow-sm">
             {listingsLoading ? (
-              <div className="p-8 text-center text-muted-foreground">Loading your listings...</div>
+              <div className="p-8 text-center text-muted-foreground">{d.loadingListings}</div>
             ) : myListings.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
-                    <TableHead>Hardware</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="hidden md:table-cell">Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{d.hardware}</TableHead>
+                    <TableHead>{d.price}</TableHead>
+                    <TableHead>{d.statusLabel}</TableHead>
+                    <TableHead className="hidden md:table-cell">{d.date}</TableHead>
+                    <TableHead className="text-right">{d.actions}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -315,11 +323,12 @@ export function DashboardClient() {
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-sm">
-                        {formatListingPrice(listing, 0)}
+                        {formatListingPrice(listing, 0, t.listing.priceOnRequest)}
+                        <CnyPrice amount={listing.price} currency={listing.currency} className="font-sans" />
                       </TableCell>
-                      <TableCell>{getStatusBadge(listing.status)}</TableCell>
+                      <TableCell>{getStatusBadge(listing.status, d)}</TableCell>
                       <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                        {formatDate(listing.createdAt)}
+                        {formatDate(listing.createdAt, intl)}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -328,7 +337,7 @@ export function DashboardClient() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                              title="Submit for review"
+                              title={d.submitForReview}
                               disabled={updateStatus.isPending}
                               onClick={() => handleSubmitForReview(listing)}
                             >
@@ -336,12 +345,12 @@ export function DashboardClient() {
                             </Button>
                           )}
                           <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                            <Link href={`/listing/${listing.id}/edit`} title="Edit listing" aria-label="Edit listing">
+                            <Link href={`/listing/${listing.id}/edit`} title={d.editListing} aria-label={d.editListing}>
                               <Pencil className="h-4 w-4" />
                             </Link>
                           </Button>
                           <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                            <Link href={listingPath(listing)} title="View listing" aria-label="View listing">
+                            <Link href={listingPath(listing)} title={d.viewListing} aria-label={d.viewListing}>
                               <ExternalLink className="h-4 w-4" />
                             </Link>
                           </Button>
@@ -349,7 +358,7 @@ export function DashboardClient() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            title="Delete listing"
+                            title={d.deleteListing}
                             disabled={deleteListing.isPending}
                             onClick={() => handleDeleteListing(listing)}
                           >
@@ -364,12 +373,12 @@ export function DashboardClient() {
             ) : (
               <div className="p-12 flex flex-col items-center justify-center text-center">
                 <HardDrive className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-bold mb-2">No listings yet</h3>
+                <h3 className="text-lg font-bold mb-2">{d.noListings}</h3>
                 <p className="text-muted-foreground max-w-sm mb-6">
-                  You haven&apos;t listed any hardware for sale. Create your first listing to reach our marketplace of buyers.
+                  {d.noListingsBody}
                 </p>
                 <Link href="/sell">
-                  <Button>Create Listing</Button>
+                  <Button>{d.createListing}</Button>
                 </Link>
               </div>
             )}
@@ -379,16 +388,16 @@ export function DashboardClient() {
         <TabsContent value="requests" className="m-0">
           <Card className="border-border shadow-sm">
             {requestsLoading ? (
-              <div className="p-8 text-center text-muted-foreground">Loading your requests...</div>
+              <div className="p-8 text-center text-muted-foreground">{d.loadingRequests}</div>
             ) : myRequests.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
-                    <TableHead>Requirement</TableHead>
-                    <TableHead>Budget/Unit</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="hidden md:table-cell">Destination</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{d.requirement}</TableHead>
+                    <TableHead>{d.budgetPerUnit}</TableHead>
+                    <TableHead>{d.statusLabel}</TableHead>
+                    <TableHead className="hidden md:table-cell">{d.destination}</TableHead>
+                    <TableHead className="text-right">{d.actions}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -397,13 +406,13 @@ export function DashboardClient() {
                       <TableCell className="font-medium">
                         <div className="flex flex-col">
                           <span className="truncate max-w-[200px] sm:max-w-[300px]">{req.title}</span>
-                          <span className="text-xs text-muted-foreground font-mono">Qty: {req.quantity} • {req.minVramGb ? `${req.minVramGb}GB+` : 'Any VRAM'}</span>
+                          <span className="text-xs text-muted-foreground font-mono">{fmt(d.qtyLine, { quantity: req.quantity, vram: req.minVramGb ? fmt(d.vramPlus, { gb: req.minVramGb }) : d.anyVram })}</span>
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-sm">
-                        {req.maxBudgetPerUnit ? `$${req.maxBudgetPerUnit.toLocaleString()}` : 'Open'}
+                        {req.maxBudgetPerUnit ? `$${req.maxBudgetPerUnit.toLocaleString("en-US")}` : d.openBudget}
                       </TableCell>
-                      <TableCell>{getStatusBadge(req.status)}</TableCell>
+                      <TableCell>{getStatusBadge(req.status, d)}</TableCell>
                       <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                         {req.destinationCity || req.destinationCountry
                           ? [req.destinationCity, req.destinationCountry].filter(Boolean).join(", ")
@@ -415,7 +424,7 @@ export function DashboardClient() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            title="Cancel request"
+                            title={d.cancelRequest}
                             disabled={updateRequestStatus.isPending}
                             onClick={() => handleCancelRequest(req)}
                           >
@@ -430,12 +439,12 @@ export function DashboardClient() {
             ) : (
               <div className="p-12 flex flex-col items-center justify-center text-center">
                 <Inbox className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-bold mb-2">No active requests</h3>
+                <h3 className="text-lg font-bold mb-2">{d.noRequests}</h3>
                 <p className="text-muted-foreground max-w-sm mb-6">
-                  Can&apos;t find what you need? Post a request and sellers will contact you with matching hardware.
+                  {d.noRequestsBody}
                 </p>
                 <Link href="/request">
-                  <Button variant="accent">Post Request</Button>
+                  <Button variant="accent">{d.postRequest}</Button>
                 </Link>
               </div>
             )}
@@ -445,20 +454,20 @@ export function DashboardClient() {
         <TabsContent value="saved" className="m-0">
           <div className="mb-3 flex justify-end">
             <Button asChild variant="link" size="sm" className="h-auto p-0">
-              <Link href="/saved">View all saved listings &rarr;</Link>
+              <Link href="/saved">{d.viewAllSaved}</Link>
             </Button>
           </div>
           <Card className="border-border shadow-sm">
             {savedLoading ? (
-              <div className="p-8 text-center text-muted-foreground">Loading saved listings...</div>
+              <div className="p-8 text-center text-muted-foreground">{d.loadingSaved}</div>
             ) : savedListings.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
-                    <TableHead>Hardware</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead className="hidden md:table-cell">Saved</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{d.hardware}</TableHead>
+                    <TableHead>{d.price}</TableHead>
+                    <TableHead className="hidden md:table-cell">{d.savedDate}</TableHead>
+                    <TableHead className="text-right">{d.actions}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -471,14 +480,14 @@ export function DashboardClient() {
                             <span className="text-xs text-muted-foreground font-mono">{saved.listing.manufacturer} {saved.listing.model}</span>
                           </div>
                         ) : (
-                          <span className="text-muted-foreground italic">Listing no longer available</span>
+                          <span className="text-muted-foreground italic">{d.listingUnavailable}</span>
                         )}
                       </TableCell>
                       <TableCell className="font-mono text-sm">
-                        {saved.listing ? formatListingPrice(saved.listing, 0) : '—'}
+                        {saved.listing ? formatListingPrice(saved.listing, 0, t.listing.priceOnRequest) : '—'}
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                        {formatDate(saved.createdAt)}
+                        {formatDate(saved.createdAt, intl)}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -493,7 +502,7 @@ export function DashboardClient() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            title="Remove from saved"
+                            title={d.removeFromSaved}
                             disabled={unsaveListing.isPending}
                             onClick={() => handleUnsave(saved.listingId)}
                           >
@@ -508,12 +517,12 @@ export function DashboardClient() {
             ) : (
               <div className="p-12 flex flex-col items-center justify-center text-center">
                 <Bookmark className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-bold mb-2">No saved listings</h3>
+                <h3 className="text-lg font-bold mb-2">{d.noSaved}</h3>
                 <p className="text-muted-foreground max-w-sm mb-6">
-                  Save listings from the marketplace to find them here later.
+                  {d.noSavedBody}
                 </p>
                 <Link href="/gpus">
-                  <Button>Browse Hardware</Button>
+                  <Button>{d.browseHardware}</Button>
                 </Link>
               </div>
             )}
@@ -522,18 +531,18 @@ export function DashboardClient() {
 
         <TabsContent value="inquiries" className="m-0 space-y-6">
           <div>
-            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3">Received</h3>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3">{d.received}</h3>
             <Card className="border-border shadow-sm">
               {inquiriesLoading ? (
-                <div className="p-8 text-center text-muted-foreground">Loading inquiries...</div>
+                <div className="p-8 text-center text-muted-foreground">{d.loadingInquiries}</div>
               ) : receivedInquiries.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      <TableHead>Listing</TableHead>
-                      <TableHead>Message</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{d.listing}</TableHead>
+                      <TableHead>{d.message}</TableHead>
+                      <TableHead>{d.statusLabel}</TableHead>
+                      <TableHead className="text-right">{d.actions}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -545,11 +554,11 @@ export function DashboardClient() {
                               {inquiry.listing.title}
                             </Link>
                           ) : (
-                            <span className="text-muted-foreground italic">Listing</span>
+                            <span className="text-muted-foreground italic">{d.listing}</span>
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground max-w-[280px] truncate">{inquiry.message}</TableCell>
-                        <TableCell>{getInquiryStatusBadge(inquiry.status)}</TableCell>
+                        <TableCell>{getInquiryStatusBadge(inquiry.status, d)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
                             {inquiry.status === InquiryStatus.OPEN && (
@@ -557,7 +566,7 @@ export function DashboardClient() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                title="Mark responded"
+                                title={d.markResponded}
                                 disabled={updateInquiryStatus.isPending}
                                 onClick={() => handleInquiryStatus(inquiry, InquiryStatus.RESPONDED)}
                               >
@@ -569,7 +578,7 @@ export function DashboardClient() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                title="Close inquiry"
+                                title={d.closeInquiry}
                                 disabled={updateInquiryStatus.isPending}
                                 onClick={() => handleInquiryStatus(inquiry, InquiryStatus.CLOSED)}
                               >
@@ -583,24 +592,24 @@ export function DashboardClient() {
                   </TableBody>
                 </Table>
               ) : (
-                <div className="p-8 text-center text-muted-foreground">No inquiries on your listings yet.</div>
+                <div className="p-8 text-center text-muted-foreground">{d.noReceived}</div>
               )}
             </Card>
           </div>
 
           <div>
-            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3">Sent</h3>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3">{d.sent}</h3>
             <Card className="border-border shadow-sm">
               {inquiriesLoading ? (
-                <div className="p-8 text-center text-muted-foreground">Loading inquiries...</div>
+                <div className="p-8 text-center text-muted-foreground">{d.loadingInquiries}</div>
               ) : sentInquiries.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      <TableHead>Listing</TableHead>
-                      <TableHead>Message</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{d.listing}</TableHead>
+                      <TableHead>{d.message}</TableHead>
+                      <TableHead>{d.statusLabel}</TableHead>
+                      <TableHead className="text-right">{d.actions}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -612,18 +621,18 @@ export function DashboardClient() {
                               {inquiry.listing.title}
                             </Link>
                           ) : (
-                            <span className="text-muted-foreground italic">Listing</span>
+                            <span className="text-muted-foreground italic">{d.listing}</span>
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground max-w-[280px] truncate">{inquiry.message}</TableCell>
-                        <TableCell>{getInquiryStatusBadge(inquiry.status)}</TableCell>
+                        <TableCell>{getInquiryStatusBadge(inquiry.status, d)}</TableCell>
                         <TableCell className="text-right">
                           {inquiry.status !== InquiryStatus.CLOSED && (
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              title="Close inquiry"
+                              title={d.closeInquiry}
                               disabled={updateInquiryStatus.isPending}
                               onClick={() => handleInquiryStatus(inquiry, InquiryStatus.CLOSED)}
                             >
@@ -636,7 +645,7 @@ export function DashboardClient() {
                   </TableBody>
                 </Table>
               ) : (
-                <div className="p-8 text-center text-muted-foreground">You haven&apos;t contacted any sellers yet.</div>
+                <div className="p-8 text-center text-muted-foreground">{d.noSent}</div>
               )}
             </Card>
           </div>

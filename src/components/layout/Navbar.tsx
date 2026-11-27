@@ -1,8 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
+import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bookmark, ChevronDown, KeyRound, LayoutDashboard, LogOut, Menu, Pencil, UserRound, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -17,18 +19,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-const links = [
-  { href: "/gpus", label: "Find Hardware" },
-  { href: "/sell", label: "Sell Hardware" },
-  { href: "/request", label: "Request Hardware" },
-  { href: "/compute", label: "Compare Compute" },
-];
-
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useI18n();
+  const links = [
+    { href: "/gpus", label: t.nav.findHardware },
+    { href: "/sell", label: t.nav.sellHardware },
+    { href: "/request", label: t.nav.requestHardware },
+    { href: "/compute", label: t.nav.compareCompute },
+  ];
   const { user, signOut } = useAuth();
   const navRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -78,7 +80,7 @@ export function Navbar() {
       )}
     >
       <nav
-        aria-label="Main"
+        aria-label={t.nav.mainLabel}
         className={cn(
           "mx-auto border text-foreground transition-[max-width,border-radius,background-color,border-color,box-shadow] duration-500 ease-out",
           floating
@@ -88,7 +90,7 @@ export function Navbar() {
       >
         <div className={cn("flex items-center justify-between px-4 transition-[height] duration-500 sm:px-6", floating ? "h-14" : "h-18 lg:px-8")}>
           <div className="flex items-center gap-8">
-            <Link href="/" className="relative flex shrink-0 items-center" aria-label="GPUDealer home">
+            <Link href="/" className="relative flex shrink-0 items-center" aria-label={t.nav.homeLabel}>
               <img
                 src="/gpu-dealer-logo.svg"
                 alt=""
@@ -125,16 +127,17 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center gap-2">
+            <LanguageSwitcher compact className="hidden lg:flex" />
             {!user ? (
               <>
                 <Link
                   href="/sign-in"
                   className="hidden rounded-full px-3.5 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground sm:block"
                 >
-                  Sign in
+                  {t.nav.signIn}
                 </Link>
                 <Button asChild size="sm" className="hidden sm:inline-flex">
-                  <Link href="/sell">List hardware</Link>
+                  <Link href="/sell">{t.nav.listHardware}</Link>
                 </Button>
               </>
             ) : (
@@ -147,42 +150,42 @@ export function Navbar() {
                   )}
                 >
                   <LayoutDashboard className="h-4 w-4" />
-                  Dashboard
+                  {t.nav.dashboard}
                 </Link>
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="hidden sm:inline-flex" aria-label="Account menu">
+                    <Button variant="outline" size="sm" className="hidden sm:inline-flex" aria-label={t.nav.accountMenu}>
                       <UserRound className="h-4 w-4" />
-                      <span className="hidden max-w-40 truncate lg:inline">{user.email || "Account"}</span>
+                      <span className="hidden max-w-40 truncate lg:inline">{user.email || t.nav.account}</span>
                       <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-60">
                     <DropdownMenuLabel className="font-normal">
-                      <p className="text-xs text-muted-foreground">Signed in as</p>
+                      <p className="text-xs text-muted-foreground">{t.nav.signedInAs}</p>
                       <p className="truncate text-sm font-medium" title={user.email ?? undefined}>
-                        {user.email || "Account"}
+                        {user.email || t.nav.account}
                       </p>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <Link href="/saved">
-                        <Bookmark className="mr-2 h-4 w-4" /> Saved listings
+                        <Bookmark className="mr-2 h-4 w-4" /> {t.nav.savedListings}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/account/profile">
-                        <Pencil className="mr-2 h-4 w-4" /> Edit profile
+                        <Pencil className="mr-2 h-4 w-4" /> {t.nav.editProfile}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/account/api-keys">
-                        <KeyRound className="mr-2 h-4 w-4" /> API keys
+                        <KeyRound className="mr-2 h-4 w-4" /> {t.nav.apiKeys}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={handleSignOut}>
-                      <LogOut className="mr-2 h-4 w-4" /> Log out
+                      <LogOut className="mr-2 h-4 w-4" /> {t.nav.logOut}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -196,7 +199,7 @@ export function Navbar() {
               onClick={() => setMenuOpen((open) => !open)}
               aria-expanded={menuOpen}
               aria-controls="mobile-menu"
-              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-label={menuOpen ? t.nav.closeMenu : t.nav.openMenu}
             >
               {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
@@ -223,12 +226,12 @@ export function Navbar() {
                   ...links,
                   ...(user
                     ? [
-                        { href: "/dashboard", label: "Dashboard" },
-                        { href: "/saved", label: "Saved listings" },
-                        { href: "/account/profile", label: "Edit profile" },
-                        { href: "/account/api-keys", label: "API keys" },
+                        { href: "/dashboard", label: t.nav.dashboard },
+                        { href: "/saved", label: t.nav.savedListings },
+                        { href: "/account/profile", label: t.nav.editProfile },
+                        { href: "/account/api-keys", label: t.nav.apiKeys },
                       ]
-                    : [{ href: "/sign-in", label: "Sign in" }]),
+                    : [{ href: "/sign-in", label: t.nav.signIn }]),
                 ].map((link) => (
                   <motion.li
                     key={link.href}
@@ -250,18 +253,21 @@ export function Navbar() {
                   {user ? (
                     <>
                       {user.email && (
-                        <p className="mb-2 truncate px-4 text-sm text-muted-foreground">Signed in as {user.email}</p>
+                        <p className="mb-2 truncate px-4 text-sm text-muted-foreground">{fmt(t.nav.signedInAsEmail, { email: user.email })}</p>
                       )}
                       <Button variant="outline" className="w-full" onClick={handleSignOut}>
                         <LogOut className="h-4 w-4" />
-                        Log out
+                        {t.nav.logOut}
                       </Button>
                     </>
                   ) : (
                     <Button asChild className="w-full">
-                      <Link href="/sell" onClick={() => setMenuOpen(false)}>List hardware</Link>
+                      <Link href="/sell" onClick={() => setMenuOpen(false)}>{t.nav.listHardware}</Link>
                     </Button>
                   )}
+                </motion.li>
+                <motion.li variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }} className="mt-2 flex justify-center">
+                  <LanguageSwitcher />
                 </motion.li>
               </motion.ul>
             </motion.div>

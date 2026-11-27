@@ -1,6 +1,9 @@
 'use client';
 
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
+import type { Messages } from "@/i18n/messages";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,11 +17,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/layout/PageHeader";
 
-const requestSchema = z.object({
-  title: z.string().min(5, "Give your request a short title"),
+const makeRequestSchema = (m: Messages["requestForm"]) => z.object({
+  title: z.string().min(5, m.titleRequired),
   category: z.nativeEnum(ListingCategory),
-  requestedModel: z.string().min(3, "Model requirement is required"),
-  quantity: z.coerce.number().min(1, "Quantity must be at least 1"),
+  requestedModel: z.string().min(3, m.modelRequired),
+  quantity: z.coerce.number().min(1, m.quantityMin),
   minVramGb: z.coerce.number().optional().or(z.literal("").transform(() => undefined)),
   maxBudgetPerUnit: z.coerce.number().optional().or(z.literal("").transform(() => undefined)),
   conditionPreference: z.nativeEnum(ListingCondition),
@@ -27,10 +30,13 @@ const requestSchema = z.object({
   description: z.string().optional(),
 });
 
-type RequestFormValues = z.infer<typeof requestSchema>;
+type RequestFormValues = z.infer<ReturnType<typeof makeRequestSchema>>;
 
 export function RequestFormClient() {
   const router = useRouter();
+  const { t } = useI18n();
+  const m = t.requestForm;
+  const [requestSchema] = useState(() => makeRequestSchema(m));
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const createRequest = useCreateRequest();
@@ -53,15 +59,15 @@ export function RequestFormClient() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetRequestsQueryKey() });
           toast({
-            title: "Request Submitted",
-            description: "Your hardware request is now open. We'll reach out if we find a match.",
+            title: m.submittedTitle,
+            description: m.submittedBody,
           });
           router.push("/dashboard");
         },
         onError: () => {
           toast({
-            title: "Error",
-            description: "Failed to submit request. Please try again.",
+            title: m.errorTitle,
+            description: m.submitFailed,
             variant: "destructive",
           });
         },
@@ -72,24 +78,24 @@ export function RequestFormClient() {
   return (
     <>
       <PageHeader
-        eyebrow="Request hardware"
-        title={<>Tell us what <em>you need.</em></>}
-        description="Can't find it on the marketplace? Share the model, quantity, budget and destination, and we'll work our supply network for you."
+        eyebrow={m.eyebrow}
+        title={<>{m.titleStart} <em>{m.titleEm}</em></>}
+        description={m.description}
       />
       <div className="container mx-auto max-w-3xl px-4 py-12">
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <Card className="overflow-hidden border-border mb-8">
           <CardHeader className="bg-muted/30 border-b border-border pb-4">
-            <CardTitle>Requirements</CardTitle>
-            <CardDescription>Be specific to attract the right suppliers.</CardDescription>
+            <CardTitle>{m.requirements}</CardTitle>
+            <CardDescription>{m.requirementsDescription}</CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
 
             <div className="space-y-2">
-              <Label htmlFor="title" className="font-semibold">Request Title <span className="text-destructive">*</span></Label>
+              <Label htmlFor="title" className="font-semibold">{m.requestTitle} <span className="text-destructive">*</span></Label>
               <Input
                 id="title"
-                placeholder="e.g. Need 50x RTX 4090 for training cluster"
+                placeholder={m.requestTitlePlaceholder}
                 {...form.register("title")}
               />
               {form.formState.errors.title && (
@@ -98,10 +104,10 @@ export function RequestFormClient() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="requestedModel" className="font-semibold">Target Model / Specs <span className="text-destructive">*</span></Label>
+              <Label htmlFor="requestedModel" className="font-semibold">{m.targetModel} <span className="text-destructive">*</span></Label>
               <Input
                 id="requestedModel"
-                placeholder="e.g. 8x NVIDIA H100 80GB SXM5, or equivalent"
+                placeholder={m.targetModelPlaceholder}
                 {...form.register("requestedModel")}
               />
               {form.formState.errors.requestedModel && (
@@ -111,25 +117,25 @@ export function RequestFormClient() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="category" className="font-semibold">Category <span className="text-destructive">*</span></Label>
+                <Label htmlFor="category" className="font-semibold">{m.category} <span className="text-destructive">*</span></Label>
                 <Select
                   value={category}
                   onValueChange={(val) => form.setValue("category", val as ListingCategory)}
                 >
                   <SelectTrigger id="category">
-                    <SelectValue placeholder="Select category" />
+                    <SelectValue placeholder={t.categoryOptions.placeholder} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ListingCategory.GPU}>GPU</SelectItem>
-                    <SelectItem value={ListingCategory.SERVER}>Server / Rack</SelectItem>
-                    <SelectItem value={ListingCategory.MEMORY}>Memory / Storage</SelectItem>
-                    <SelectItem value={ListingCategory.OTHER}>Other Components</SelectItem>
+                    <SelectItem value={ListingCategory.GPU}>{t.categoryOptions.GPU}</SelectItem>
+                    <SelectItem value={ListingCategory.SERVER}>{t.categoryOptions.SERVER}</SelectItem>
+                    <SelectItem value={ListingCategory.MEMORY}>{t.categoryOptions.MEMORY}</SelectItem>
+                    <SelectItem value={ListingCategory.OTHER}>{t.categoryOptions.OTHER}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="quantity" className="font-semibold">Quantity Needed <span className="text-destructive">*</span></Label>
+                <Label htmlFor="quantity" className="font-semibold">{m.quantity} <span className="text-destructive">*</span></Label>
                 <Input
                   id="quantity"
                   type="number"
@@ -141,29 +147,29 @@ export function RequestFormClient() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="minVramGb">Minimum VRAM (GB) <span className="text-muted-foreground font-normal text-xs ml-1">(Optional)</span></Label>
+                <Label htmlFor="minVramGb">{m.minVram} <span className="text-muted-foreground font-normal text-xs ml-1">{t.common.optional}</span></Label>
                 <Input
                   id="minVramGb"
                   type="number"
-                  placeholder="e.g. 24"
+                  placeholder={m.minVramPlaceholder}
                   {...form.register("minVramGb")}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="conditionPreference" className="font-semibold">Condition Preference <span className="text-destructive">*</span></Label>
+                <Label htmlFor="conditionPreference" className="font-semibold">{m.conditionPreference} <span className="text-destructive">*</span></Label>
                 <Select
                   value={conditionPreference}
                   onValueChange={(val) => form.setValue("conditionPreference", val as ListingCondition)}
                 >
                   <SelectTrigger id="conditionPreference">
-                    <SelectValue placeholder="Select preference" />
+                    <SelectValue placeholder={m.conditionPlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ListingCondition.UNKNOWN}>No Preference</SelectItem>
-                    <SelectItem value={ListingCondition.NEW}>New Only</SelectItem>
-                    <SelectItem value={ListingCondition.USED}>Used Acceptable</SelectItem>
-                    <SelectItem value={ListingCondition.REFURBISHED}>Refurbished Acceptable</SelectItem>
+                    <SelectItem value={ListingCondition.UNKNOWN}>{m.noPreference}</SelectItem>
+                    <SelectItem value={ListingCondition.NEW}>{m.newOnly}</SelectItem>
+                    <SelectItem value={ListingCondition.USED}>{m.usedOk}</SelectItem>
+                    <SelectItem value={ListingCondition.REFURBISHED}>{m.refurbishedOk}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -174,13 +180,13 @@ export function RequestFormClient() {
 
         <Card className="overflow-hidden border-border mb-8">
           <CardHeader className="bg-muted/30 border-b border-border pb-4">
-            <CardTitle>Logistics & Budget</CardTitle>
+            <CardTitle>{m.logistics}</CardTitle>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="maxBudgetPerUnit">Target Budget per Unit (USD) <span className="text-muted-foreground font-normal text-xs ml-1">(Optional)</span></Label>
+                <Label htmlFor="maxBudgetPerUnit">{m.budget} <span className="text-muted-foreground font-normal text-xs ml-1">{t.common.optional}</span></Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                   <Input
@@ -194,30 +200,30 @@ export function RequestFormClient() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="destinationCity">Destination City <span className="text-muted-foreground font-normal text-xs ml-1">(Optional)</span></Label>
+                <Label htmlFor="destinationCity">{m.destinationCity} <span className="text-muted-foreground font-normal text-xs ml-1">{t.common.optional}</span></Label>
                 <Input
                   id="destinationCity"
-                  placeholder="e.g. Bangalore"
+                  placeholder={m.destinationCityPlaceholder}
                   {...form.register("destinationCity")}
                 />
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="destinationCountry">Destination Country <span className="text-muted-foreground font-normal text-xs ml-1">(Optional)</span></Label>
+                <Label htmlFor="destinationCountry">{m.destinationCountry} <span className="text-muted-foreground font-normal text-xs ml-1">{t.common.optional}</span></Label>
                 <Input
                   id="destinationCountry"
-                  placeholder="e.g. India"
+                  placeholder={m.destinationCountryPlaceholder}
                   {...form.register("destinationCountry")}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Additional Notes</Label>
+              <Label htmlFor="description">{m.notes}</Label>
               <textarea
                 id="description"
                 className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
-                placeholder="Specific networking requirements, timeline, alternative models considered..."
+                placeholder={m.notesPlaceholder}
                 {...form.register("description")}
               />
             </div>
@@ -227,7 +233,7 @@ export function RequestFormClient() {
 
         <div className="flex justify-end gap-4">
           <Button type="button" variant="outline" onClick={() => router.push("/dashboard")}>
-            Cancel
+            {t.common.cancel}
           </Button>
           <Button
             variant="accent"
@@ -236,7 +242,7 @@ export function RequestFormClient() {
             className="font-bold px-8"
             disabled={createRequest.isPending}
           >
-            {createRequest.isPending ? "Submitting..." : "Submit Request"}
+            {createRequest.isPending ? m.submitting : m.submit}
           </Button>
         </div>
       </form>

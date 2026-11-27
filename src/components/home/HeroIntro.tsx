@@ -2,8 +2,8 @@
 
 import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
 import { ArrowRight, Search } from "lucide-react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -17,16 +17,17 @@ const GpuHeroScene = dynamic(
 
 const quickFilters = ["RTX 3090", "RTX 4090", "RTX 5090", "A6000", "A100", "H100"];
 
-const actions = [
-  { href: "/gpus", label: "Find hardware" },
-  { href: "/sell", label: "Sell your hardware" },
-  { href: "/request", label: "Request hardware" },
-];
-
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 export function HeroIntro() {
   const router = useRouter();
+  const { t } = useI18n();
+  const actions = [
+    { href: "/gpus", label: t.hero.findHardware },
+    { href: "/sell", label: t.hero.sellHardware },
+    { href: "/request", label: t.hero.requestHardware },
+  ];
+  const titleWords = t.hero.titleWords;
   const [searchQuery, setSearchQuery] = useState("");
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const reducedMotion = useReducedMotion() ?? false;
@@ -70,7 +71,7 @@ export function HeroIntro() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1.6, ease: EASE }}
           >
-            <GpuHeroScene progress={scrollYProgress} reducedMotion={reducedMotion} />
+            <GpuHeroScene progress={scrollYProgress} reducedMotion={reducedMotion} labels={t.hero.sceneLabels} />
           </motion.div>
         )}
 
@@ -84,16 +85,16 @@ export function HeroIntro() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
               </span>
-              GPUDealer: the used AI hardware marketplace
+              {t.hero.badge}
             </span>
           </motion.div>
 
           <h1 className="mb-6 max-w-[11ch] font-display text-[clamp(3.5rem,9vw,8.5rem)] leading-[0.92] tracking-[-0.02em]">
             <SplitWords
-              text="Find. Sell. Request."
+              text={titleWords.join(" ")}
               delay={0.15}
               wordClassName={(word) =>
-                word === "Request."
+                word === titleWords[titleWords.length - 1]
                   ? "italic bg-linear-to-r from-[#ff3b4e] via-[#ff6a3d] to-[#ffae4a] bg-clip-text text-transparent pr-[0.06em]"
                   : undefined
               }
@@ -101,7 +102,7 @@ export function HeroIntro() {
           </h1>
 
           <motion.p {...fadeUp(0.5)} className="mb-10 max-w-md text-lg leading-relaxed text-muted-foreground md:text-xl">
-            Used GPUs, AI servers, memory and compute hardware.
+            {t.hero.subtitle}
           </motion.p>
 
           <motion.div {...fadeUp(0.65)} className="w-full max-w-xl">
@@ -111,22 +112,22 @@ export function HeroIntro() {
               className="group/search flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.06] p-1.5 pl-5 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)] backdrop-blur-xl transition-colors focus-within:border-white/30 focus-within:bg-white/[0.09]"
             >
               <Search className="h-5 w-5 shrink-0 text-muted-foreground transition-colors group-focus-within/search:text-foreground" aria-hidden="true" />
-              <label htmlFor="hero-search" className="sr-only">Search hardware</label>
+              <label htmlFor="hero-search" className="sr-only">{t.hero.searchLabel}</label>
               <input
                 id="hero-search"
                 type="search"
-                placeholder="Search GPUs, servers, memory..."
+                placeholder={t.hero.searchPlaceholder}
                 className="h-11 min-w-0 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <Button type="submit" variant="accent" className="h-11 px-6">
-                Search
+                {t.hero.search}
               </Button>
             </form>
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
-              <span className="mr-1 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Popular</span>
+              <span className="mr-1 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{t.hero.popular}</span>
               {quickFilters.map((filter) => (
                 <Link
                   key={filter}
@@ -139,7 +140,7 @@ export function HeroIntro() {
             </div>
           </motion.div>
 
-          <motion.nav {...fadeUp(0.8)} aria-label="Primary actions" className="mt-10 flex flex-wrap gap-x-7 gap-y-3">
+          <motion.nav {...fadeUp(0.8)} aria-label={t.hero.actionsLabel} className="mt-10 flex flex-wrap gap-x-7 gap-y-3">
             {actions.map((action) => (
               <Link
                 key={action.href}
@@ -166,7 +167,7 @@ export function HeroIntro() {
             style={{ opacity: hintOpacity }}
             className="pointer-events-none absolute bottom-8 left-1/2 flex -translate-x-1/2 flex-col items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground"
           >
-            Scroll to inspect
+            {t.hero.scrollHint}
             <span className="relative h-10 w-px overflow-hidden bg-white/10">
               <motion.span
                 className="absolute inset-x-0 top-0 h-1/2 bg-foreground/70"

@@ -1,46 +1,51 @@
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { getI18n } from "@/i18n/server";
+import { fmt } from "@/i18n/format";
+import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { ArrowUpRight } from "lucide-react";
-import { CITY_PAGES } from "@/lib/cities";
+import { CITY_PAGES, localizeCity } from "@/lib/cities";
 import { ContactDialog } from "@/components/contact/ContactDialog";
 
-const columns = [
-  {
-    title: "Find",
-    links: [
-      { href: "/gpus?category=GPU", label: "GPUs" },
-      { href: "/gpus?category=SERVER", label: "GPU servers" },
-      { href: "/gpus?category=MEMORY", label: "Memory" },
-      { href: "/gpus", label: "All hardware" },
-      { href: "/compute/gpu-cloud", label: "GPU cloud pricing" },
-      { href: "/compute/inference", label: "Inference pricing" },
-    ],
-  },
-  {
-    title: "By city",
-    links: [
-      ...CITY_PAGES.map((city) => ({ href: `/${city.slug}`, label: city.name })),
-      { href: "/gpus-by-city", label: "All cities" },
-    ],
-  },
-  {
-    title: "Sell & Request",
-    links: [
-      { href: "/sell", label: "Sell your hardware" },
-      { href: "/request", label: "Request hardware" },
-      { href: "/dashboard", label: "Manage listings" },
-    ],
-  },
-  {
-    title: "Account",
-    links: [
-      { href: "/sign-in", label: "Sign in" },
-      { href: "/sign-up", label: "Create account" },
-      { href: "/dashboard", label: "Dashboard" },
-    ],
-  },
-];
+export async function Footer() {
+  const { t } = await getI18n();
+  const f = t.footer;
+  const columns = [
+    {
+      title: f.find,
+      links: [
+        { href: "/gpus?category=GPU", label: f.gpus },
+        { href: "/gpus?category=SERVER", label: f.gpuServers },
+        { href: "/gpus?category=MEMORY", label: f.memory },
+        { href: "/gpus", label: f.allHardware },
+        { href: "/compute/gpu-cloud", label: f.gpuCloudPricing },
+        { href: "/compute/inference", label: f.inferencePricing },
+      ],
+    },
+    {
+      title: f.byCity,
+      links: [
+        ...CITY_PAGES.map((city) => ({ href: `/${city.slug}`, label: localizeCity(city, t).name })),
+        { href: "/gpus-by-city", label: f.allCities },
+      ],
+    },
+    {
+      title: f.sellAndRequest,
+      links: [
+        { href: "/sell", label: f.sellYourHardware },
+        { href: "/request", label: f.requestHardware },
+        { href: "/dashboard", label: f.manageListings },
+      ],
+    },
+    {
+      title: f.account,
+      links: [
+        { href: "/sign-in", label: f.signIn },
+        { href: "/sign-up", label: f.createAccount },
+        { href: "/dashboard", label: f.dashboard },
+      ],
+    },
+  ];
 
-export function Footer() {
   return (
     <footer data-nav="dark" className="dark relative mt-auto overflow-hidden bg-background text-foreground">
       <div className="bg-noise pointer-events-none absolute inset-0" />
@@ -49,13 +54,13 @@ export function Footer() {
           <div className="md:col-span-4">
             <img src="/gpu-dealer-logo-white.svg" alt="GPUDealer" className="mb-6 h-7 w-auto" />
             <p className="max-w-sm font-display text-3xl leading-tight text-foreground">
-              Used GPUs, AI servers, memory and compute hardware.
+              {f.tagline}
             </p>
             <Link
               href="/request"
               className="group mt-8 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              Can&apos;t find it? Tell us what you need
+              {f.cantFind}
               <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </Link>
             <ContactDialog>
@@ -63,7 +68,7 @@ export function Footer() {
                 type="button"
                 className="group mt-3 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
               >
-                Contact us
+                {f.contactUs}
                 <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
               </button>
             </ContactDialog>
@@ -95,12 +100,13 @@ export function Footer() {
 
         <div className="mt-6 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
           <div className="flex flex-col items-center gap-3 md:flex-row md:gap-6">
-            <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} GPUDealer. All rights reserved.</p>
+            <p className="text-xs text-muted-foreground">{fmt(f.rights, { year: new Date().getFullYear() })}</p>
             <Link href="/return-policy" className="text-xs text-muted-foreground transition-colors hover:text-foreground">
-              Return policy
+              {f.returnPolicy}
             </Link>
+            <LanguageSwitcher />
           </div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Find. Sell. Request.</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{f.motto}</p>
         </div>
       </div>
     </footer>

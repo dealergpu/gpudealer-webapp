@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useCommentErrorHandler } from "./use-comment-error-handler";
+import { useI18n } from "@/i18n/client";
 
 export function CommentForm({
   listingId,
@@ -15,7 +16,7 @@ export function CommentForm({
   initialBody = "",
   placeholder,
   autoFocus = false,
-  submitLabel = "Post",
+  submitLabel,
   onPosted,
   onCancel,
   onParentMissing,
@@ -32,6 +33,7 @@ export function CommentForm({
   /** The thread being replied to was deleted in the meantime. */
   onParentMissing?: () => void;
 }) {
+  const { t } = useI18n();
   const [body, setBody] = useState(initialBody);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const createComment = useCreateListingComment();
@@ -56,7 +58,7 @@ export function CommentForm({
           if (error.status === 400) {
             const fields = error.data?.error.fields as Record<string, unknown> | undefined;
             const message = fields?.body ?? error.data?.error.message;
-            setFieldError(typeof message === "string" ? message : "Please check your comment and try again.");
+            setFieldError(typeof message === "string" ? message : t.comments.checkComment);
             return;
           }
           handleError(error, { onNotFound: parentCommentId ? onParentMissing : undefined });
@@ -109,12 +111,12 @@ export function CommentForm({
         <div className="flex gap-2">
           {onCancel && (
             <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={createComment.isPending}>
-              Cancel
+              {t.common.cancel}
             </Button>
           )}
           <Button type="submit" variant="accent" size="sm" disabled={!canSubmit}>
             {createComment.isPending && <Spinner className="mr-1.5" />}
-            {submitLabel}
+            {submitLabel ?? t.comments.post}
           </Button>
         </div>
       </div>

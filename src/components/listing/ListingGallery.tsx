@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { ListingImage } from "@/lib/api";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
 
 type ListingGalleryProps = {
   images: ListingImage[];
@@ -10,6 +12,7 @@ type ListingGalleryProps = {
 
 export function ListingGallery({ images, title }: ListingGalleryProps) {
   const [selected, setSelected] = useState(0);
+  const { t } = useI18n();
 
   if (images.length === 0) return null;
 
@@ -32,7 +35,7 @@ export function ListingGallery({ images, title }: ListingGalleryProps) {
               key={image.id ?? image.url}
               type="button"
               onClick={() => setSelected(index)}
-              aria-label={`Show photo ${index + 1} of ${images.length}`}
+              aria-label={fmt(t.listingDetail.showPhoto, { n: index + 1, total: images.length })}
               aria-current={index === selected}
               className={`h-16 w-20 shrink-0 rounded border overflow-hidden bg-muted/40 ${
                 index === selected ? "border-primary ring-2 ring-primary/30" : "border-border opacity-70 hover:opacity-100"

@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useId, useState, type ReactNode } from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
+import type { Messages } from "@/i18n/messages";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2 } from "lucide-react";
 import { useCreateComputeRequest, ComputeWorkloadType, type ApiErrorResponse, type ComputeRequestInput } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { WORKLOAD_LABELS } from "@/lib/compute";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,34 +18,37 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-const optional = (max: number) => z.string().trim().max(max, `Keep it under ${max} characters`);
-const wholeNumber = (message: string) =>
-  z.string().trim().refine((v) => v === "" || /^\d{1,15}$/.test(v.replace(/,/g, "")), message);
-
 // Mirrors the API's rules for instant feedback; the API still validates.
-const requestSchema = z.object({
-  workloadType: z.nativeEnum(ComputeWorkloadType, { errorMap: () => ({ message: "Choose a workload" }) }),
-  contactName: z.string().trim().min(1, "Name is required").max(100, "Keep it under 100 characters"),
-  email: z.string().trim().min(1, "Email is required").email("Enter a valid email address").max(255),
+const makeRequestSchema = (t: Messages) => {
+  const r = t.computeRequest;
+  const v = t.validation;
+  const optional = (max: number) => z.string().trim().max(max, fmt(v.maxChars, { max }));
+  const wholeNumber = (message: string) =>
+    z.string().trim().refine((value) => value === "" || /^\d{1,15}$/.test(value.replace(/,/g, "")), message);
+  return z.object({
+  workloadType: z.nativeEnum(ComputeWorkloadType, { errorMap: () => ({ message: r.chooseWorkload }) }),
+  contactName: z.string().trim().min(1, r.nameRequired).max(100, fmt(v.maxChars, { max: 100 })),
+  email: z.string().trim().min(1, v.emailRequired).email(v.emailInvalid).max(255),
   companyName: optional(255),
   gpuModel: optional(100),
   gpuCount: z
     .string()
     .trim()
-    .refine((v) => v === "" || (/^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 100_000), "Enter a number from 1 to 100,000"),
+    .refine((value) => value === "" || (/^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 100_000), r.gpuCountRange),
   modelNames: optional(2000),
-  monthlyInputTokens: wholeNumber("Enter a whole number of tokens"),
-  monthlyOutputTokens: wholeNumber("Enter a whole number of tokens"),
+  monthlyInputTokens: wholeNumber(r.wholeTokens),
+  monthlyOutputTokens: wholeNumber(r.wholeTokens),
   monthlyBudget: z
     .string()
     .trim()
-    .refine((v) => v === "" || /^\d{1,14}(\.\d{1,2})?$/.test(v.replace(/,/g, "")), "Enter an amount, e.g. 25000"),
+    .refine((value) => value === "" || /^\d{1,14}(\.\d{1,2})?$/.test(value.replace(/,/g, "")), r.amountInvalid),
   region: optional(100),
   country: optional(100),
   requirements: optional(5000),
-});
+  });
+};
 
-type RequestValues = z.infer<typeof requestSchema>;
+type RequestValues = z.infer<ReturnType<typeof makeRequestSchema>>;
 type FieldName = keyof RequestValues;
 
 const EMPTY: RequestValues = {
@@ -91,6 +96,9 @@ function toInput(values: RequestValues): ComputeRequestInput {
  */
 export function ComputeRequestForm({ defaults }: { defaults: { gpuModel?: string; modelName?: string } }) {
   const id = useId();
+  const { t } = useI18n();
+  const r = t.computeRequest;
+  const [requestSchema] = useState(() => makeRequestSchema(t));
   const { user } = useAuth();
   const createRequest = useCreateComputeRequest();
   const [formError, setFormError] = useState<string | null>(null);
@@ -116,7 +124,7 @@ export function ComputeRequestForm({ defaults }: { defaults: { gpuModel?: string
         onError: (error) => {
           const body = (error.data as ApiErrorResponse | null)?.error;
           if (error.status === 429) {
-            setFormError("You've sent a few requests in a row. Please wait a minute and try again.");
+            setFormError(r.rateLimited);
             return;
           }
           if (error.status === 400) {
@@ -128,10 +136,10 @@ export function ComputeRequestForm({ defaults }: { defaults: { gpuModel?: string
                 matched = true;
               }
             }
-            if (!matched) setFormError(body?.message ?? "Please check the form and try again.");
+            if (!matched) setFormError(body?.message ?? t.contact.checkForm);
             return;
           }
-          setFormError("We couldn't send your request. Please try again in a moment.");
+          setFormError(r.sendFailed);
         },
       },
     );
@@ -141,11 +149,11 @@ export function ComputeRequestForm({ defaults }: { defaults: { gpuModel?: string
     return (
       <div role="status" className="flex flex-col items-center rounded-3xl border border-border bg-card px-6 py-12 text-center">
         <CheckCircle2 className="h-10 w-10 text-emerald-600" strokeWidth={1.5} />
-        <p className="mt-4 font-display text-3xl">Request received.</p>
-        <p className="mt-2 max-w-sm text-muted-foreground">Thanks — we&apos;ll review it and get back to you by email.</p>
+        <p className="mt-4 font-display text-3xl">{r.receivedTitle}</p>
+        <p className="mt-2 max-w-sm text-muted-foreground">{r.receivedBody}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Button asChild variant="outline"><Link href="/compute/gpu-cloud">GPU cloud prices</Link></Button>
-          <Button asChild variant="outline"><Link href="/compute/inference">Inference prices</Link></Button>
+          <Button asChild variant="outline"><Link href="/compute/gpu-cloud">{r.gpuCloudPrices}</Link></Button>
+          <Button asChild variant="outline"><Link href="/compute/inference">{r.inferencePrices}</Link></Button>
         </div>
       </div>
     );
@@ -155,7 +163,7 @@ export function ComputeRequestForm({ defaults }: { defaults: { gpuModel?: string
     <div className="space-y-2">
       <Label htmlFor={`${id}-${name}`} className={opts.required ? "font-semibold" : undefined}>
         {label}{" "}
-        {opts.required ? <span className="text-destructive">*</span> : <span className="font-normal text-muted-foreground">(optional)</span>}
+        {opts.required ? <span className="text-destructive">*</span> : <span className="font-normal text-muted-foreground">{t.common.optional}</span>}
       </Label>
       {input}
       {opts.hint && !errors[name] && <p className="text-xs text-muted-foreground">{opts.hint}</p>}
@@ -173,10 +181,10 @@ export function ComputeRequestForm({ defaults }: { defaults: { gpuModel?: string
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="grid gap-8 rounded-3xl border border-border bg-card p-6 md:p-8">
       <fieldset className="grid gap-5">
-        <legend className="mb-4 text-sm font-semibold">What do you need?</legend>
+        <legend className="mb-4 text-sm font-semibold">{r.whatNeed}</legend>
         {field(
           "workloadType",
-          "Workload",
+          r.workload,
           <Select
             value={workloadType ?? ""}
             onValueChange={(value) => form.setValue("workloadType", value as ComputeWorkloadType, { shouldValidate: true })}
@@ -186,10 +194,10 @@ export function ComputeRequestForm({ defaults }: { defaults: { gpuModel?: string
               aria-invalid={errors.workloadType ? true : undefined}
               aria-describedby={errors.workloadType ? `${id}-workloadType-error` : undefined}
             >
-              <SelectValue placeholder="Choose a workload" />
+              <SelectValue placeholder={r.chooseWorkload} />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(WORKLOAD_LABELS).map(([value, label]) => (
+              {Object.entries(t.computeLabels.workloads).map(([value, label]) => (
                 <SelectItem key={value} value={value}>{label}</SelectItem>
               ))}
             </SelectContent>
@@ -197,35 +205,35 @@ export function ComputeRequestForm({ defaults }: { defaults: { gpuModel?: string
           { required: true },
         )}
         <div className="grid gap-5 sm:grid-cols-2">
-          {field("gpuModel", "GPU model", <Input placeholder="e.g. H100" maxLength={100} {...inputProps("gpuModel")} />)}
-          {field("gpuCount", "Number of GPUs", <Input inputMode="numeric" placeholder="e.g. 8" {...inputProps("gpuCount")} />)}
+          {field("gpuModel", r.gpuModel, <Input placeholder={r.gpuModelPlaceholder} maxLength={100} {...inputProps("gpuModel")} />)}
+          {field("gpuCount", r.gpuCount, <Input inputMode="numeric" placeholder={r.gpuCountPlaceholder} {...inputProps("gpuCount")} />)}
         </div>
         {field(
           "modelNames",
-          "Models",
-          <Input placeholder="e.g. Llama 3.3 70B, Qwen 2.5 72B" {...inputProps("modelNames")} />,
-          { hint: "Separate several models with commas." },
+          r.models,
+          <Input placeholder={r.modelsPlaceholder} {...inputProps("modelNames")} />,
+          { hint: r.modelsHint },
         )}
         <div className="grid gap-5 sm:grid-cols-2">
-          {field("monthlyInputTokens", "Input tokens / month", <Input inputMode="numeric" placeholder="e.g. 5000000000" {...inputProps("monthlyInputTokens")} />)}
-          {field("monthlyOutputTokens", "Output tokens / month", <Input inputMode="numeric" placeholder="e.g. 1000000000" {...inputProps("monthlyOutputTokens")} />)}
-          {field("monthlyBudget", "Monthly budget (USD)", <Input inputMode="decimal" placeholder="e.g. 25000" {...inputProps("monthlyBudget")} />)}
-          {field("region", "Region", <Input placeholder="e.g. US, EU" maxLength={100} {...inputProps("region")} />)}
+          {field("monthlyInputTokens", r.inputTokens, <Input inputMode="numeric" placeholder="e.g. 5000000000" {...inputProps("monthlyInputTokens")} />)}
+          {field("monthlyOutputTokens", r.outputTokens, <Input inputMode="numeric" placeholder="e.g. 1000000000" {...inputProps("monthlyOutputTokens")} />)}
+          {field("monthlyBudget", r.budget, <Input inputMode="decimal" placeholder="e.g. 25000" {...inputProps("monthlyBudget")} />)}
+          {field("region", r.region, <Input placeholder={r.regionPlaceholder} maxLength={100} {...inputProps("region")} />)}
         </div>
         {field(
           "requirements",
-          "Requirements",
-          <Textarea rows={4} placeholder="Latency, SLA, contract length, compliance…" maxLength={5000} {...inputProps("requirements")} />,
+          r.requirements,
+          <Textarea rows={4} placeholder={r.requirementsPlaceholder} maxLength={5000} {...inputProps("requirements")} />,
         )}
       </fieldset>
 
       <fieldset className="grid gap-5">
-        <legend className="mb-4 text-sm font-semibold">How do we reach you?</legend>
+        <legend className="mb-4 text-sm font-semibold">{r.reachYou}</legend>
         <div className="grid gap-5 sm:grid-cols-2">
-          {field("contactName", "Name", <Input autoComplete="name" maxLength={100} {...inputProps("contactName")} />, { required: true })}
-          {field("email", "Email", <Input type="email" autoComplete="email" placeholder="you@company.com" {...inputProps("email")} />, { required: true })}
-          {field("companyName", "Company", <Input autoComplete="organization" maxLength={255} {...inputProps("companyName")} />)}
-          {field("country", "Country", <Input autoComplete="country-name" maxLength={100} {...inputProps("country")} />)}
+          {field("contactName", r.name, <Input autoComplete="name" maxLength={100} {...inputProps("contactName")} />, { required: true })}
+          {field("email", r.email, <Input type="email" autoComplete="email" placeholder="you@company.com" {...inputProps("email")} />, { required: true })}
+          {field("companyName", r.company, <Input autoComplete="organization" maxLength={255} {...inputProps("companyName")} />)}
+          {field("country", r.country, <Input autoComplete="country-name" maxLength={100} {...inputProps("country")} />)}
         </div>
       </fieldset>
 
@@ -237,9 +245,9 @@ export function ComputeRequestForm({ defaults }: { defaults: { gpuModel?: string
 
       <div className={cn("flex flex-wrap items-center gap-4")}>
         <Button type="submit" size="lg" disabled={createRequest.isPending}>
-          {createRequest.isPending ? "Sending..." : "Send request"}
+          {createRequest.isPending ? r.sending : r.send}
         </Button>
-        <p className="text-xs text-muted-foreground">We only use your details to reply about this request.</p>
+        <p className="text-xs text-muted-foreground">{r.privacy}</p>
       </div>
     </form>
   );

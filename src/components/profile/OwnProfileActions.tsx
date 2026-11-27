@@ -1,6 +1,7 @@
 'use client';
 
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
 import { Pencil } from "lucide-react";
 import { useGetMyProfile } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
 // enforced by the API, which only ever updates the caller's own account.
 export function OwnProfileActions({ username }: { username: string }) {
   const { user } = useAuth();
+  const { t } = useI18n();
   const { data: profile } = useGetMyProfile({ query: { enabled: !!user } });
 
   if (!user || profile?.data.username !== username) return null;
@@ -18,7 +20,7 @@ export function OwnProfileActions({ username }: { username: string }) {
   return (
     <Button asChild variant="outline">
       <Link href="/account/profile">
-        <Pencil className="mr-2 h-4 w-4" /> Edit profile
+        <Pencil className="mr-2 h-4 w-4" /> {t.profileActions.editProfile}
       </Link>
     </Button>
   );

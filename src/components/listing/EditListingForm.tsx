@@ -1,8 +1,9 @@
 'use client';
 
 import { useRef, useState, type ComponentProps, type ReactNode } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
+import type { Messages } from "@/i18n/messages";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,23 +36,24 @@ import { listingPath } from "@/lib/listing-path";
 
 // All inputs are held as strings and converted on save, so "cleared" is
 // simply "" and react-hook-form's dirty tracking works on raw input values.
-const optionalInt = z
-  .string()
-  .trim()
-  .refine((v) => v === "" || /^\d+$/.test(v), "Enter a whole number");
-
-const editSchema = z.object({
-  title: z.string().trim().min(5, "Title must be at least 5 characters"),
-  description: z.string().max(10000, "Description is too long"),
+const makeEditSchema = (t: Messages) => {
+  const e = t.editListing;
+  const optionalInt = z
+    .string()
+    .trim()
+    .refine((v) => v === "" || /^\d+$/.test(v), e.wholeNumber);
+  return z.object({
+  title: z.string().trim().min(5, t.sell.titleMin),
+  description: z.string().max(10000, e.descriptionTooLong),
   category: z.nativeEnum(ListingCategory),
   condition: z.nativeEnum(ListingCondition),
   manufacturer: z.string(),
   model: z.string(),
   gpuModel: z.string(),
   vramGb: optionalInt,
-  quantity: z.string().trim().refine((v) => /^\d+$/.test(v) && Number(v) >= 1, "Quantity must be at least 1"),
-  price: z.string().trim().refine((v) => v !== "" && Number(v) > 0, "Enter a price above 0"),
-  currency: z.string().trim().regex(/^[A-Za-z]{3}$/, "Use a 3-letter code, e.g. USD"),
+  quantity: z.string().trim().refine((v) => /^\d+$/.test(v) && Number(v) >= 1, t.sell.quantityMin),
+  price: z.string().trim().refine((v) => v !== "" && Number(v) > 0, e.priceAboveZero),
+  currency: z.string().trim().regex(/^[A-Za-z]{3}$/, e.currencyCode),
   locationCountry: z.string(),
   locationRegion: z.string(),
   locationCity: z.string(),
@@ -63,9 +65,10 @@ const editSchema = z.object({
   memoryCapacityGb: optionalInt,
   ecc: z.enum(["", "yes", "no"]),
   formFactor: z.string(),
-});
+  });
+};
 
-type EditValues = z.infer<typeof editSchema>;
+type EditValues = z.infer<ReturnType<typeof makeEditSchema>>;
 type FieldName = keyof EditValues;
 
 const TEXT_FIELDS = [
@@ -138,23 +141,25 @@ const photosSignature = (photos: PhotoItem[]) =>
   JSON.stringify(photos.map((p) => [p.url, p.altText.trim()]));
 
 /** `error.fields` values may be a message or a list of messages. */
-function fieldMessage(value: unknown): string {
+function fieldMessage(value: unknown, fallback: string): string {
   if (Array.isArray(value)) return value.map(String).join(" ");
-  return typeof value === "string" ? value : "Invalid value";
+  return typeof value === "string" ? value : fallback;
 }
 
 export function EditListingForm({ listingId }: { listingId: string }) {
   const listingQuery = useGetListing(listingId);
   const profileQuery = useGetMyProfile();
+  const { t } = useI18n();
+  const e = t.editListing;
 
   if (listingQuery.isLoading || profileQuery.isLoading) {
-    return <PageShell><p className="text-muted-foreground">Loading listing...</p></PageShell>;
+    return <PageShell><p className="text-muted-foreground">{e.loading}</p></PageShell>;
   }
 
   if (listingQuery.error?.status === 404) {
     return (
       <PageShell>
-        <Notice title="Listing not found" body="This listing doesn't exist or has been removed." />
+        <Notice title={e.notFoundTitle} body={e.notFoundBody} />
       </PageShell>
     );
   }
@@ -162,7 +167,7 @@ export function EditListingForm({ listingId }: { listingId: string }) {
   if (listingQuery.isError || profileQuery.isError || !listingQuery.data || !profileQuery.data) {
     return (
       <PageShell>
-        <Notice title="Couldn't load this listing" body="Something went wrong. Please refresh the page to try again." />
+        <Notice title={e.loadFailedTitle} body={e.loadFailedBody} />
       </PageShell>
     );
   }
@@ -171,7 +176,7 @@ export function EditListingForm({ listingId }: { listingId: string }) {
   if (listing.sellerId !== profileQuery.data.data.id) {
     return (
       <PageShell>
-        <Notice title="You can't edit this listing" body="Only the seller who created a listing can edit it." />
+        <Notice title={e.notOwnerTitle} body={e.notOwnerBody} />
       </PageShell>
     );
   }
@@ -182,6 +187,10 @@ export function EditListingForm({ listingId }: { listingId: string }) {
 
 function EditListingFields({ listing }: { listing: Listing }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const e = t.editListing;
+  const s = t.sell;
+  const [editSchema] = useState(() => makeEditSchema(t));
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -219,10 +228,10 @@ function EditListingFields({ listing }: { listing: Listing }) {
       if (imageMatch) {
         const index = Number(imageMatch[1]);
         setPhotos((prev) =>
-          prev.map((p, i) => (i === index ? { ...p, status: "error", error: fieldMessage(value) } : p)),
+          prev.map((p, i) => (i === index ? { ...p, status: "error", error: fieldMessage(value, e.invalidValue) } : p)),
         );
       } else if (key in editSchema.shape) {
-        form.setError(key as FieldName, { message: fieldMessage(value) });
+        form.setError(key as FieldName, { message: fieldMessage(value, e.invalidValue) });
       }
     }
     return true;
@@ -230,13 +239,13 @@ function EditListingFields({ listing }: { listing: Listing }) {
 
   const onSubmit = (values: EditValues) => {
     if (photosBusy) {
-      toast({ title: "Photos are still uploading", description: "Wait for uploads to finish, then save." });
+      toast({ title: e.photosUploading, description: e.photosUploadingBody });
       return;
     }
     if (photosFailed) {
       toast({
-        title: "Some photos failed to upload",
-        description: "Retry or remove them before saving.",
+        title: e.photosFailed,
+        description: e.photosFailedBody,
         variant: "destructive",
       });
       return;
@@ -250,7 +259,7 @@ function EditListingFields({ listing }: { listing: Listing }) {
       }));
     }
     if (Object.keys(body).length === 0) {
-      toast({ title: "No changes to save" });
+      toast({ title: e.noChanges });
       return;
     }
 
@@ -272,7 +281,7 @@ function EditListingFields({ listing }: { listing: Listing }) {
           }
           queryClient.invalidateQueries({ queryKey: getGetListingsQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetListingQueryKey(listing.id) });
-          toast({ title: "Listing updated", description: "Your changes have been saved." });
+          toast({ title: e.updated, description: e.updatedBody });
           // The slug can change when a draft's title is edited, so always
           // navigate with the one the API just returned.
           router.push(listingPath(response.data));
@@ -280,23 +289,23 @@ function EditListingFields({ listing }: { listing: Listing }) {
         },
         onError: (error) => {
           if (error.status === 401) {
-            toast({ title: "Session expired", description: "Please sign in again.", variant: "destructive" });
+            toast({ title: e.sessionExpired, description: e.signInAgain, variant: "destructive" });
             router.push("/sign-in");
             return;
           }
           if (error.status === 403) {
-            toast({ title: "You can't edit this listing", variant: "destructive" });
+            toast({ title: e.notOwnerTitle, variant: "destructive" });
             return;
           }
           if (error.status === 404) {
-            toast({ title: "Listing not found", description: "It may have been removed.", variant: "destructive" });
+            toast({ title: e.notFoundTitle, description: e.removed, variant: "destructive" });
             return;
           }
           if (error.status === 400 && applyServerErrors(error)) {
-            toast({ title: "Please fix the highlighted fields", variant: "destructive" });
+            toast({ title: e.fixFields, variant: "destructive" });
             return;
           }
-          toast({ title: "Couldn't save changes", description: "Please try again.", variant: "destructive" });
+          toast({ title: e.saveFailed, description: e.pleaseTryAgain, variant: "destructive" });
         },
       },
     );
@@ -318,91 +327,91 @@ function EditListingFields({ listing }: { listing: Listing }) {
 
   return (
     <PageShell
-      title="Edit Listing"
+      title={e.title}
       subtitle={listing.title}
     >
       <form onSubmit={(e) => form.handleSubmit(onSubmit)(e)} noValidate>
         <Card className="overflow-hidden border-border mb-6">
           <CardHeader className="bg-muted/30 border-b border-border pb-4">
-            <CardTitle>Basic Information</CardTitle>
-            <CardDescription>Essential details for your listing.</CardDescription>
+            <CardTitle>{s.basicInfo}</CardTitle>
+            <CardDescription>{s.basicInfoDescription}</CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
-            {field("title", "Listing Title", text("title"), true)}
+            {field("title", s.listingTitle, text("title"), true)}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {field("category", "Category", (
+              {field("category", s.category, (
                 <Select
                   value={category}
                   onValueChange={(val) => form.setValue("category", val as ListingCategory, { shouldDirty: true })}
                 >
                   <SelectTrigger id="category"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ListingCategory.GPU}>GPU</SelectItem>
-                    <SelectItem value={ListingCategory.SERVER}>Server / Rack</SelectItem>
-                    <SelectItem value={ListingCategory.MEMORY}>Memory / Storage</SelectItem>
-                    <SelectItem value={ListingCategory.OTHER}>Other Components</SelectItem>
+                    <SelectItem value={ListingCategory.GPU}>{t.categoryOptions.GPU}</SelectItem>
+                    <SelectItem value={ListingCategory.SERVER}>{t.categoryOptions.SERVER}</SelectItem>
+                    <SelectItem value={ListingCategory.MEMORY}>{t.categoryOptions.MEMORY}</SelectItem>
+                    <SelectItem value={ListingCategory.OTHER}>{t.categoryOptions.OTHER}</SelectItem>
                   </SelectContent>
                 </Select>
               ), true)}
 
-              {field("condition", "Condition", (
+              {field("condition", s.condition, (
                 <Select
                   value={condition}
                   onValueChange={(val) => form.setValue("condition", val as ListingCondition, { shouldDirty: true })}
                 >
                   <SelectTrigger id="condition"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ListingCondition.NEW}>New (Sealed)</SelectItem>
-                    <SelectItem value={ListingCondition.USED}>Used (Working)</SelectItem>
-                    <SelectItem value={ListingCondition.REFURBISHED}>Refurbished</SelectItem>
-                    <SelectItem value={ListingCondition.UNKNOWN}>Unknown</SelectItem>
+                    <SelectItem value={ListingCondition.NEW}>{s.conditionNew}</SelectItem>
+                    <SelectItem value={ListingCondition.USED}>{s.conditionUsed}</SelectItem>
+                    <SelectItem value={ListingCondition.REFURBISHED}>{s.conditionRefurbished}</SelectItem>
+                    <SelectItem value={ListingCondition.UNKNOWN}>{e.unknown}</SelectItem>
                   </SelectContent>
                 </Select>
               ), true)}
 
               <div className="grid grid-cols-[1fr_6rem] gap-3">
-                {field("price", "Price per Unit", text("price", "0.00", { inputMode: "decimal", className: "font-mono" }), true)}
-                {field("currency", "Currency", text("currency", "USD", { maxLength: 3, className: "font-mono uppercase" }), true)}
+                {field("price", e.pricePerUnit, text("price", "0.00", { inputMode: "decimal", className: "font-mono" }), true)}
+                {field("currency", e.currency, text("currency", "USD", { maxLength: 3, className: "font-mono uppercase" }), true)}
               </div>
 
-              {field("quantity", "Quantity Available", text("quantity", "1", { inputMode: "numeric" }), true)}
+              {field("quantity", s.quantity, text("quantity", "1", { inputMode: "numeric" }), true)}
             </div>
           </CardContent>
         </Card>
 
         <Card className="overflow-hidden border-border mb-6">
           <CardHeader className="bg-muted/30 border-b border-border pb-4">
-            <CardTitle>Technical Specs & Details</CardTitle>
-            <CardDescription>Detailed specs help buyers verify compatibility.</CardDescription>
+            <CardTitle>{s.specs}</CardTitle>
+            <CardDescription>{s.specsDescription}</CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {field("manufacturer", "Manufacturer", text("manufacturer", "e.g. NVIDIA, AMD, Supermicro"))}
-              {field("model", "Specific Model", text("model", "e.g. RTX 4090 Founders Edition"))}
+              {field("manufacturer", s.manufacturer, text("manufacturer", s.manufacturerPlaceholder))}
+              {field("model", s.model, text("model", s.modelPlaceholder))}
 
               {category === ListingCategory.GPU && (
                 <>
-                  {field("gpuModel", "GPU Model", text("gpuModel", "e.g. RTX 4090"))}
-                  {field("vramGb", "VRAM per GPU (GB)", text("vramGb", "e.g. 24", { inputMode: "numeric" }))}
+                  {field("gpuModel", s.gpuModel, text("gpuModel", s.gpuModelPlaceholder))}
+                  {field("vramGb", s.vram, text("vramGb", s.vramPlaceholder, { inputMode: "numeric" }))}
                 </>
               )}
 
               {category === ListingCategory.SERVER && (
                 <>
-                  {field("cpuModel", "CPU", text("cpuModel", "e.g. 2x Xeon Gold 6338"))}
-                  {field("ramGb", "RAM (GB)", text("ramGb", "e.g. 512", { inputMode: "numeric" }))}
-                  {field("storageGb", "Storage (GB)", text("storageGb", "e.g. 7680", { inputMode: "numeric" }))}
+                  {field("cpuModel", e.cpu, text("cpuModel", e.cpuPlaceholder))}
+                  {field("ramGb", e.ram, text("ramGb", e.ramPlaceholder, { inputMode: "numeric" }))}
+                  {field("storageGb", e.storage, text("storageGb", e.storagePlaceholder, { inputMode: "numeric" }))}
                 </>
               )}
 
               {category === ListingCategory.MEMORY && (
                 <>
-                  {field("memoryType", "Memory Type", text("memoryType", "e.g. DDR5 RDIMM"))}
-                  {field("memoryCapacityGb", "Capacity per Module (GB)", text("memoryCapacityGb", "e.g. 64", { inputMode: "numeric" }))}
-                  {field("memorySpeed", "Speed (MT/s)", text("memorySpeed", "e.g. 4800", { inputMode: "numeric" }))}
-                  {field("formFactor", "Form Factor", text("formFactor", "e.g. RDIMM, LRDIMM, SO-DIMM"))}
-                  {field("ecc", "ECC", (
+                  {field("memoryType", e.memoryType, text("memoryType", e.memoryTypePlaceholder))}
+                  {field("memoryCapacityGb", e.capacity, text("memoryCapacityGb", e.capacityPlaceholder, { inputMode: "numeric" }))}
+                  {field("memorySpeed", e.speed, text("memorySpeed", e.speedPlaceholder, { inputMode: "numeric" }))}
+                  {field("formFactor", e.formFactor, text("formFactor", e.formFactorPlaceholder))}
+                  {field("ecc", e.ecc, (
                     <Select
                       value={ecc || "unset"}
                       onValueChange={(val) =>
@@ -411,9 +420,9 @@ function EditListingFields({ listing }: { listing: Listing }) {
                     >
                       <SelectTrigger id="ecc"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="unset">Not specified</SelectItem>
-                        <SelectItem value="yes">ECC</SelectItem>
-                        <SelectItem value="no">Non-ECC</SelectItem>
+                        <SelectItem value="unset">{t.common.notSpecified}</SelectItem>
+                        <SelectItem value="yes">{e.eccYes}</SelectItem>
+                        <SelectItem value="no">{e.eccNo}</SelectItem>
                       </SelectContent>
                     </Select>
                   ))}
@@ -422,16 +431,16 @@ function EditListingFields({ listing }: { listing: Listing }) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {field("locationCity", "City", text("locationCity", "e.g. San Jose"))}
-              {field("locationRegion", "State / Region", text("locationRegion", "e.g. California"))}
-              {field("locationCountry", "Country", text("locationCountry", "e.g. USA"))}
+              {field("locationCity", s.city, text("locationCity", s.cityPlaceholder))}
+              {field("locationRegion", s.region, text("locationRegion", s.regionPlaceholder))}
+              {field("locationCountry", s.country, text("locationCountry", s.countryPlaceholder))}
             </div>
 
-            {field("description", "Description", (
+            {field("description", s.descriptionLabel, (
               <Textarea
                 id="description"
                 className="min-h-[120px] resize-y"
-                placeholder="Include details about usage history, warranty status, accessories included..."
+                placeholder={s.descriptionPlaceholder}
                 aria-invalid={!!errors.description}
                 {...form.register("description")}
               />
@@ -441,8 +450,8 @@ function EditListingFields({ listing }: { listing: Listing }) {
 
         <Card className="overflow-hidden border-border mb-8">
           <CardHeader className="bg-muted/30 border-b border-border pb-4">
-            <CardTitle>Photos</CardTitle>
-            <CardDescription>Photos upload right away; the listing only changes when you save.</CardDescription>
+            <CardTitle>{e.photos}</CardTitle>
+            <CardDescription>{e.photosDescription}</CardDescription>
           </CardHeader>
           <CardContent className="p-6">
             {supabase && user ? (
@@ -455,14 +464,14 @@ function EditListingFields({ listing }: { listing: Listing }) {
                 onUploaded={(path) => sessionUploads.current.push(path)}
               />
             ) : (
-              <p className="text-sm text-muted-foreground">Photo uploads are unavailable right now.</p>
+              <p className="text-sm text-muted-foreground">{e.photosUnavailable}</p>
             )}
           </CardContent>
         </Card>
 
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
           <Button type="button" variant="outline" onClick={handleCancel}>
-            Cancel
+            {t.common.cancel}
           </Button>
           <Button
             variant="accent"
@@ -471,7 +480,7 @@ function EditListingFields({ listing }: { listing: Listing }) {
             className="font-bold px-8"
             disabled={updateListing.isPending || photosBusy}
           >
-            {updateListing.isPending ? "Saving..." : photosBusy ? "Uploading photos..." : "Save Changes"}
+            {updateListing.isPending ? t.common.saving : photosBusy ? e.uploadingPhotos : e.saveChanges}
           </Button>
         </div>
       </form>
@@ -480,22 +489,24 @@ function EditListingFields({ listing }: { listing: Listing }) {
 }
 
 function PageShell({ title, subtitle, children }: { title?: string; subtitle?: string; children: ReactNode }) {
+  const { t } = useI18n();
   return (
     <>
-      <PageHeader eyebrow="Edit listing" title={title ?? "Listing"} description={subtitle} />
+      <PageHeader eyebrow={t.editListing.eyebrow} title={title ?? t.editListing.listing} description={subtitle} />
       <div className="container mx-auto max-w-3xl px-4 py-12">{children}</div>
     </>
   );
 }
 
 function Notice({ title, body }: { title: string; body: string }) {
+  const { t } = useI18n();
   return (
     <Card className="border-border shadow-sm">
       <CardContent className="p-12 text-center">
         <h1 className="text-lg font-bold mb-2">{title}</h1>
         <p className="text-muted-foreground mb-6">{body}</p>
         <Button asChild variant="outline">
-          <Link href="/dashboard">Back to dashboard</Link>
+          <Link href="/dashboard">{t.editListing.backToDashboard}</Link>
         </Button>
       </CardContent>
     </Card>

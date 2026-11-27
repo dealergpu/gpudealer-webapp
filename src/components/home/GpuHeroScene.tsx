@@ -15,6 +15,11 @@ const FIN_COUNT = 30;
 
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
+/** Callout text on the exploded view; passed in because React context doesn't cross the R3F canvas. */
+export type SceneLabels = { die: string; heatsink: string; cooler: string };
+
+const DEFAULT_LABELS: SceneLabels = { die: "GPU die · VRAM", heatsink: "Heat pipes · fin stack", cooler: "Triple-fan cooler" };
+
 type SceneProps = {
   /** 0 → assembled, 1 → fully exploded. Driven by page scroll on desktop. */
   progress?: MotionValue<number>;
@@ -127,7 +132,7 @@ function Label({ children, visible }: { children: React.ReactNode; visible: bool
   );
 }
 
-function GpuModel({ progress, reducedMotion, showLabels }: SceneProps & { showLabels: boolean }) {
+function GpuModel({ progress, reducedMotion, showLabels, labels }: SceneProps & { showLabels: boolean; labels: SceneLabels }) {
   const explode = useExplode(progress, reducedMotion);
 
   const backplate = useRef<THREE.Group>(null);
@@ -201,7 +206,7 @@ function GpuModel({ progress, reducedMotion, showLabels }: SceneProps & { showLa
         </mesh>
         {showLabels && (
           <group position={[0.2, 0.25, 0.9]}>
-            <Label visible={labelsOn}>GPU die · VRAM</Label>
+            <Label visible={labelsOn}>{labels.die}</Label>
           </group>
         )}
       </group>
@@ -222,7 +227,7 @@ function GpuModel({ progress, reducedMotion, showLabels }: SceneProps & { showLa
         ))}
         {showLabels && (
           <group position={[-0.9, 0.1, 0.95]}>
-            <Label visible={labelsOn}>Heat pipes · fin stack</Label>
+            <Label visible={labelsOn}>{labels.heatsink}</Label>
           </group>
         )}
       </group>
@@ -248,7 +253,7 @@ function GpuModel({ progress, reducedMotion, showLabels }: SceneProps & { showLa
         ))}
         {showLabels && (
           <group position={[1.3, 0.25, 0.7]}>
-            <Label visible={labelsOn}>Triple-fan cooler</Label>
+            <Label visible={labelsOn}>{labels.cooler}</Label>
           </group>
         )}
       </group>
@@ -297,8 +302,9 @@ export function GpuHeroScene({
   progress,
   reducedMotion,
   showLabels = true,
+  labels = DEFAULT_LABELS,
   postprocessing = true,
-}: SceneProps & { showLabels?: boolean; postprocessing?: boolean }) {
+}: SceneProps & { showLabels?: boolean; postprocessing?: boolean; labels?: SceneLabels }) {
   const wrapper = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(true);
 
@@ -331,7 +337,7 @@ export function GpuHeroScene({
           </Suspense>
 
           <Rig progress={progress} reducedMotion={reducedMotion}>
-            <GpuModel progress={progress} reducedMotion={reducedMotion} showLabels={showLabels} />
+            <GpuModel progress={progress} reducedMotion={reducedMotion} showLabels={showLabels} labels={labels} />
           </Rig>
 
           {!reducedMotion && (

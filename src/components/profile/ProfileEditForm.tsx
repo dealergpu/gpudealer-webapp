@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
+import type { Messages } from "@/i18n/messages";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -60,37 +62,41 @@ function isAllowedLink(value: string, domains?: string[]): boolean {
   return domains.some((domain) => host === domain || host.endsWith(`.${domain}`));
 }
 
-const link = (domains?: string[]) =>
-  z
-    .string()
-    .trim()
-    .max(2048, "Link is too long")
-    .transform(withProtocol)
-    .refine((v) => v === "" || isAllowedLink(v, domains), {
-      message: domains ? `Must be a link to ${domains.join(" or ")}` : "Must be an http(s) link",
-    });
+const makeProfileSchema = (t: Messages) => {
+  const p = t.profileEdit;
+  const link = (domains?: string[]) =>
+    z
+      .string()
+      .trim()
+      .max(2048, p.linkTooLong)
+      .transform(withProtocol)
+      .refine((v) => v === "" || isAllowedLink(v, domains), {
+        message: domains ? fmt(p.mustLinkTo, { domains: domains.join(p.or) }) : p.mustBeHttp,
+      });
 
-const profileSchema = z.object({
-  username: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .regex(USERNAME_PATTERN, "3–30 characters: lowercase letters, numbers and underscores"),
-  name: z.string().trim().max(255, "Name is too long"),
-  companyName: z.string().trim().max(255, "Company name is too long"),
-  city: z.string().trim().max(100, "City is too long"),
-  country: z.string().trim().max(100, "Country is too long"),
-  shortBio: z.string().trim().max(SHORT_BIO_MAX, `Keep it under ${SHORT_BIO_MAX} characters`),
-  bio: z.string().trim().max(BIO_MAX, `Keep it under ${BIO_MAX} characters`),
-  website: link(),
-  x: link(["x.com", "twitter.com"]),
-  instagram: link(["instagram.com"]),
-  facebook: link(["facebook.com", "fb.com"]),
-  tiktok: link(["tiktok.com"]),
-});
+  return z.object({
+    username: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(USERNAME_PATTERN, p.usernameRule),
+    name: z.string().trim().max(255, p.nameTooLong),
+    companyName: z.string().trim().max(255, p.companyTooLong),
+    city: z.string().trim().max(100, p.cityTooLong),
+    country: z.string().trim().max(100, p.countryTooLong),
+    shortBio: z.string().trim().max(SHORT_BIO_MAX, fmt(t.validation.maxChars, { max: SHORT_BIO_MAX })),
+    bio: z.string().trim().max(BIO_MAX, fmt(t.validation.maxChars, { max: BIO_MAX })),
+    website: link(),
+    x: link(["x.com", "twitter.com"]),
+    instagram: link(["instagram.com"]),
+    facebook: link(["facebook.com", "fb.com"]),
+    tiktok: link(["tiktok.com"]),
+  });
+};
 
-type ProfileInput = z.input<typeof profileSchema>;
-type ProfileValues = z.output<typeof profileSchema>;
+type ProfileSchema = ReturnType<typeof makeProfileSchema>;
+type ProfileInput = z.input<ProfileSchema>;
+type ProfileValues = z.output<ProfileSchema>;
 type FieldName = keyof ProfileInput;
 
 // The API can't clear these (they require at least one character), so an
@@ -120,9 +126,9 @@ function toFormValues(profile: UserProfile): ProfileInput {
 }
 
 /** `error.fields` values may be a message or a list of messages. */
-function fieldMessage(value: unknown): string {
+function fieldMessage(value: unknown, fallback: string): string {
   if (Array.isArray(value)) return value.map(String).join(" ");
-  return typeof value === "string" ? value : "Invalid value";
+  return typeof value === "string" ? value : fallback;
 }
 
 function errorFields(error: ApiError | null | undefined): Record<string, unknown> | undefined {
@@ -141,12 +147,14 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 
 export function ProfileEditForm() {
   const profileQuery = useGetMyProfile();
+  const { t } = useI18n();
+  const p = t.profileEdit;
 
   if (profileQuery.isLoading) {
     return (
       <PageShell>
         <p className="flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading your profile...
+          <Loader2 className="h-4 w-4 animate-spin" /> {p.loading}
         </p>
       </PageShell>
     );
@@ -157,10 +165,10 @@ export function ProfileEditForm() {
       <PageShell>
         <Card className="border-border shadow-sm">
           <CardContent className="p-12 text-center">
-            <h2 className="mb-2 text-lg font-bold">Couldn&apos;t load your profile</h2>
-            <p className="mb-6 text-muted-foreground">Something went wrong. Please refresh the page to try again.</p>
+            <h2 className="mb-2 text-lg font-bold">{p.loadFailedTitle}</h2>
+            <p className="mb-6 text-muted-foreground">{p.loadFailedBody}</p>
             <Button asChild variant="outline">
-              <Link href="/dashboard">Back to dashboard</Link>
+              <Link href="/dashboard">{p.backToDashboard}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -175,6 +183,9 @@ export function ProfileEditForm() {
 
 function ProfileFields({ profile }: { profile: UserProfile }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const p = t.profileEdit;
+  const [profileSchema] = useState(() => makeProfileSchema(t));
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -197,13 +208,13 @@ function ProfileFields({ profile }: { profile: UserProfile }) {
   const picturesBusy = uploading.profilePic || uploading.coverPic;
 
   const handlePicture = async (field: PictureField, file: File) => {
-    const invalid = validateProfilePhoto(file);
+    const invalid = validateProfilePhoto(file, { typeNotAllowed: t.photos.profileTypeNotAllowed, tooLarge: t.photos.profileTooLarge });
     if (invalid) {
       setPictureErrors((prev) => ({ ...prev, [field]: invalid }));
       return;
     }
     if (!supabase || !user) {
-      setPictureErrors((prev) => ({ ...prev, [field]: "Uploads are unavailable right now." }));
+      setPictureErrors((prev) => ({ ...prev, [field]: p.uploadsUnavailable }));
       return;
     }
     setPictureErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -215,7 +226,7 @@ function ProfileFields({ profile }: { profile: UserProfile }) {
     } catch (error) {
       setPictureErrors((prev) => ({
         ...prev,
-        [field]: error instanceof Error ? error.message : "Upload failed",
+        [field]: error instanceof Error ? error.message : p.uploadFailed,
       }));
     } finally {
       setUploading((prev) => ({ ...prev, [field]: false }));
@@ -239,13 +250,13 @@ function ProfileFields({ profile }: { profile: UserProfile }) {
   const usernameStatus = !shouldCheck || errors.username
     ? null
     : usernameCheck.isFetching
-      ? <span className="text-muted-foreground">Checking...</span>
+      ? <span className="text-muted-foreground">{p.checking}</span>
       : usernameCheck.data?.data.available
-        ? <span className="flex items-center gap-1 text-emerald-700"><Check className="h-3.5 w-3.5" /> Available</span>
+        ? <span className="flex items-center gap-1 text-emerald-700"><Check className="h-3.5 w-3.5" /> {p.available}</span>
         : usernameTaken
-          ? <span className="text-destructive">That username is taken.</span>
+          ? <span className="text-destructive">{p.taken}</span>
           : usernameCheck.error?.status === 400
-            ? <span className="text-destructive">{fieldMessage(errorFields(usernameCheck.error)?.username ?? "Invalid username")}</span>
+            ? <span className="text-destructive">{fieldMessage(errorFields(usernameCheck.error)?.username ?? p.invalidUsername, p.invalidValue)}</span>
             : null;
 
   // --- Save ---
@@ -263,9 +274,9 @@ function ProfileFields({ profile }: { profile: UserProfile }) {
     if (!fields) return false;
     for (const [key, value] of Object.entries(fields)) {
       if (key === "profilePic" || key === "coverPic") {
-        setPictureErrors((prev) => ({ ...prev, [key]: fieldMessage(value) }));
+        setPictureErrors((prev) => ({ ...prev, [key]: fieldMessage(value, p.invalidValue) }));
       } else if (key in profileSchema.shape) {
-        form.setError(key as FieldName, { message: fieldMessage(value) });
+        form.setError(key as FieldName, { message: fieldMessage(value, p.invalidValue) });
       }
     }
     return true;
@@ -273,11 +284,11 @@ function ProfileFields({ profile }: { profile: UserProfile }) {
 
   const onSubmit = (values: ProfileValues) => {
     if (picturesBusy) {
-      toast({ title: "Pictures are still uploading", description: "Wait for uploads to finish, then save." });
+      toast({ title: p.picturesUploading, description: p.picturesUploadingBody });
       return;
     }
     if (usernameTaken) {
-      form.setError("username", { message: "That username is taken." });
+      form.setError("username", { message: p.taken });
       return;
     }
 
@@ -290,7 +301,7 @@ function ProfileFields({ profile }: { profile: UserProfile }) {
       if (values[name]) {
         body[name] = values[name];
       } else if (profile[name]) {
-        form.setError(name, { message: "This can be changed but not removed." });
+        form.setError(name, { message: p.cantRemove });
         blocked = true;
       }
     }
@@ -304,7 +315,7 @@ function ProfileFields({ profile }: { profile: UserProfile }) {
     }
 
     if (Object.keys(body).length === 0) {
-      toast({ title: "No changes to save" });
+      toast({ title: p.noChanges });
       return;
     }
 
@@ -327,26 +338,26 @@ function ProfileFields({ profile }: { profile: UserProfile }) {
           cleanUp([...stale, ...discarded]);
 
           queryClient.setQueryData(getGetMyProfileQueryKey(), response);
-          toast({ title: "Profile updated", description: "Your changes have been saved." });
+          toast({ title: p.updated, description: p.updatedBody });
           router.push(profilePath(saved.username));
           router.refresh();
         },
         onError: (error) => {
           if (error.status === 401) {
-            toast({ title: "Session expired", description: "Please sign in again.", variant: "destructive" });
+            toast({ title: p.sessionExpired, description: p.signInAgain, variant: "destructive" });
             router.push("/sign-in");
             return;
           }
           if (error.status === 409) {
-            form.setError("username", { message: "That username is taken." });
-            toast({ title: "That username is taken", variant: "destructive" });
+            form.setError("username", { message: p.taken });
+            toast({ title: p.takenTitle, variant: "destructive" });
             return;
           }
           if (error.status === 400 && applyServerErrors(error)) {
-            toast({ title: "Please fix the highlighted fields", variant: "destructive" });
+            toast({ title: p.fixFields, variant: "destructive" });
             return;
           }
-          toast({ title: "Couldn't save changes", description: "Please try again.", variant: "destructive" });
+          toast({ title: p.saveFailed, description: p.pleaseTryAgain, variant: "destructive" });
         },
       },
     );
@@ -377,13 +388,13 @@ function ProfileFields({ profile }: { profile: UserProfile }) {
       <form onSubmit={(e) => form.handleSubmit(onSubmit)(e)} noValidate>
         <Card className="mb-6 overflow-hidden border-border">
           <CardHeader className="border-b border-border bg-muted/30 pb-4">
-            <CardTitle>Pictures</CardTitle>
-            <CardDescription>JPEG, PNG, WebP or GIF, up to 2 MB each.</CardDescription>
+            <CardTitle>{p.pictures}</CardTitle>
+            <CardDescription>{p.picturesDescription}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 p-6">
             <PictureInput
-              label="Cover picture"
-              hint="Shown across the top of your profile. A wide image (around 1500×500) works best."
+              label={p.coverPicture}
+              hint={p.coverHint}
               url={pictures.coverPic}
               uploading={uploading.coverPic}
               error={pictureErrors.coverPic}
@@ -392,16 +403,16 @@ function ProfileFields({ profile }: { profile: UserProfile }) {
               preview={(src) => (
                 <div className="relative aspect-3/1 w-full overflow-hidden rounded-xl border border-border bg-muted">
                   {src ? (
-                    <img src={src} alt="Cover picture preview" className="h-full w-full object-cover" />
+                    <img src={src} alt={p.coverPreview} className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No cover picture</div>
+                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{p.noCover}</div>
                   )}
                 </div>
               )}
             />
             <PictureInput
-              label="Profile picture"
-              hint="A square image works best."
+              label={p.profilePicture}
+              hint={p.profileHint}
               url={pictures.profilePic}
               uploading={uploading.profilePic}
               error={pictureErrors.profilePic}
@@ -411,7 +422,7 @@ function ProfileFields({ profile }: { profile: UserProfile }) {
               preview={(src) => (
                 <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
                   {src ? (
-                    <img src={src} alt="Profile picture preview" className="h-full w-full object-cover" />
+                    <img src={src} alt={p.profilePreview} className="h-full w-full object-cover" />
                   ) : (
                     <div aria-hidden className="flex h-full items-center justify-center font-display text-3xl text-muted-foreground">
                       {profileInitials({ name, username: profile.username })}
@@ -425,14 +436,14 @@ function ProfileFields({ profile }: { profile: UserProfile }) {
 
         <Card className="mb-6 overflow-hidden border-border">
           <CardHeader className="border-b border-border bg-muted/30 pb-4">
-            <CardTitle>Public profile</CardTitle>
-            <CardDescription>Everything here is visible to anyone who visits your profile.</CardDescription>
+            <CardTitle>{p.publicProfile}</CardTitle>
+            <CardDescription>{p.publicProfileDescription}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 p-6">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               {field(
                 "username",
-                "Username",
+                p.username,
                 <div className="relative">
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">@</span>
                   {text("username", "username", {
@@ -445,30 +456,30 @@ function ProfileFields({ profile }: { profile: UserProfile }) {
                 </div>,
                 usernameStatus ?? <>gpudealer.com{profilePath(candidate || profile.username)}</>,
               )}
-              {field("name", "Display name", text("name", "e.g. Jane Smith", { autoComplete: "name" }))}
-              {field("companyName", "Company", text("companyName", "e.g. Acme AI Labs", { autoComplete: "organization" }))}
+              {field("name", p.displayName, text("name", p.displayNamePlaceholder, { autoComplete: "name" }))}
+              {field("companyName", p.company, text("companyName", p.companyPlaceholder, { autoComplete: "organization" }))}
               <div className="grid grid-cols-2 gap-3">
-                {field("city", "City", text("city", "e.g. Austin", { autoComplete: "address-level2" }))}
-                {field("country", "Country", text("country", "e.g. USA", { autoComplete: "country-name" }))}
+                {field("city", p.city, text("city", p.cityPlaceholder, { autoComplete: "address-level2" }))}
+                {field("country", p.country, text("country", p.countryPlaceholder, { autoComplete: "country-name" }))}
               </div>
             </div>
 
             {field(
               "shortBio",
-              "Headline",
-              text("shortBio", "e.g. GPU reseller — RTX 4090s and A100s, tested and shipped from Texas", {
+              p.headline,
+              text("shortBio", p.headlinePlaceholder, {
                 maxLength: SHORT_BIO_MAX,
               }),
               <CharCount value={shortBio} max={SHORT_BIO_MAX} />,
             )}
             {field(
               "bio",
-              "About",
+              p.about,
               <Textarea
                 id="bio"
                 rows={6}
                 maxLength={BIO_MAX}
-                placeholder="What you buy or sell, typical volumes, testing and shipping practices..."
+                placeholder={p.aboutPlaceholder}
                 aria-invalid={!!errors.bio}
                 {...form.register("bio")}
               />,
@@ -479,11 +490,11 @@ function ProfileFields({ profile }: { profile: UserProfile }) {
 
         <Card className="mb-6 overflow-hidden border-border">
           <CardHeader className="border-b border-border bg-muted/30 pb-4">
-            <CardTitle>Links</CardTitle>
-            <CardDescription>Optional. Use full links to your profiles.</CardDescription>
+            <CardTitle>{p.links}</CardTitle>
+            <CardDescription>{p.linksDescription}</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-6 p-6 md:grid-cols-2">
-            {field("website", "Website", text("website", "https://example.com", { inputMode: "url", autoComplete: "url" }))}
+            {field("website", p.website, text("website", "https://example.com", { inputMode: "url", autoComplete: "url" }))}
             {field("x", "X (Twitter)", text("x", "https://x.com/username", { inputMode: "url" }))}
             {field("instagram", "Instagram", text("instagram", "https://instagram.com/username", { inputMode: "url" }))}
             {field("facebook", "Facebook", text("facebook", "https://facebook.com/username", { inputMode: "url" }))}
@@ -493,7 +504,7 @@ function ProfileFields({ profile }: { profile: UserProfile }) {
 
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" onClick={handleCancel}>
-            Cancel
+            {t.common.cancel}
           </Button>
           <Button
             variant="accent"
@@ -502,7 +513,7 @@ function ProfileFields({ profile }: { profile: UserProfile }) {
             className="px-8 font-bold"
             disabled={updateProfile.isPending || picturesBusy}
           >
-            {updateProfile.isPending ? "Saving..." : picturesBusy ? "Uploading pictures..." : "Save Changes"}
+            {updateProfile.isPending ? t.common.saving : picturesBusy ? p.uploadingPictures : p.saveChanges}
           </Button>
         </div>
       </form>
@@ -533,6 +544,8 @@ function PictureInput({
   inline?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const { t } = useI18n();
+  const p = t.profileEdit;
 
   return (
     <div className={cn("gap-4", inline ? "flex flex-col sm:flex-row sm:items-center" : "space-y-3")}>
@@ -540,7 +553,7 @@ function PictureInput({
         {preview(url)}
         {uploading && (
           <div className="absolute inset-0 flex items-center justify-center rounded-[inherit] bg-background/60">
-            <Loader2 className="h-6 w-6 animate-spin text-foreground" aria-label="Uploading" />
+            <Loader2 className="h-6 w-6 animate-spin text-foreground" aria-label={p.uploading} />
           </div>
         )}
       </div>
@@ -562,11 +575,11 @@ function PictureInput({
             }}
           />
           <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => inputRef.current?.click()}>
-            <ImagePlus className="mr-2 h-4 w-4" /> {url ? "Replace" : "Upload"}
+            <ImagePlus className="mr-2 h-4 w-4" /> {url ? p.replace : p.upload}
           </Button>
           {url && (
             <Button type="button" variant="ghost" size="sm" disabled={uploading} onClick={onRemove}>
-              <Trash2 className="mr-2 h-4 w-4" /> Remove
+              <Trash2 className="mr-2 h-4 w-4" /> {p.remove}
             </Button>
           )}
         </div>
@@ -589,17 +602,19 @@ function CharCount({ value, max }: { value: string; max: number }) {
 }
 
 function PageShell({ username, children }: { username?: string; children: ReactNode }) {
+  const { t } = useI18n();
+  const p = t.profileEdit;
   return (
     <>
       <PageHeader
-        eyebrow="Account"
-        title={<>Edit <em>profile.</em></>}
-        description="How buyers and sellers see you on GPUDealer."
+        eyebrow={p.eyebrow}
+        title={<>{p.titleStart} <em>{p.titleEm}</em></>}
+        description={p.description}
       >
         {username && (
           <Button asChild variant="outline">
             <Link href={profilePath(username)}>
-              View public profile <ExternalLink className="ml-2 h-4 w-4" />
+              {p.viewPublic} <ExternalLink className="ml-2 h-4 w-4" />
             </Link>
           </Button>
         )}

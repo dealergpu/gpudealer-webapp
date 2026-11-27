@@ -47,11 +47,10 @@ export function locationHref(location: Pick<ListingLocation, "city" | "country">
   return `/gpus?${params}`;
 }
 
-const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
-
-export function countryName(code: string): string {
+/** Country name in the page's language (`intl` is a BCP 47 tag, e.g. "zh-CN"). */
+export function countryName(code: string, intl = "en"): string {
   try {
-    return regionNames.of(code) ?? code;
+    return new Intl.DisplayNames([intl], { type: "region" }).of(code) ?? code;
   } catch {
     return code;
   }

@@ -4,6 +4,7 @@ import { Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSaveToggle } from "@/lib/saved-listings";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n/client";
 
 /**
  * Save/unsave toggle. `icon` is the round overlay on listing cards; `full`
@@ -19,7 +20,9 @@ export function SaveListingButton({
   className?: string;
 }) {
   const { isSaved, toggle, isBusy } = useSaveToggle(listingId);
-  const label = isSaved ? "Remove from saved" : "Save listing";
+  const { t } = useI18n();
+  const d = t.listingDetail;
+  const label = isSaved ? d.removeFromSaved : d.saveListingIcon;
   const icon = <Bookmark className={cn("h-4 w-4", isSaved && "fill-current")} aria-hidden />;
 
   if (variant === "full") {
@@ -33,7 +36,7 @@ export function SaveListingButton({
         aria-pressed={isSaved}
       >
         {icon}
-        <span className="ml-2">{isSaved ? "Saved" : "Save Listing"}</span>
+        <span className="ml-2">{isSaved ? d.saved : d.saveListing}</span>
       </Button>
     );
   }

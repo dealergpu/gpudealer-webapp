@@ -1,8 +1,10 @@
 'use client';
 
 import { useId } from "react";
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
 import { Scale, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,6 +15,7 @@ import { cn } from "@/lib/utils";
 export function CompareToggle({ item, className }: { item: CompareItem; className?: string }) {
   const id = useId();
   const { isSelected, isFull, toggle } = useCompareSelection();
+  const { t } = useI18n();
   const checked = isSelected(item.id);
   const disabled = !checked && isFull;
 
@@ -23,11 +26,11 @@ export function CompareToggle({ item, className }: { item: CompareItem; classNam
         checked={checked}
         disabled={disabled}
         onCheckedChange={() => toggle(item)}
-        aria-label={`Compare ${item.label}`}
-        title={disabled ? `You can compare up to ${COMPARE_MAX} offerings` : undefined}
+        aria-label={fmt(t.computeUi.compareItem, { label: item.label })}
+        title={disabled ? fmt(t.computeUi.compareMax, { max: COMPARE_MAX }) : undefined}
       />
       <label htmlFor={id} aria-hidden className={cn("text-xs text-muted-foreground", disabled ? "cursor-not-allowed" : "cursor-pointer")}>
-        Compare
+        {t.computeUi.compare}
       </label>
     </div>
   );
@@ -38,6 +41,7 @@ export function CompareTray() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { selected, remove, clear } = useCompareSelection();
+  const { t } = useI18n();
   if (selected.length === 0) return null;
 
   const href = compareHref(selected.map((item) => item.id));
@@ -45,7 +49,7 @@ export function CompareTray() {
 
   return (
     <aside
-      aria-label="Comparison selection"
+      aria-label={t.computeUi.selectionLabel}
       className="fixed inset-x-3 bottom-3 z-40 mx-auto max-w-3xl rounded-2xl border border-border bg-background/95 p-3 shadow-[0_18px_50px_-20px_hsl(240_10%_4%/0.45)] backdrop-blur-xl sm:inset-x-6"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -57,7 +61,7 @@ export function CompareTray() {
                 type="button"
                 onClick={() => remove(item.id)}
                 className="rounded-full p-0.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-                aria-label={`Remove ${item.label} from comparison`}
+                aria-label={fmt(t.computeUi.removeItem, { label: item.label })}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -66,17 +70,17 @@ export function CompareTray() {
         </ul>
         <div className="flex shrink-0 items-center gap-2">
           <Button variant="ghost" size="sm" onClick={clear}>
-            Clear
+            {t.common.clear}
           </Button>
           {selected.length < 2 ? (
-            <p className="text-xs text-muted-foreground">Pick one more to compare</p>
+            <p className="text-xs text-muted-foreground">{t.computeUi.pickOneMore}</p>
           ) : onCurrentComparison ? (
-            <p className="text-xs text-muted-foreground">Showing this comparison</p>
+            <p className="text-xs text-muted-foreground">{t.computeUi.showingComparison}</p>
           ) : (
             <Button asChild size="sm">
               <Link href={href}>
                 <Scale className="h-4 w-4" />
-                Compare {selected.length}
+                {fmt(t.computeUi.compareCount, { count: selected.length })}
               </Link>
             </Button>
           )}

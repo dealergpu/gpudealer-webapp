@@ -1,4 +1,5 @@
 import { getListings, ListingStatus, type Listing } from "@/lib/api";
+import { DEFAULT_LOCALE, localizePath, type Locale } from "@/i18n/config";
 
 /** Canonical origin used for sitemap, robots, canonical URLs and structured data. */
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://gpudealer.com").replace(/\/$/, "");
@@ -7,16 +8,17 @@ export const SITE_NAME = "GPUDealer";
 export const SITE_DESCRIPTION =
   "GPUDealer — used GPUs, AI servers, memory and compute hardware. Find. Sell. Request.";
 
-/** schema.org BreadcrumbList for a trail of site paths, e.g. [["Compute", "/compute"]]. */
-export function breadcrumbJsonLd(trail: [name: string, path: string][]) {
+/**
+ * schema.org BreadcrumbList for a trail of site paths, e.g. [["Compute", "/compute"]].
+ * URLs point at the given locale's version of each page.
+ */
+export function breadcrumbJsonLd(trail: [name: string, path: string][], locale: Locale = DEFAULT_LOCALE) {
   return {
     "@type": "BreadcrumbList",
-    itemListElement: [[SITE_NAME, ""] as const, ...trail].map(([name, path], i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      name,
-      item: `${SITE_URL}${path}`,
-    })),
+    itemListElement: [[SITE_NAME, "/"] as const, ...trail].map(([name, path], i) => {
+      const href = localizePath(path, locale);
+      return { "@type": "ListItem", position: i + 1, name, item: `${SITE_URL}${href === "/" ? "" : href}` };
+    }),
   };
 }
 

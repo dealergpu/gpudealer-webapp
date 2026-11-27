@@ -1,4 +1,9 @@
-import Link from "next/link";
+'use client';
+
+import { Link } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
+import { CnyPrice } from "@/components/CnyPrice";
 import { Listing, ListingCondition, ListingSourceType, ListingStatus } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpRight, MapPin } from "lucide-react";
@@ -26,22 +31,23 @@ function formatLocation(listing: Listing): string | null {
     .join(", ") || null;
 }
 
-const CONDITION_BADGE: Record<string, { label: string; variant: "success" | "warning" | "secondary" }> = {
-  [ListingCondition.NEW]: { label: "New", variant: "success" },
-  [ListingCondition.REFURBISHED]: { label: "Refurb", variant: "warning" },
-  [ListingCondition.USED]: { label: "Used", variant: "secondary" },
+const CONDITION_BADGE: Record<string, { label: "NEW" | "REFURBISHED_SHORT" | "USED"; variant: "success" | "warning" | "secondary" }> = {
+  [ListingCondition.NEW]: { label: "NEW", variant: "success" },
+  [ListingCondition.REFURBISHED]: { label: "REFURBISHED_SHORT", variant: "warning" },
+  [ListingCondition.USED]: { label: "USED", variant: "secondary" },
 };
 
 export function ListingCard({ listing, unavailable = false }: ListingCardProps) {
-  const formattedPrice = formatListingPrice(listing, 0);
+  const { t } = useI18n();
+  const formattedPrice = formatListingPrice(listing, 0, t.listing.priceOnRequest);
 
   const location = formatLocation(listing);
   const coverImage = [...(listing.images ?? [])].filter((image) => image.url).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
   const condition = listing.condition ? CONDITION_BADGE[listing.condition] : undefined;
   const isThirdParty = listing.sourceType && listing.sourceType !== ListingSourceType.GPUDEALER;
   const specs = [
-    listing.vramGb != null ? `${listing.vramGb}GB VRAM` : null,
-    listing.quantity != null && listing.quantity > 1 ? `${listing.quantity} available` : null,
+    listing.vramGb != null ? fmt(t.listingCard.vram, { gb: listing.vramGb }) : null,
+    listing.quantity != null && listing.quantity > 1 ? fmt(t.listingCard.available, { count: listing.quantity }) : null,
   ].filter(Boolean);
 
   return (
@@ -74,17 +80,17 @@ export function ListingCard({ listing, unavailable = false }: ListingCardProps) 
         <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
           <div className="flex flex-wrap gap-1.5">
             <span className="rounded-full bg-background/85 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-foreground backdrop-blur">
-              {listing.category}
+              {t.category[listing.category as keyof typeof t.category] ?? listing.category}
             </span>
             {(listing.status === ListingStatus.SOLD || unavailable) && (
               <span className="rounded-full bg-foreground/85 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-background backdrop-blur">
-                {listing.status === ListingStatus.SOLD ? "Sold" : "No longer available"}
+                {listing.status === ListingStatus.SOLD ? t.listingCard.sold : t.listingCard.unavailable}
               </span>
             )}
           </div>
           {condition && !unavailable && (
             <Badge variant={condition.variant} className="bg-background/85 backdrop-blur">
-              {condition.label}
+              {t.condition[condition.label]}
             </Badge>
           )}
         </div>
@@ -122,8 +128,9 @@ export function ListingCard({ listing, unavailable = false }: ListingCardProps) 
         <div className="mt-auto flex items-end justify-between gap-3 pt-5">
           <div>
             <p className="text-xl font-semibold tracking-tight tabular-nums">{formattedPrice}</p>
+            <CnyPrice amount={listing.price} currency={listing.currency} className="mt-0.5" />
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {isThirdParty ? `via ${listing.sourceType}` : "Seller listing"}
+              {isThirdParty ? fmt(t.listingCard.via, { source: listing.sourceType ?? "" }) : t.listingCard.sellerListing}
             </p>
           </div>
           {!unavailable && (

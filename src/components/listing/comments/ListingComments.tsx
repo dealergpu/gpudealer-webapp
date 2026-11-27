@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
 import { MessageSquare, Trash2 } from "lucide-react";
 import {
   ApiError,
@@ -74,6 +76,8 @@ export function ListingComments({
   /** First page, fetched on the server. Null if that fetch failed. */
   initial: ListingCommentsResponse | null;
 }) {
+  const { t } = useI18n();
+  const c = t.comments;
   const { user, isLoading: authLoading } = useAuth();
   // Author ids are backend user ids — compare against /me, never the Supabase id.
   const { data: me } = useGetMyProfile({ query: { enabled: !!user } });
@@ -104,7 +108,7 @@ export function ListingComments({
       setThreads((prev) => (page === 1 ? incoming : appendUnique(prev, incoming)));
       setPagination(response.pagination);
     } catch {
-      if (page > 1) toast({ title: "Couldn't load more comments", description: "Please try again.", variant: "destructive" });
+      if (page > 1) toast({ title: c.loadMoreFailed, description: c.pleaseTryAgain, variant: "destructive" });
     } finally {
       setLoadingPage(false);
     }
@@ -127,9 +131,9 @@ export function ListingComments({
       updateThread(thread.id, (t) => ({ ...t, loadingReplies: false }));
       if (error instanceof ApiError && error.status === 404) {
         removeThread(thread.id);
-        toast({ title: "That comment no longer exists", description: "It may have been deleted.", variant: "destructive" });
+        toast({ title: c.commentGone, description: c.commentGoneBody, variant: "destructive" });
       } else {
-        toast({ title: "Couldn't load replies", description: "Please try again.", variant: "destructive" });
+        toast({ title: c.loadRepliesFailed, description: c.pleaseTryAgain, variant: "destructive" });
       }
     }
   };
@@ -157,7 +161,7 @@ export function ListingComments({
         onSuccess: () => {
           removeComment(comment);
           setPendingDelete(null);
-          toast({ title: "Comment deleted" });
+          toast({ title: c.deleted });
         },
         onError: (error) => {
           setPendingDelete(null);
@@ -189,7 +193,7 @@ export function ListingComments({
   return (
     <section id="comments" aria-labelledby="comments-heading" className="scroll-mt-28 rounded-2xl border border-border bg-card p-6 sm:p-8">
       <h2 id="comments-heading" className="mb-6 flex items-center gap-2 font-display text-3xl">
-        Comments
+        {c.title}
         {!!pagination?.total && (
           <span className="font-sans text-sm font-normal tabular-nums text-muted-foreground">({pagination.total})</span>
         )}
@@ -200,22 +204,22 @@ export function ListingComments({
         {!canPost ? (
           <p className="rounded-xl bg-muted/60 px-4 py-3 text-sm text-muted-foreground">
             {listingStatus === ListingStatus.SOLD
-              ? "This listing has sold, so comments are read-only."
-              : "Comments are read-only for this listing."}
+              ? c.soldReadOnly
+              : c.readOnly}
           </p>
         ) : authLoading ? (
           <div className="h-24 animate-pulse rounded-xl bg-muted" />
         ) : user ? (
           <CommentForm
             listingId={listingId}
-            placeholder="Ask the seller a question or leave a comment..."
+            placeholder={c.placeholder}
             onPosted={onPostedTopLevel}
           />
         ) : (
           <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-dashed border-border px-4 py-4 sm:flex-row sm:items-center">
-            <p className="text-sm text-muted-foreground">Have a question about this hardware?</p>
+            <p className="text-sm text-muted-foreground">{c.haveQuestion}</p>
             <Button asChild variant="outline" size="sm">
-              <Link href={signInPath(`${listingPath}#comments`)}>Log in to comment</Link>
+              <Link href={signInPath(`${listingPath}#comments`)}>{c.logInToComment}</Link>
             </Button>
           </div>
         )}
@@ -224,17 +228,17 @@ export function ListingComments({
       {/* Comments */}
       {pagination === null ? (
         <div className="py-8 text-center">
-          <p className="text-sm text-muted-foreground">We couldn&apos;t load comments.</p>
+          <p className="text-sm text-muted-foreground">{c.loadFailed}</p>
           <Button variant="outline" size="sm" className="mt-3" onClick={() => loadPage(1)} disabled={loadingPage}>
             {loadingPage && <Spinner className="mr-1.5" />}
-            Try again
+            {t.common.tryAgain}
           </Button>
         </div>
       ) : threads.length === 0 ? (
         <div className="flex flex-col items-center py-8 text-center">
           <MessageSquare className="mb-3 h-6 w-6 text-muted-foreground" aria-hidden />
           <p className="text-sm text-muted-foreground">
-            {canPost ? "No comments yet. Be the first to ask the seller a question." : "No comments yet."}
+            {canPost ? c.emptyCanPost : c.empty}
           </p>
         </div>
       ) : (
@@ -279,7 +283,7 @@ export function ListingComments({
                       disabled={thread.loadingReplies}
                     >
                       {thread.loadingReplies && <Spinner className="mr-1.5" />}
-                      See more replies ({thread.replyCount - thread.replies.length})
+                      {fmt(c.seeMoreReplies, { count: thread.replyCount - thread.replies.length })}
                     </Button>
                   )}
 
@@ -290,8 +294,8 @@ export function ListingComments({
                       listingId={listingId}
                       parentCommentId={thread.id}
                       initialBody={replyingTo.mention ? `@${replyingTo.mention} ` : ""}
-                      placeholder={`Reply to ${thread.author.username}...`}
-                      submitLabel="Reply"
+                      placeholder={fmt(c.replyTo, { username: thread.author.username })}
+                      submitLabel={c.reply}
                       autoFocus
                       onPosted={(reply) => onPostedReply(thread.id, reply)}
                       onCancel={() => setReplyingTo(null)}
@@ -313,7 +317,7 @@ export function ListingComments({
         <div className="mt-8 flex justify-center">
           <Button variant="outline" onClick={() => loadPage(pagination.page + 1)} disabled={loadingPage}>
             {loadingPage && <Spinner className="mr-1.5" />}
-            See more comments
+            {c.seeMore}
           </Button>
         </div>
       )}
@@ -321,15 +325,15 @@ export function ListingComments({
       <AlertDialog open={!!pendingDelete} onOpenChange={(open) => !open && !deleteComment.isPending && setPendingDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this comment?</AlertDialogTitle>
+            <AlertDialogTitle>{c.deleteTitle}</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingDelete && !pendingDelete.parentCommentId
-                ? "This also deletes every reply in its thread. This can't be undone."
-                : "This can't be undone."}
+                ? c.deleteThread
+                : c.deleteOne}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteComment.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteComment.isPending}>{t.common.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 // Keep the dialog open until the request finishes.
@@ -340,7 +344,7 @@ export function ListingComments({
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteComment.isPending && <Spinner className="mr-1.5" />}
-              Delete
+              {t.common.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -366,6 +370,7 @@ function CommentItem({
   onReply: () => void;
   onDelete: () => void;
 }) {
+  const { t, intl } = useI18n();
   const { author } = comment;
   const isMine = !!myId && author.id === myId;
 
@@ -389,16 +394,16 @@ function CommentItem({
             {author.username}
           </Link>
           {sellerId && author.id === sellerId && (
-            <Badge variant="outline" className="px-1.5 py-0 text-[10px] uppercase tracking-wider">Seller</Badge>
+            <Badge variant="outline" className="px-1.5 py-0 text-[10px] uppercase tracking-wider">{t.comments.seller}</Badge>
           )}
           <time
             dateTime={comment.createdAt}
-            title={fullTimestamp(comment.createdAt)}
+            title={fullTimestamp(comment.createdAt, intl)}
             className="text-xs text-muted-foreground"
             // Relative time depends on "now", which differs between server and browser.
             suppressHydrationWarning
           >
-            {relativeTime(comment.createdAt)}
+            {relativeTime(comment.createdAt, t.comments, intl)}
           </time>
         </div>
 
@@ -409,7 +414,7 @@ function CommentItem({
           <div className="-ml-2 mt-1 flex gap-1">
             {canReply && (
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={onReply}>
-                Reply
+                {t.comments.reply}
               </Button>
             )}
             {isMine && (
@@ -419,7 +424,7 @@ function CommentItem({
                 className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
                 onClick={onDelete}
               >
-                <Trash2 className="mr-1 h-3 w-3" /> Delete
+                <Trash2 className="mr-1 h-3 w-3" /> {t.common.delete}
               </Button>
             )}
           </div>

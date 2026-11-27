@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
+import { zhCN } from "date-fns/locale";
 import { AlertTriangle, Check, Copy, KeyRound, Plus, RefreshCw, Trash2 } from "lucide-react";
 import {
   useGetApiKeys,
@@ -58,22 +61,25 @@ type ConfirmState = { action: "rotate" | "revoke"; apiKey: ApiKey } | null;
 const errorBody = (error: ApiError<ApiErrorResponse>) => error.data?.error;
 
 /** `error.fields` values may be a message or a list of messages. */
-function fieldMessage(value: unknown): string {
+function fieldMessage(value: unknown, fallback: string): string {
   if (Array.isArray(value)) return value.map(String).join(" ");
-  return typeof value === "string" ? value : "Invalid value";
+  return typeof value === "string" ? value : fallback;
 }
 
 function RelativeDate({ value }: { value: string }) {
+  const { locale, intl } = useI18n();
   const date = new Date(value);
   return (
-    <time dateTime={value} title={date.toLocaleString()}>
-      {formatDistanceToNow(date, { addSuffix: true })}
+    <time dateTime={value} title={date.toLocaleString(intl)}>
+      {formatDistanceToNow(date, { addSuffix: true, locale: locale === "zh" ? zhCN : undefined })}
     </time>
   );
 }
 
 export function ApiKeysClient() {
   const router = useRouter();
+  const { t } = useI18n();
+  const k = t.apiKeys;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data, isLoading, error, refetch } = useGetApiKeys(LIST_PARAMS);
@@ -89,7 +95,7 @@ export function ApiKeysClient() {
   const refreshKeys = () => queryClient.invalidateQueries({ queryKey: getGetApiKeysQueryKey() });
 
   const sessionExpired = () => {
-    toast({ title: "Session expired", description: "Please sign in again.", variant: "destructive" });
+    toast({ title: k.sessionExpired, description: k.signInAgain, variant: "destructive" });
     router.push("/sign-in");
   };
 
@@ -103,10 +109,10 @@ export function ApiKeysClient() {
     if (err.status === 401) return sessionExpired();
     if (err.status === 404) {
       refreshKeys();
-      toast({ title: "Key not found", description: "It may already have been revoked. The list has been refreshed." });
+      toast({ title: k.keyNotFound, description: k.keyNotFoundBody });
       return;
     }
-    toast({ title: fallback, description: errorBody(err)?.message ?? "Please try again.", variant: "destructive" });
+    toast({ title: fallback, description: errorBody(err)?.message ?? k.pleaseTryAgain, variant: "destructive" });
   };
 
   const handleConfirm = () => {
@@ -122,7 +128,7 @@ export function ApiKeysClient() {
             refreshKeys();
             setDialog({ mode: "reveal", apiKey: response.data, rotated: true });
           },
-          onError: (err) => handleActionError(err, "Couldn't rotate key"),
+          onError: (err) => handleActionError(err, k.rotateFailed),
         },
       );
     } else {
@@ -131,9 +137,9 @@ export function ApiKeysClient() {
         {
           onSuccess: () => {
             refreshKeys();
-            toast({ title: "API key revoked", description: `"${apiKey.name}" no longer works.` });
+            toast({ title: k.revoked, description: fmt(k.revokedBody, { name: apiKey.name }) });
           },
-          onError: (err) => handleActionError(err, "Couldn't revoke key"),
+          onError: (err) => handleActionError(err, k.revokeFailed),
         },
       );
     }
@@ -141,24 +147,24 @@ export function ApiKeysClient() {
 
   const createButton = (
     <Button onClick={() => setDialog({ mode: "create" })} disabled={atLimit}>
-      <Plus className="mr-2 h-4 w-4" /> Create API key
+      <Plus className="mr-2 h-4 w-4" /> {k.create}
     </Button>
   );
 
   return (
     <>
       <PageHeader
-        eyebrow="Account"
-        title={<>API <em>keys.</em></>}
-        description="Use API keys to let your scripts or AI agents create listings on your behalf. Anyone with a key can act as you, so keep it secret."
+        eyebrow={k.eyebrow}
+        title={<>{k.titleStart} <em>{k.titleEm}</em></>}
+        description={k.description}
       />
       <div className="container mx-auto px-4 py-10">
         <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-lg font-semibold">Active keys</h2>
+            <h2 className="text-lg font-semibold">{k.activeKeys}</h2>
             {data && (
               <p className="text-sm text-muted-foreground tabular-nums">
-                {activeCount} of {MAX_ACTIVE_KEYS} used
+                {fmt(k.used, { count: activeCount, max: MAX_ACTIVE_KEYS })}
               </p>
             )}
           </div>
@@ -169,7 +175,7 @@ export function ApiKeysClient() {
                 <span tabIndex={0} className="inline-flex">{createButton}</span>
               </TooltipTrigger>
               <TooltipContent>
-                You can have up to {MAX_ACTIVE_KEYS} active keys. Revoke one to create another.
+                {fmt(k.limitTooltip, { max: MAX_ACTIVE_KEYS })}
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -179,21 +185,21 @@ export function ApiKeysClient() {
 
         <Card className="border-border shadow-sm">
           {isLoading ? (
-            <div className="p-8 text-center text-muted-foreground">Loading your API keys...</div>
+            <div className="p-8 text-center text-muted-foreground">{k.loading}</div>
           ) : error ? (
             <div className="p-8 flex flex-col items-center gap-4 text-center">
-              <p className="text-muted-foreground">Couldn&apos;t load your API keys.</p>
-              <Button variant="outline" onClick={() => refetch()}>Try again</Button>
+              <p className="text-muted-foreground">{k.loadFailed}</p>
+              <Button variant="outline" onClick={() => refetch()}>{t.common.tryAgain}</Button>
             </div>
           ) : keys.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30">
-                  <TableHead>Name</TableHead>
-                  <TableHead>Key</TableHead>
-                  <TableHead className="hidden md:table-cell">Created</TableHead>
-                  <TableHead className="hidden sm:table-cell">Last used</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{k.name}</TableHead>
+                  <TableHead>{k.key}</TableHead>
+                  <TableHead className="hidden md:table-cell">{k.created}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{k.lastUsed}</TableHead>
+                  <TableHead className="text-right">{k.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -211,7 +217,7 @@ export function ApiKeysClient() {
                       <RelativeDate value={apiKey.createdAt} />
                     </TableCell>
                     <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-                      {apiKey.lastUsedAt ? <RelativeDate value={apiKey.lastUsedAt} /> : "Never"}
+                      {apiKey.lastUsedAt ? <RelativeDate value={apiKey.lastUsedAt} /> : k.never}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
@@ -219,8 +225,8 @@ export function ApiKeysClient() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          title="Rotate key"
-                          aria-label={`Rotate key ${apiKey.name}`}
+                          title={k.rotateKey}
+                          aria-label={fmt(k.rotateKeyNamed, { name: apiKey.name })}
                           disabled={rotateKey.isPending || revokeKey.isPending}
                           onClick={() => setConfirm({ action: "rotate", apiKey })}
                         >
@@ -230,8 +236,8 @@ export function ApiKeysClient() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          title="Revoke key"
-                          aria-label={`Revoke key ${apiKey.name}`}
+                          title={k.revokeKey}
+                          aria-label={fmt(k.revokeKeyNamed, { name: apiKey.name })}
                           disabled={rotateKey.isPending || revokeKey.isPending}
                           onClick={() => setConfirm({ action: "revoke", apiKey })}
                         >
@@ -246,9 +252,9 @@ export function ApiKeysClient() {
           ) : (
             <div className="p-12 flex flex-col items-center justify-center text-center">
               <KeyRound className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-bold mb-2">No API keys yet</h3>
+              <h3 className="text-lg font-bold mb-2">{k.emptyTitle}</h3>
               <p className="text-muted-foreground max-w-sm mb-6">
-                Create a key to let a script or AI agent list hardware for you.
+                {k.emptyBody}
               </p>
               {createButton}
             </div>
@@ -281,21 +287,21 @@ export function ApiKeysClient() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirm?.action === "rotate" ? "Rotate" : "Revoke"} &ldquo;{confirm?.apiKey.name}&rdquo;?
+              {fmt(confirm?.action === "rotate" ? k.confirmRotate : k.confirmRevoke, { name: confirm?.apiKey.name ?? "" })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirm?.action === "rotate"
-                ? "The current key stops working immediately and a new key with the same name is created. Update any scripts or agents that use it."
-                : "The key stops working immediately. Anything using it will lose access. This can't be undone."}
+                ? k.rotateBody
+                : k.revokeBody}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirm}
               className={confirm?.action === "revoke" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined}
             >
-              {confirm?.action === "rotate" ? "Rotate key" : "Revoke key"}
+              {confirm?.action === "rotate" ? k.rotateKey : k.revokeKey}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -312,6 +318,8 @@ function CreateKeyForm({
   onSessionExpired: () => void;
 }) {
   const createKey = useCreateApiKey();
+  const { t } = useI18n();
+  const k = t.apiKeys;
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -321,7 +329,7 @@ function CreateKeyForm({
     const trimmed = name.trim();
     setFormError(null);
     if (!trimmed) {
-      setNameError("Name is required.");
+      setNameError(k.nameRequired);
       return;
     }
     setNameError(null);
@@ -334,14 +342,14 @@ function CreateKeyForm({
           const body = errorBody(err);
           if (err.status === 401) return onSessionExpired();
           if (err.status === 409) {
-            setFormError(body?.message ?? `You already have ${MAX_ACTIVE_KEYS} active keys. Revoke one to create another.`);
+            setFormError(body?.message ?? fmt(k.atLimit, { max: MAX_ACTIVE_KEYS }));
             return;
           }
           if (body?.fields?.name !== undefined) {
-            setNameError(fieldMessage(body.fields.name));
+            setNameError(fieldMessage(body.fields.name, k.invalidValue));
             return;
           }
-          setFormError(body?.message ?? "Couldn't create the key. Please try again.");
+          setFormError(body?.message ?? k.createFailed);
         },
       },
     );
@@ -350,18 +358,18 @@ function CreateKeyForm({
   return (
     <form onSubmit={handleSubmit} className="grid gap-4" noValidate>
       <DialogHeader>
-        <DialogTitle>Create API key</DialogTitle>
-        <DialogDescription>Give the key a name so you can tell where it&apos;s used.</DialogDescription>
+        <DialogTitle>{k.create}</DialogTitle>
+        <DialogDescription>{k.createDescription}</DialogDescription>
       </DialogHeader>
       <div className="space-y-2">
         <Label htmlFor="api-key-name" className="font-semibold">
-          Name <span className="text-destructive">*</span>
+          {k.name} <span className="text-destructive">*</span>
         </Label>
         <Input
           id="api-key-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Meta Muse listing agent"
+          placeholder={k.namePlaceholder}
           maxLength={NAME_MAX_LENGTH}
           autoComplete="off"
           autoFocus
@@ -380,7 +388,7 @@ function CreateKeyForm({
       )}
       <DialogFooter>
         <Button type="submit" disabled={createKey.isPending}>
-          {createKey.isPending ? "Creating..." : "Create key"}
+          {createKey.isPending ? k.creating : k.createKey}
         </Button>
       </DialogFooter>
     </form>
@@ -397,6 +405,8 @@ function RevealKey({
   onDone: () => void;
 }) {
   const { toast } = useToast();
+  const { t } = useI18n();
+  const k = t.apiKeys;
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -404,39 +414,39 @@ function RevealKey({
       await navigator.clipboard.writeText(apiKey.key);
       setCopied(true);
     } catch {
-      toast({ title: "Couldn't copy", description: "Select the key and copy it manually.", variant: "destructive" });
+      toast({ title: k.copyFailed, description: k.copyManually, variant: "destructive" });
     }
   };
 
   return (
     <div className="grid gap-4">
       <DialogHeader>
-        <DialogTitle>{rotated ? "Key rotated" : "API key created"}</DialogTitle>
+        <DialogTitle>{rotated ? k.rotatedTitle : k.createdTitle}</DialogTitle>
         <DialogDescription>
           {rotated
-            ? `Here is the new key for "${apiKey.name}". The old key no longer works.`
-            : `Your key "${apiKey.name}" is ready.`}
+            ? fmt(k.rotatedBody, { name: apiKey.name })
+            : fmt(k.createdBody, { name: apiKey.name })}
         </DialogDescription>
       </DialogHeader>
       <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-        <p>Copy this key now. You won&apos;t be able to see it again.</p>
+        <p>{k.copyNow}</p>
       </div>
       <div className="flex gap-2">
         <Input
           readOnly
           value={apiKey.key}
-          aria-label="API key"
+          aria-label={k.apiKey}
           className="font-mono text-sm"
           onFocus={(e) => e.currentTarget.select()}
         />
         <Button type="button" variant="outline" onClick={handleCopy} className="shrink-0">
           {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
-          {copied ? "Copied" : "Copy"}
+          {copied ? t.common.copied : t.common.copy}
         </Button>
       </div>
       <DialogFooter>
-        <Button type="button" onClick={onDone}>Done</Button>
+        <Button type="button" onClick={onDone}>{k.done}</Button>
       </DialogFooter>
     </div>
   );

@@ -13,41 +13,39 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-
-const SUBJECT_LABELS: Record<ContactSubject, string> = {
-  [ContactSubject.PARTNERSHIP]: "Partnership",
-  [ContactSubject.BUSINESS]: "Business inquiry",
-  [ContactSubject.REPORT_BUG]: "Report a bug",
-  [ContactSubject.FEEDBACK]: "Feedback",
-  [ContactSubject.OTHER]: "Other",
-};
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
+import type { Messages } from "@/i18n/messages";
 
 const MESSAGE_MIN = 10;
 const MESSAGE_MAX = 5000;
 
 // Mirrors the API's rules for instant feedback; the API still validates.
-const contactSchema = z.object({
-  name: z.string().trim().max(100, "Keep it under 100 characters"),
-  email: z.string().trim().min(1, "Email is required").email("Enter a valid email address").max(255),
-  phone: z.string().trim().max(50, "Keep it under 50 characters"),
-  location: z.string().trim().max(255, "Keep it under 255 characters"),
+const makeContactSchema = (v: Messages["validation"]) => z.object({
+  name: z.string().trim().max(100, fmt(v.maxChars, { max: 100 })),
+  email: z.string().trim().min(1, v.emailRequired).email(v.emailInvalid).max(255),
+  phone: z.string().trim().max(50, fmt(v.maxChars, { max: 50 })),
+  location: z.string().trim().max(255, fmt(v.maxChars, { max: 255 })),
   // Optional in the form; the API requires one, so it falls back to OTHER.
   subject: z.nativeEnum(ContactSubject).optional(),
   message: z
     .string()
     .trim()
-    .min(1, "Message is required")
-    .min(MESSAGE_MIN, `Please write at least ${MESSAGE_MIN} characters`)
-    .max(MESSAGE_MAX, `Keep it under ${MESSAGE_MAX} characters`),
+    .min(1, v.messageRequired)
+    .min(MESSAGE_MIN, fmt(v.minChars, { min: MESSAGE_MIN }))
+    .max(MESSAGE_MAX, fmt(v.maxChars, { max: MESSAGE_MAX })),
 });
 
-type ContactValues = z.infer<typeof contactSchema>;
+type ContactValues = z.infer<ReturnType<typeof makeContactSchema>>;
 type FieldName = keyof ContactValues;
 
 const EMPTY: ContactValues = { name: "", email: "", phone: "", location: "", subject: undefined, message: "" };
 
 export function ContactForm({ onDone, className }: { onDone?: () => void; className?: string }) {
   const id = useId();
+  const { t } = useI18n();
+  const c = t.contact;
+  const [contactSchema] = useState(() => makeContactSchema(t.validation));
   const { user } = useAuth();
   const createMessage = useCreateContactMessage();
   const [formError, setFormError] = useState<string | null>(null);
@@ -75,7 +73,7 @@ export function ContactForm({ onDone, className }: { onDone?: () => void; classN
         onError: (error) => {
           const body = (error.data as ApiErrorResponse | null)?.error;
           if (error.status === 429) {
-            setFormError("You've sent a few messages in a row. Please wait a minute and try again.");
+            setFormError(c.rateLimited);
             return;
           }
           if (error.status === 400) {
@@ -86,10 +84,10 @@ export function ContactForm({ onDone, className }: { onDone?: () => void; classN
                 matched = true;
               }
             }
-            if (!matched) setFormError(body?.message ?? "Please check the form and try again.");
+            if (!matched) setFormError(body?.message ?? c.checkForm);
             return;
           }
-          setFormError("We couldn't send your message. Please try again in a moment.");
+          setFormError(c.sendFailed);
         },
       },
     );
@@ -99,10 +97,10 @@ export function ContactForm({ onDone, className }: { onDone?: () => void; classN
     return (
       <div role="status" className={cn("flex flex-col items-center py-8 text-center", className)}>
         <CheckCircle2 className="h-10 w-10 text-emerald-600" strokeWidth={1.5} />
-        <p className="mt-4 font-display text-3xl">Message sent.</p>
-        <p className="mt-2 max-w-sm text-muted-foreground">Thanks for reaching out — we&apos;ll get back to you by email.</p>
+        <p className="mt-4 font-display text-3xl">{c.sentTitle}</p>
+        <p className="mt-2 max-w-sm text-muted-foreground">{c.sentBody}</p>
         <Button variant="outline" className="mt-6" onClick={onDone ?? (() => setSent(false))}>
-          {onDone ? "Close" : "Send another message"}
+          {onDone ? t.common.close : c.sendAnother}
         </Button>
       </div>
     );
@@ -111,7 +109,7 @@ export function ContactForm({ onDone, className }: { onDone?: () => void; classN
   const field = (name: FieldName, label: string, input: ReactNode, required = false) => (
     <div className="space-y-2">
       <Label htmlFor={`${id}-${name}`} className={required ? "font-semibold" : undefined}>
-        {label} {required ? <span className="text-destructive">*</span> : <span className="font-normal text-muted-foreground">(optional)</span>}
+        {label} {required ? <span className="text-destructive">*</span> : <span className="font-normal text-muted-foreground">{t.common.optional}</span>}
       </Label>
       {input}
       {errors[name] && (
@@ -130,24 +128,26 @@ export function ContactForm({ onDone, className }: { onDone?: () => void; classN
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} noValidate className={cn("grid gap-5", className)}>
       <div className="grid gap-5 sm:grid-cols-2">
-        {field("email", "Email", <Input type="email" autoComplete="email" placeholder="you@company.com" {...inputProps("email")} />, true)}
-        {field("name", "Name", <Input autoComplete="name" maxLength={100} {...inputProps("name")} />)}
-        {field("phone", "Phone", <Input type="tel" autoComplete="tel" maxLength={50} {...inputProps("phone")} />)}
-        {field("location", "Location", <Input placeholder="e.g. Toronto, ON" maxLength={255} {...inputProps("location")} />)}
+        {field("email", c.email, <Input type="email" autoComplete="email" placeholder="you@company.com" {...inputProps("email")} />, true)}
+        {field("name", c.name, <Input autoComplete="name" maxLength={100} {...inputProps("name")} />)}
+        {field("phone", c.phone, <Input type="tel" autoComplete="tel" maxLength={50} {...inputProps("phone")} />)}
+        {field("location", c.location, <Input placeholder={c.locationPlaceholder} maxLength={255} {...inputProps("location")} />)}
       </div>
 
       {field(
         "subject",
-        "Subject",
+        c.subject,
         <Select
           value={subject ?? ""}
           onValueChange={(value) => form.setValue("subject", value as ContactSubject, { shouldDirty: true })}
         >
           <SelectTrigger id={`${id}-subject`}>
-            <SelectValue placeholder="Choose a topic" />
+            <SelectValue placeholder={c.subjectPlaceholder} />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(SUBJECT_LABELS).map(([value, label]) => (
+            {Object.values(ContactSubject).map((value) => (
+              [value, c.subjects[value]] as const
+            )).map(([value, label]) => (
               <SelectItem key={value} value={value}>{label}</SelectItem>
             ))}
           </SelectContent>
@@ -157,13 +157,13 @@ export function ContactForm({ onDone, className }: { onDone?: () => void; classN
       <div className="space-y-2">
         <div className="flex items-baseline justify-between gap-3">
           <Label htmlFor={`${id}-message`} className="font-semibold">
-            Message <span className="text-destructive">*</span>
+            {c.message} <span className="text-destructive">*</span>
           </Label>
           <span className={cn("font-mono text-[11px] tabular-nums", messageLength > MESSAGE_MAX ? "text-destructive" : "text-muted-foreground")}>
             {messageLength}/{MESSAGE_MAX}
           </span>
         </div>
-        <Textarea rows={5} placeholder="How can we help?" {...inputProps("message")} />
+        <Textarea rows={5} placeholder={c.messagePlaceholder} {...inputProps("message")} />
         {errors.message && (
           <p id={`${id}-message-error`} className="text-sm text-destructive">{errors.message.message}</p>
         )}
@@ -176,7 +176,7 @@ export function ContactForm({ onDone, className }: { onDone?: () => void; classN
       )}
 
       <Button type="submit" size="lg" disabled={createMessage.isPending} className="justify-self-start">
-        {createMessage.isPending ? "Sending..." : "Send message"}
+        {createMessage.isPending ? c.sending : c.send}
       </Button>
     </form>
   );

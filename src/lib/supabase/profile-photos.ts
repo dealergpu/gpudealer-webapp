@@ -19,12 +19,18 @@ const EXTENSION_BY_TYPE: Record<string, string> = {
 export const ACCEPTED_PROFILE_PHOTO_TYPES = Object.keys(EXTENSION_BY_TYPE).join(",");
 
 /** Returns a user-facing error message, or null if the file is acceptable. */
-export function validateProfilePhoto(file: File): string | null {
+export function validateProfilePhoto(
+  file: File,
+  messages: { typeNotAllowed: string; tooLarge: string } = {
+    typeNotAllowed: "Only JPEG, PNG, WebP and GIF images are allowed.",
+    tooLarge: "Images must be 2 MB or smaller.",
+  },
+): string | null {
   if (!EXTENSION_BY_TYPE[file.type]) {
-    return "Only JPEG, PNG, WebP and GIF images are allowed.";
+    return messages.typeNotAllowed;
   }
   if (file.size > MAX_PROFILE_PHOTO_BYTES) {
-    return "Images must be 2 MB or smaller.";
+    return messages.tooLarge;
   }
   return null;
 }

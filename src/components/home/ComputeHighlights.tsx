@@ -1,4 +1,6 @@
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { getI18n } from "@/i18n/server";
+import { fmt } from "@/i18n/format";
 import { Suspense } from "react";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,7 +9,7 @@ import { ProviderLogo } from "@/components/compute/ProviderLogo";
 import { FeaturedBadge } from "@/components/compute/FeaturedBadge";
 import { PricingStatus } from "@/components/compute/PricingStatus";
 import { getComputeProviders, type ComputeProvider } from "@/lib/api";
-import { GPU_PAGES, UNIT_LABELS, cheapestOnDemandGpuHour, formatPriceAmount } from "@/lib/compute";
+import { GPU_PAGES, cheapestOnDemandGpuHour, formatPriceAmount } from "@/lib/compute";
 
 // GPUs headlined on the home page; each links to its /compute/gpu-cloud page.
 const HOME_GPUS = GPU_PAGES.filter((gpu) => ["h100", "h200", "a100", "rtx-4090"].includes(gpu.slug));
@@ -46,6 +48,8 @@ function ComputeDataSkeleton() {
 }
 
 async function ComputeData() {
+  const { t } = await getI18n();
+  const c = t.computeHighlights;
   const [prices, directory] = await Promise.all([
     Promise.all(HOME_GPUS.map((gpu) => cheapestOnDemandGpuHour(gpu.slug))),
     loadProviders(),
@@ -68,18 +72,18 @@ async function ComputeData() {
                 </div>
                 {row ? (
                   <div className="mt-auto pt-6">
-                    <p className="text-xs text-muted-foreground">From</p>
+                    <p className="text-xs text-muted-foreground">{c.from}</p>
                     <p className="font-mono text-2xl font-semibold tracking-tight">
-                      {formatPriceAmount(row)}
-                      <span className="ml-1 text-xs font-normal text-muted-foreground">{UNIT_LABELS[row.unit]}</span>
+                      {formatPriceAmount(row, t.computeLabels.contactForPricing)}
+                      <span className="ml-1 text-xs font-normal text-muted-foreground">{t.computeLabels.units[row.unit]}</span>
                     </p>
                     <p className="mt-1 truncate text-xs text-muted-foreground">
-                      On-demand · {row.offering.provider.name}
+                      {fmt(c.onDemand, { provider: row.offering.provider.name })}
                     </p>
                     <PricingStatus price={row} className="mt-3" />
                   </div>
                 ) : (
-                  <p className="mt-auto pt-6 text-sm text-muted-foreground">Compare cloud providers</p>
+                  <p className="mt-auto pt-6 text-sm text-muted-foreground">{c.compareProviders}</p>
                 )}
               </Link>
             </RevealItem>
@@ -89,7 +93,7 @@ async function ComputeData() {
 
       {directory && directory.providers.length > 0 && (
         <Reveal className="mt-10">
-          <h3 className="text-sm font-semibold">Providers we track</h3>
+          <h3 className="text-sm font-semibold">{c.providersWeTrack}</h3>
           <ul className="mt-4 flex flex-wrap gap-2">
             {directory.providers.slice(0, PROVIDER_STRIP_LIMIT).map((provider) => (
               <li key={provider.id}>
@@ -109,7 +113,7 @@ async function ComputeData() {
                   href="/compute/providers"
                   className="flex h-full items-center gap-1.5 rounded-full px-3.5 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  All {directory.total} providers
+                  {fmt(c.allProviders, { count: directory.total })}
                   <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                 </Link>
               </li>
@@ -127,31 +131,32 @@ async function ComputeData() {
  * The heading and CTAs render immediately; the API data streams in, and
  * each part hides or falls back on its own if the API fails.
  */
-export function ComputeHighlights() {
+export async function ComputeHighlights() {
+  const { t } = await getI18n();
+  const c = t.computeHighlights;
   return (
     <section aria-labelledby="compute-heading" className="border-t border-border bg-background py-24 md:py-28">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-12 grid gap-6 md:grid-cols-2 md:items-end">
           <Reveal>
-            <SectionEyebrow>Compute prices</SectionEyebrow>
+            <SectionEyebrow>{c.eyebrow}</SectionEyebrow>
             <h2 id="compute-heading" className="font-display text-5xl leading-[0.95] tracking-[-0.02em] md:text-6xl">
-              Need compute, not hardware? <em className="text-accent">Compare it.</em>
+              {c.titleStart} <em className="text-accent">{c.titleEm}</em>
             </h2>
           </Reveal>
           <Reveal delay={0.1} className="md:justify-self-end">
             <p className="max-w-md text-muted-foreground">
-              Hourly GPU cloud prices and per-token inference prices, each with its source and the date it was
-              checked. We compare and link you to the provider — we don&apos;t resell compute.
+              {c.body}
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Button asChild variant="accent">
                 <Link href="/compute/gpu-cloud">
-                  Compare GPU cloud prices
+                  {c.gpuCloudCta}
                   <ArrowRight className="h-4 w-4 transition-transform group-hover/button:translate-x-0.5" />
                 </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href="/compute/inference">Inference API prices</Link>
+                <Link href="/compute/inference">{c.inferenceCta}</Link>
               </Button>
             </div>
           </Reveal>

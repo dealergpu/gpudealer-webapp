@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -34,6 +35,7 @@ export function ComputeFilters({
 }) {
   const id = useId();
   const router = useRouter();
+  const { t } = useI18n();
   const [text, setText] = useState<Record<string, string>>(() =>
     Object.fromEntries(fields.filter((f) => f.kind === "text").map((f) => [f.name, values[f.name] ?? ""])),
   );
@@ -114,7 +116,7 @@ export function ComputeFilters({
             router.push(basePath, { scroll: false });
           }}
         >
-          Clear filters
+          {t.computeUi.clearFilters}
         </Button>
       )}
     </div>

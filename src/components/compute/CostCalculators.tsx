@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ComputePricingUnit } from "@/lib/api";
 import { formatFixedMoney, formatMoney, multiplyFixed, toFixedPoint } from "@/lib/compute";
+import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/format";
 
 const CUSTOM = "custom";
 const HOURS_24_7 = "730"; // average hours in a month
@@ -29,6 +31,7 @@ export type InferencePriceOption = {
 };
 
 function CalculatorShell({ title, children, result, assumptions }: { title: string; children: ReactNode; result: ReactNode; assumptions: string }) {
+  const { t } = useI18n();
   return (
     <section aria-label={title} className="rounded-3xl border border-border bg-card p-6">
       <h2 className="flex items-center gap-2 text-sm font-semibold">
@@ -37,7 +40,7 @@ function CalculatorShell({ title, children, result, assumptions }: { title: stri
       </h2>
       <div className="mt-5 grid gap-4">{children}</div>
       <div className="mt-6 border-t border-border pt-4" aria-live="polite">
-        <p className="text-xs text-muted-foreground">Estimated monthly cost</p>
+        <p className="text-xs text-muted-foreground">{t.calculators.estimatedMonthly}</p>
         <p className="mt-1 font-mono text-3xl tabular-nums">{result}</p>
         <p className="mt-2 text-xs text-muted-foreground">{assumptions}</p>
       </div>
@@ -58,9 +61,10 @@ function PriceSelect<T extends { id: string; label: string }>({
   onChange: (value: string) => void;
   describe: (option: T) => string;
 }) {
+  const { t } = useI18n();
   return (
     <div className="space-y-2">
-      <Label htmlFor={id}>Price</Label>
+      <Label htmlFor={id}>{t.calculators.price}</Label>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger id={id}>
           <SelectValue />
@@ -71,7 +75,7 @@ function PriceSelect<T extends { id: string; label: string }>({
               {option.label} — {describe(option)}
             </SelectItem>
           ))}
-          <SelectItem value={CUSTOM}>Enter a price</SelectItem>
+          <SelectItem value={CUSTOM}>{t.calculators.enterPrice}</SelectItem>
         </SelectContent>
       </Select>
     </div>
@@ -95,6 +99,8 @@ function NumberField({ id, label, value, onChange, hint, step = "1" }: { id: str
  */
 export function GpuCostCalculator({ options }: { options: GpuPriceOption[] }) {
   const id = useId();
+  const { t } = useI18n();
+  const c = t.calculators;
   const [selectedId, setSelectedId] = useState(options[0]?.id ?? CUSTOM);
   const [customPrice, setCustomPrice] = useState("");
   const [quantity, setQuantity] = useState("1");
@@ -113,9 +119,9 @@ export function GpuCostCalculator({ options }: { options: GpuPriceOption[] }) {
 
   return (
     <CalculatorShell
-      title="GPU rental cost"
+      title={c.gpuTitle}
       result={total != null ? formatFixedMoney(total, currency) : "—"}
-      assumptions="Compute only, at the listed rate. Excludes storage, network egress, taxes and discounts. Spot capacity can be interrupted."
+      assumptions={c.gpuAssumptions}
     >
       {options.length > 0 && (
         <PriceSelect
@@ -123,21 +129,21 @@ export function GpuCostCalculator({ options }: { options: GpuPriceOption[] }) {
           options={options}
           value={option?.id ?? CUSTOM}
           onChange={setSelectedId}
-          describe={(o) => `${formatMoney(o.amount, o.currency)} ${o.unit === ComputePricingUnit.GPU_HOUR ? "/ GPU / hr" : "/ instance / hr"}`}
+          describe={(o) => `${formatMoney(o.amount, o.currency)} ${t.computeLabels.units[o.unit]}`}
         />
       )}
       {!option && (
-        <NumberField id={`${id}-custom`} label="Price per GPU-hour (USD)" value={customPrice} onChange={setCustomPrice} step="0.01" />
+        <NumberField id={`${id}-custom`} label={c.customGpuPrice} value={customPrice} onChange={setCustomPrice} step="0.01" />
       )}
       <div className="grid gap-4 sm:grid-cols-2">
         <NumberField
           id={`${id}-qty`}
-          label={perInstance ? "Instances" : "GPUs"}
+          label={perInstance ? c.instances : c.gpus}
           value={quantity}
           onChange={setQuantity}
-          hint={perInstance && option?.gpuCount ? `Each instance has ${option.gpuCount} GPU${option.gpuCount === 1 ? "" : "s"}` : undefined}
+          hint={perInstance && option?.gpuCount ? fmt(c.eachInstance, { count: option.gpuCount }) : undefined}
         />
-        <NumberField id={`${id}-hours`} label="Hours per month" value={hours} onChange={setHours} hint="730 = running 24/7" />
+        <NumberField id={`${id}-hours`} label={c.hoursPerMonth} value={hours} onChange={setHours} hint={c.hoursHint} />
       </div>
     </CalculatorShell>
   );
@@ -148,6 +154,8 @@ const MILLION = toFixedPoint("1000000")!;
 /** (input tokens / 1M × input price) + (output tokens / 1M × output price). */
 export function InferenceCostCalculator({ options }: { options: InferencePriceOption[] }) {
   const id = useId();
+  const { t } = useI18n();
+  const c = t.calculators;
   const [selectedId, setSelectedId] = useState(options[0]?.id ?? CUSTOM);
   const [customInput, setCustomInput] = useState("");
   const [customOutput, setCustomOutput] = useState("");
@@ -169,9 +177,9 @@ export function InferenceCostCalculator({ options }: { options: InferencePriceOp
 
   return (
     <CalculatorShell
-      title="Inference cost"
+      title={c.inferenceTitle}
       result={total != null ? formatFixedMoney(total, currency) : "—"}
-      assumptions="Text tokens at the listed rates. Excludes prompt caching, batch discounts, image/audio input, minimums and taxes."
+      assumptions={c.inferenceAssumptions}
     >
       {options.length > 0 && (
         <PriceSelect
@@ -179,22 +187,22 @@ export function InferenceCostCalculator({ options }: { options: InferencePriceOp
           options={options}
           value={option?.id ?? CUSTOM}
           onChange={setSelectedId}
-          describe={(o) => `${formatMoney(o.inputAmount, o.currency)} in / ${formatMoney(o.outputAmount, o.currency)} out`}
+          describe={(o) => fmt(c.inOut, { input: formatMoney(o.inputAmount, o.currency), output: formatMoney(o.outputAmount, o.currency) })}
         />
       )}
       {!option && (
         <div className="grid gap-4 sm:grid-cols-2">
-          <NumberField id={`${id}-in-price`} label="Input price / 1M tokens (USD)" value={customInput} onChange={setCustomInput} step="0.01" />
-          <NumberField id={`${id}-out-price`} label="Output price / 1M tokens (USD)" value={customOutput} onChange={setCustomOutput} step="0.01" />
+          <NumberField id={`${id}-in-price`} label={c.customInput} value={customInput} onChange={setCustomInput} step="0.01" />
+          <NumberField id={`${id}-out-price`} label={c.customOutput} value={customOutput} onChange={setCustomOutput} step="0.01" />
         </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
-        <NumberField id={`${id}-in`} label="Input tokens / month (millions)" value={inputMillions} onChange={setInputMillions} step="any" />
-        <NumberField id={`${id}-out`} label="Output tokens / month (millions)" value={outputMillions} onChange={setOutputMillions} step="any" />
+        <NumberField id={`${id}-in`} label={c.inputTokens} value={inputMillions} onChange={setInputMillions} step="any" />
+        <NumberField id={`${id}-out`} label={c.outputTokens} value={outputMillions} onChange={setOutputMillions} step="any" />
       </div>
       {inTokens != null && outTokens != null && (
         <p className="text-xs text-muted-foreground tabular-nums">
-          {formatTokens(multiplyFixed(inTokens, MILLION))} input + {formatTokens(multiplyFixed(outTokens, MILLION))} output tokens
+          {fmt(c.tokenSummary, { input: formatTokens(multiplyFixed(inTokens, MILLION)), output: formatTokens(multiplyFixed(outTokens, MILLION)) })}
         </p>
       )}
     </CalculatorShell>

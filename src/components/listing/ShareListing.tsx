@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/i18n/client";
 
 // Brand marks (Simple Icons paths) — lucide's brand icons are deprecated and have no X logo.
 const ICON_PATHS = {
@@ -30,6 +31,8 @@ function BrandIcon({ name }: { name: keyof typeof ICON_PATHS }) {
 
 export function ShareListing({ url, title }: { url: string; title: string }) {
   const { toast } = useToast();
+  const { t } = useI18n();
+  const d = t.listingDetail;
   const encodedUrl = encodeURIComponent(url);
 
   const targets = [
@@ -41,9 +44,9 @@ export function ShareListing({ url, title }: { url: string; title: string }) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(url);
-      toast({ title: "Link copied" });
+      toast({ title: d.linkCopied });
     } catch {
-      toast({ title: "Couldn't copy link", description: url, variant: "destructive" });
+      toast({ title: d.copyFailed, description: url, variant: "destructive" });
     }
   };
 
@@ -52,7 +55,7 @@ export function ShareListing({ url, title }: { url: string; title: string }) {
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
           <Share2 className="h-4 w-4" />
-          Share
+          {d.share}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
@@ -67,7 +70,7 @@ export function ShareListing({ url, title }: { url: string; title: string }) {
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={handleCopy} className="gap-2">
           <Link2 className="h-4 w-4" />
-          Copy link
+          {d.copyLink}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
